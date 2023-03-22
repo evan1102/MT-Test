@@ -1,0 +1,70 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <!-- Activate IE9 document mode, if available -->
+    <meta charset="utf-8" http-equiv="X-UA-Compatible" content="IE=edge" />
+    <!-- Defined iOS viewport -->
+    <meta name="viewport" content="initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=false">
+    <!-- Disable iOS Phone No Detection -->
+    <meta name="format-detection" content="telephone=no" />
+    <!-- DevExtreme dependencies -->
+    <script type="text/javascript" src="../../scripts/jquery.min.js"></script>
+    <!-- DevExtreme themes -->
+    <link rel="stylesheet" type="text/css" href="../../css/dx.light.css" />
+    <!-- A DevExtreme library -->
+    <script type="text/javascript" src="../../scripts/dx.all.js"></script>
+    <!-- Offline HTML JavaScript Bridge-->
+    <script type="text/javascript" src="../../scripts/JSBridge.js"></script>
+    <script type="text/javascript" src="../../scripts/k2aMethods.js"></script>
+    <script type="text/javascript" src="../../enum/Schema.js"></script>
+    <script type="text/javascript" src="../../enum/setupoption.js"></script>
+    <!-- Offline HTML Template Factory-->
+    <script type="text/javascript" src="../../templates/listItem-factory.js"></script>
+    <script type="text/javascript" src="../../templates/toolbar-factory.js"></script>
+    <!-- Offline HTML Styling -->
+    <link rel="stylesheet" type="text/css" href="../../css/k2a.css" />
+    <title>Entity List</title>
+</head>
+<body>
+
+    <script>
+        function setDataSource() {
+            var dataSource = new MobileCRM.UI.ListDataSource();
+
+            dataSource.loadNextChunk = function (page, count) {
+                var fetch = this.fetch;
+                fetch.count = count;
+                fetch.page = page;
+                if (page === 1) {
+                    var filter = new MobileCRM.FetchXml.Filter();
+                    var notMCC = new MobileCRM.FetchXml.Condition();
+                    notMCC.attribute = "name";
+                    notMCC.operator = "ne";
+                    notMCC.value = "MCC";
+                    filter.conditions.push(notMCC);
+                    filter.type = "and"
+                    var originalFilter = fetch.entity.filter;
+                    if (originalFilter && originalFilter.conditions.length > 0) {
+                        var combinedFilter = new MobileCRM.FetchXml.Filter();
+                        combinedFilter.type = "and";
+                        combinedFilter.filters = [filter, originalFilter];
+                        fetch.entity.filter = combinedFilter;
+                    }
+                    else {
+                        fetch.entity.filter = filter;
+                    }
+                }
+                fetch.execute("DynamicEntities", function (entities) {
+                    this.chunkReady(entities);
+                }, MobileCRM.bridge.alert, this);
+            };
+            MobileCRM.UI.EntityList.setDataSource(dataSource);
+        }
+
+        window.onload = function () {
+            setDataSource();
+        }
+
+    </script>
+</body>
+</html>

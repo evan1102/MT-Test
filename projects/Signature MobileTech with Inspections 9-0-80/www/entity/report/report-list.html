@@ -1,0 +1,505 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <!-- Activate IE9 document mode, if available -->
+    <meta charset="utf-8" http-equiv="X-UA-Compatible" content="IE=edge" />
+    <!-- Defined iOS viewport -->
+    <meta name="viewport" content="initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=false">
+    <!-- Disable iOS Phone No Detection -->
+    <meta name="format-detection" content="telephone=no" />
+    <!-- DevExtreme dependencies -->
+    <script type="text/javascript" src="../../scripts/jquery.min.js"></script>
+    <!-- DevExtreme themes -->
+    <link rel="stylesheet" type="text/css" href="../../css/dx.light.css" />
+    <!-- A DevExtreme library -->
+    <script type="text/javascript" src="../../scripts/dx.all.js"></script>
+    <!-- Offline HTML JavaScript Bridge-->
+    <script type="text/javascript" src="../../scripts/JSBridge.js"></script>
+    <script type="text/javascript" src="../../scripts/k2aMethods.js"></script>
+    <script type="text/javascript" src="../../enum/Schema.js"></script>
+    <script type="text/javascript" src="../../enum/setupoption.js"></script>
+    <!-- Offline HTML Template Factory-->
+    <script type="text/javascript" src="../../templates/listItem-factory.js"></script>
+    <script type="text/javascript" src="../../templates/toolbar-factory.js"></script>
+    <!-- Offline HTML Styling -->
+    <link rel="stylesheet" type="text/css" href="../../css/k2a.css" />
+    <title>Entity List</title>
+</head>
+<body>
+    <div id="toast"></div>
+    <div class="fixedPosition">
+        <div id="mainToolbar"></div><br>
+        <div id="listToolbar"></div>
+        <div id="mainScrollView">
+            <div id='mainList'></div>
+        </div>
+        <div id="actionSheet"></div>
+        <div id="filterPopup"></div>
+    </div>
+
+    <script>
+        //============== INITIAL SETTINGS ================
+        var entityName = SCHEMA.report.name, scrollHeight = 110;
+        var sortDesc = false, sortSelector = SCHEMA.report.Properties.name;
+        var FIELD_INVOICE_REPORT = "Field Invoice Report";
+        var previousformMaximized = false;
+        const ReportStatus = {
+            Ready: "READY",
+            InProgress: "IN PROGRESS",
+            Requested: "REQUESTED",
+            Failed: "FAILED"
+        }
+        const SignatureMsg = {
+            Missing: "Alert.MissingSignature",
+            Warning: "Alert.ConfirmReplaceSignature"
+        }
+        //============== OFFLINE DATA ================
+        var entityListData;
+        //============== SELECTED DATA ================
+        var selected = { entityName: null, appointment: null, summaryReport: null };
+        //============== FETCH DATA ================
+        var requiredSetupOptions = [
+            SETUPOPTION.UseFieldInvoicing,
+            SETUPOPTION.UseFieldInvoicePreview,
+            SETUPOPTION.UseFieldInvoiceSignature
+        ];
+        var entityAttributes = [
+            SCHEMA.report.Properties.id,
+            SCHEMA.report.Properties.name,
+            SCHEMA.report.Properties.status,
+            SCHEMA.report.Properties.errormessage,
+            SCHEMA.report.Properties.customername,
+            SCHEMA.report.Properties.customersignature
+        ];
+        var listSortItems = [
+            SCHEMA.report.Properties.name
+        ];
+        var listSearchItems = [
+            SCHEMA.report.Properties.name,
+            SCHEMA.report.Properties.status,
+            SCHEMA.report.Properties.errormessage
+        ];
+        var listFilterItems = [
+            { dataField: SCHEMA.report.Properties.name, dataType: FilterDataType.string },
+            { dataField: SCHEMA.report.Properties.status, dataType: FilterDataType.string },
+            { dataField: SCHEMA.report.Properties.errormessage, dataType: FilterDataType.string }
+        ];
+        var listItemTemplate = function (data, _, element) {
+            element.append(
+                $("<span>").append(data.name).css("font-size", "large"),
+                $("<span>").append(data.status).css("float", "right")
+            );
+
+            if (setupOptions.UseFieldInvoiceSignature) {
+                if (data.customername && data.customersignature) {
+                    element.append(
+                        $("<br>"),
+                        $("<span>").dxBox({
+                            direction: "row",
+                            width: "90%",
+                            items: [{
+                                html: "<fieldset id='customerFieldset'></fieldset>",
+                                ratio: 1
+                            }]
+                        }).attr('id', "sig_" + data.id)
+                            .css({ display: "table", margin: "0 auto" })
+                    );
+                    $("#customerFieldset").append(
+                        $("<legend>").append(data.customername),
+                        $("<img>").attr("src", "data:image/svg+xml;base64," + data.customersignature).css({ 'max-width': '100%', 'height': 'auto' })
+                    );
+                }
+                else {
+                    element.append(
+                        $("<p>").append("<b>" + MobileCRM.Localization.get(SignatureMsg.Missing) + "<b>").css({ 'white-space': 'normal', color: 'red' })
+                    )
+                }
+            }
+
+            if (data.errormessage) {
+                element.append(
+                    $("<p>").append(data.errormessage).css({ 'font-style': 'italic', 'white-space': 'normal' })
+                );
+            }
+        };
+        //============== TOOLBAR ITEMS ================
+        var mainToolbarItems = [
+            ToolbarItemType.title, ToolbarItemType.btnRefresh
+        ];
+        var listToolbarItems = [
+            ToolbarItemType.btnSort, ToolbarItemType.selectSort, ToolbarItemType.btnFilter
+        ];
+        //============== LIST ACTION ITEMS ================
+        var actionItems = [
+            { text: "Request Report", onClick: requestReport },
+            { text: "View Report", onClick: previewReport },
+            { text: "Capture Signature", onClick: captureSignature },
+            { text: "Use Summary Signature", onClick: useSummarySignature }
+        ];
+
+        $(function () {
+            //============== LOCALIZATION ================
+            MobileCRM.Localization.initialize(function (localization) {
+
+                //============== ANDROID CHECK ================
+                MobileCRM.Platform.preventBackButton(btnBackClicked);
+
+                //============== LOADPANEL ================
+                loading = MobileCRM.UI.Form.showPleaseWait(MobileCRM.Localization.get("Msg.Loading"));
+
+                //============== SCROLLVIEW ================
+                mainScrollView = $("#mainScrollView").dxScrollView({
+                    showScrollbar: "always",
+                    height: function () { return window.innerHeight - scrollHeight; },
+                    width: '100%'
+                }).dxScrollView("instance");
+                $(window).resize(function () {
+                    repaintScrollView(mainScrollView);
+                });
+
+                //============== TOOLBARS ================
+                mainToolbar = $("#mainToolbar").dxToolbar({
+                    items: (new ToolbarFactory()).addItems(mainToolbarItems)
+                }).dxToolbar("instance");
+                listToolbar = $("#listToolbar").dxToolbar({
+                    items: (new ToolbarFactory()).addItems(listToolbarItems)
+                }).dxToolbar("instance");
+
+                //============== LIST ================
+                mainList = (new ListFactory()).createItem("#mainList", entityName, [
+                    { name: 'searchExpr', value: listSearchItems },
+                    { name: 'itemTemplate', value: listItemTemplate }
+                ]);
+
+                //============== ACTION SHEETS ================
+                actionSheet = (new ActionSheetFactory()).createItem(actionItems, "#actionSheet");
+
+                loadSetupOptions(loadListOptions);
+            }, alertError);
+        });
+
+        //============== EVENT HANDLERS ================
+        function loadEventHandlers() {
+            MobileCRM.bridge.onGlobalEvent("RefreshReportList", fetchListEntityData, true);
+            MobileCRM.bridge.onGlobalEvent("CompleteValidation_Report", function (appointment) {
+                if (appointment && appointment.id === selected.appointment.id) {
+                    ifExistsDeleteDeviceDocument().then(generateReport);
+                }
+            }, true);
+            MobileCRM.Configuration.requestObject(function (config) {
+                MobileCRM.bridge.onGlobalEvent("SyncFinished", fetchListEntityData, !config.settings.requireSyncLogin);
+            }, MobileCRM.bridge.alert);
+
+            if (setupOptions.UseFieldInvoiceSignature) {
+                MobileCRM.bridge.onGlobalEvent("IFrameFormClosed", function (iFrameForm) {
+                    if (iFrameForm.form && iFrameForm.form.caption === "Signature") {
+                        fetchListEntityData();
+
+                        MobileCRM.UI.Form.requestObject(function (iFrameForm) {
+                            iFrameForm.isMaximized = previousformMaximized;
+                        }, MobileCRM.bridge.alert, null);
+                    }
+                }, true, null);
+            }
+            MobileCRM.bridge.onGlobalEvent("EntityFormClosed", function (closedForm) {
+                if (closedForm.entity && closedForm.entity.entityName === SCHEMA.locationcontact.name) {
+                    // Report Contact List - refresh in case Invoice was deleted (multiple open appointments in middle tier)
+                    fetchListEntityData();
+                }
+            }, true);
+        }
+
+        //============== LOAD OPTIONS ================
+        function loadListOptions() {
+            if (!setupOptions.UseFieldInvoicing || !setupOptions.UseFieldInvoicePreview) {
+                loading.close();
+                return;
+            }
+            else {
+                loadEventHandlers();
+            }
+
+            MobileCRM.UI.EntityForm.requestObject(function (entityForm) {
+                if (entityForm.entity.entityName === SCHEMA.appointment.name) {
+                    selected.appointment = entityForm.entity.properties;
+                }
+
+                loadToolbarOptions();
+                loadListItemOptions();
+            }, alertError);
+        }
+        function loadToolbarOptions() {
+            if (typeof listFilterItems !== 'undefined' && listFilterItems.length > 0)
+                (new FilterFactory()).createFilterPopup(mainList, listToolbar);
+
+            var title = MobileCRM.Localization.get("DetailView." + entityName);
+            updateToolbarItem(mainToolbar, ToolbarItemType.title, "html", "<b>" + title + "</b>");
+
+            loadSortItemsLocalization(listSortItems).then(function (sortDataSource) {
+                updateToolbarItem(listToolbar, ToolbarItemType.selectSort, "options.dataSource", sortDataSource);
+                updateToolbarItem(listToolbar, ToolbarItemType.selectSort, "options.value", sortSelector);
+            });
+        }
+        function loadListItemOptions() {
+            fetchListEntityData();
+        }
+
+        //============== LOAD DATA ================
+        function fetchListEntityData() {
+            var entity = new MobileCRM.FetchXml.Entity(entityName);
+            $(entityAttributes).each(function (index, attribute) {
+                entity.addAttribute(attribute);
+            });
+            entity.orderBy(sortSelector, sortDesc);
+
+            entity.addFilter().where(SCHEMA.report.Properties.name, 'eq', FIELD_INVOICE_REPORT);
+            entity.addFilter().where(SCHEMA.report.Properties.appointmentid, 'eq', selected.appointment ? selected.appointment.id : null);
+            entity.filter.type = 'and';
+
+            var fetch = new MobileCRM.FetchXml.Fetch(entity);
+            fetch.execute("JSON", function (res) {
+                loadListData(mainList, res);
+                entityListData = res;
+
+                anyInRequestedState(res).then(function (hasRequestedReports) {
+                    updateToolbarItem(mainToolbar, ToolbarItemType.btnRefresh, "visible", hasRequestedReports);
+                    loading.close();
+                }, alertError);
+            }, alertError);
+        }
+        function anyInRequestedState(reportData) {
+            var deferred = $.Deferred();
+            if (!reportData) {
+                return deferred.resolve(false);
+            }
+
+            try {
+                var filteredData = new DevExpress.data.DataSource({
+                    store: reportData,
+                    filter: [SCHEMA.report.Properties.status, '=', ReportStatus.Requested],
+                    paginate: false
+                });
+                filteredData.load().done(function (data) {
+                    return deferred.resolve(data.length > 0);
+                });
+            }
+            catch (e) { return deferred.reject("Any in REQUESTED State Error: " + e); }
+
+            return deferred.promise();
+        }
+
+        function fetchAnnotationID(reportID) {
+            var deferred = $.Deferred();
+            if (!reportID) {
+                return deferred.reject("Fetch Annotation Error: Missing Report Details");
+            }
+
+            var entity = new MobileCRM.FetchXml.Entity(SCHEMA.annotation.name);
+            entity.addAttribute(SCHEMA.annotation.Properties.id);
+            entity.addFilter().where(SCHEMA.annotation.Properties.objectid, 'eq', reportID);
+
+            var fetch = new MobileCRM.FetchXml.Fetch(entity);
+            fetch.execute("JSON", function (res) {
+                if (res.length === 1) {
+                    return deferred.resolve(res[0].id);
+                }
+                else if (res.length > 1) {
+                    return deferred.reject("Fetch Annotation Error: Multiple results returned")
+                }
+                else {
+                    return deferred.reject("Fetch Annotation Error: No results for report (id=" + reportID + ")");
+                }
+            }, function (err) { return deferred.reject("Fetch Annotation Error: " + err); });
+            return deferred.promise();
+        }
+
+        function fetchSummaryReport() {
+            var deferred = $.Deferred();
+            var entity = new MobileCRM.FetchXml.Entity(entityName);
+            entity.addAttribute(SCHEMA.report.Properties.customername);
+            entity.addAttribute(SCHEMA.report.Properties.customersignature);
+
+            entity.addFilter().contains(SCHEMA.report.Properties.name, "Summary");
+            entity.addFilter().where(SCHEMA.report.Properties.appointmentid, 'eq', selected.appointment ? selected.appointment.id : null);
+
+            var fetch = new MobileCRM.FetchXml.Fetch(entity);
+            fetch.execute("JSON", function (res) {
+                selected.summaryReport = res[0] && res[0].customername && res[0].customersignature ? res[0] : null;
+
+                return deferred.resolve();
+            }, function (err) { return deferred.reject("Fetch Summary Signature Error: " + err); })
+            return deferred.promise();
+        }
+
+        //============== TOOLBAR FUNCTIONS ================
+        function btnSortClicked() {
+            loadListData(mainList, entityListData);
+        }
+        function sortSelected() {
+            btnSortClicked();
+        }
+        function btnRefreshClicked() {
+            MobileCRM.Configuration.requestObject(function (config) {
+                if (config.settings.isBackgroundSync)
+                    return;
+
+                anyInRequestedState(entityListData).then(function (hasRequestedReports) {
+                    if (hasRequestedReports) {
+                        MobileCRM.Application.synchronize(false);
+                    }
+                }, MobileCRM.bridge.alert);
+            }, MobileCRM.bridge.alert);
+        }
+
+        //============== LIST ITEM FUNCTIONS ================
+        function listItemClicked() {
+            var cancelItem = { text: "Cancel", type: 'default', mode: 'outlined', onClick: function () { actionSheet.hide(); } };
+            var updatedActionItems = [actionItems[0], cancelItem];  // Request Report
+
+            if (selected[entityName].status && selected[entityName].status === ReportStatus.Ready) {
+                updatedActionItems.unshift(actionItems[1]); // View Report
+            }
+
+            if (setupOptions.UseFieldInvoiceSignature) {
+                updatedActionItems.unshift(actionItems[2]); // Capture Signature
+                fetchSummaryReport().then(function () {
+                    if (selected.summaryReport) {
+                        updatedActionItems.unshift(actionItems[3]);  // Use Summary Signature
+                    }
+
+                    actionSheet.option({
+                        dataSource: updatedActionItems,
+                        title: MobileCRM.Localization.get(entityName) + ": " + selected[entityName].name,
+                        visible: true
+                    });
+                }, MobileCRM.bridge.alert);
+            }
+            else {
+                actionSheet.option({
+                    dataSource: updatedActionItems,
+                    title: MobileCRM.Localization.get(entityName) + ": " + selected[entityName].name,
+                    visible: true
+                });
+            }
+        }
+
+        //============== LIST EXECUTIONS ================
+        function requestReport() {
+            if (selected.appointment) {
+                // appointment-form_complete-service.html: validateReportInformation()
+                MobileCRM.bridge.raiseGlobalEvent("StartValidation_Report", selected.appointment);
+            }
+        }
+        function ifExistsDeleteDeviceDocument() {
+            var deferred = $.Deferred();
+
+            fetchAnnotationID(selected[entityName].id).then(function (annotationID) {
+                var filePath = "blob/annotation/" + annotationID;
+                MobileCRM.Application.fileExists(filePath, function (exists) {
+                    if (exists) {
+                        MobileCRM.Application.deleteFile(filePath, function (res) {
+                            return deferred.resolve();
+                        }, function (err) {
+                            MobileCRM.bridge.alert("Delete Blob File Error: " + err);
+                        });
+                    }
+                    else {
+                        return deferred.resolve();
+                    }
+                }, function (err) {
+                    MobileCRM.bridge.alert("Update Report Preview Error: " + err);
+                });
+            }, MobileCRM.bridge.alert);
+
+            return deferred.promise();
+        }
+        function generateReport() {
+            MobileCRM.DynamicEntity.loadById(entityName, selected[entityName].id, function (report) {
+                report.properties.status = ReportStatus.Requested;
+                report.properties.ispreview = true;
+                report.properties.errormessage = "";
+
+                report.save(function (err) {
+                    if (err) {
+                        MobileCRM.bridge.alert("Save Report Error: " + err);
+                    }
+                    else {
+                        fetchListEntityData();
+
+                        MobileCRM.Configuration.requestObject(function (config) {
+                            if (config.settings.requireSyncLogin) {
+                                sayLocalization("Alert.PreviewGenerate");
+                            }
+                            else {
+                                MobileCRM.Application.synchronize(false);
+                            }
+                        }, MobileCRM.bridge.alert);
+                    }
+                });
+            }, MobileCRM.bridge.alert);
+        }
+
+        function previewReport() {
+            fetchAnnotationID(selected[entityName].id).then(function (annotationID) {
+                MobileCRM.UI.FormManager.showDetailDialog(SCHEMA.annotation.name, annotationID);
+            }, MobileCRM.bridge.alert);
+        }
+
+        function captureSignature() {
+            confirmUpdateSignature().then(function (updateSignature) {
+                if (updateSignature) {
+                    MobileCRM.UI.Form.requestObject(function (form) {
+                        previousformMaximized = form.isMaximized;
+                    }, MobileCRM.bridge.alert, null);
+
+                    MobileCRM.UI.IFrameForm.show("Signature",
+                        "file:///entity/appointmentcompletion/signature.html", false,
+                        options = {
+                            type: "Customer", name: selected[entityName].customername,
+                            reports: [selected[entityName].id]
+                        }
+                    );
+                }
+            });
+        }
+        function useSummarySignature() {
+            if (!selected.summaryReport) {
+                MobileCRM.bridge.alert("Unable to load summary signature");
+                return;
+            }
+
+            confirmUpdateSignature().then(function (updateSignature) {
+                if (updateSignature) {
+                    MobileCRM.DynamicEntity.loadById(entityName, selected[entityName].id, function (report) {
+                        report.properties.customername = selected.summaryReport.customername;
+                        report.properties.customersignature = selected.summaryReport.customersignature;
+
+                        report.save(function (err) {
+                            if (err) {
+                                MobileCRM.bridge.alert("Save Report Error: " + err);
+                            }
+                            else {
+                                fetchListEntityData();
+                            }
+                        });
+                    }, MobileCRM.bridge.alert);
+                }
+            });
+        }
+        function confirmUpdateSignature() {
+            var deferred = $.Deferred();
+            if (!selected[entityName].customersignature) {
+                return deferred.resolve(true);
+            }
+
+            var popup = new MobileCRM.UI.MessageBox(MobileCRM.Localization.get(SignatureMsg.Warning));
+            popup.items = [MobileCRM.Localization.get("enum.Yes"), MobileCRM.Localization.get("Cmd.Cancel")];
+            popup.multiLine = true;
+            popup.show(function (btn) {
+                return deferred.resolve(btn === popup.items[0]);
+            });
+            return deferred.promise();
+        }
+    </script>
+</body>
+</html>

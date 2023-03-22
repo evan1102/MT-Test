@@ -1,0 +1,87 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <!-- Activate IE9 document mode, if available -->
+    <meta charset="utf-8" http-equiv="X-UA-Compatible" content="IE=edge" />
+    <!-- Defined iOS viewport -->
+    <meta name="viewport" content="initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=false">
+    <!-- Disable iOS Phone No Detection -->
+    <meta name="format-detection" content="telephone=no" />
+    <!-- DevExtreme dependencies -->
+    <script type="text/javascript" src="../../scripts/jquery.min.js"></script>
+    <!-- DevExtreme themes -->
+    <link rel="stylesheet" type="text/css" href="../../css/dx.light.css" />
+    <!-- A DevExtreme library -->
+    <script type="text/javascript" src="../../scripts/dx.all.js"></script>
+    <!-- Offline HTML JavaScript Bridge-->
+    <script type="text/javascript" src="../../scripts/JSBridge.js"></script>
+    <style>
+        .dx-popup-title {
+            background-color: #3f4044;
+            color: white;
+            font-size: large;
+        }
+
+        .dx-icon-back:before {
+            color: white
+        }
+
+        .dx-popup-content {
+            padding: 0px;
+        }
+    </style>
+    <title>Home Form</title>
+</head>
+<body>
+    <div id='popup'>
+        <div id='list'></div>
+    </div>
+    <script>
+        var listItems = ["Resco", "MobileTech"]
+        $(function () {
+            //============== LOCALIZATION ================
+            MobileCRM.Localization.initialize(function (localization) {
+
+                //============== ANDROID CHECK ================
+                MobileCRM.Platform.preventBackButton(MobileCRM.bridge.closeForm);
+
+                //============== EVENT HANDLERS ================
+                MobileCRM.bridge.raiseGlobalEvent("CloseAllForms");
+
+                //============== SELECTION PROMPT ================
+                var list = $("#list").dxList({
+                    height: '200px',
+                    items: listItems,
+                    itemTemplate: function (data, _, element) {
+                        element.append(
+                            $("<div>").append(data).css({ 'padding': '12px' })
+                        ).css({ 'font-size': 'large', 'text-align': 'center' })
+                    },
+                    onItemClick: function (e) {
+                        if (e.itemData === listItems[0]) {  // Resco
+                            MobileCRM.UI.HomeForm.openHomeItemAsync("@Setup", MobileCRM.bridge.alert);
+                        }
+                        else {  // MobileTech
+                            var title = "MobileTech " + MobileCRM.Localization.get("Setup");
+                            MobileCRM.UI.IFrameForm.showModal(title, "file://entity/setupoptionuser/setupoptionuser-form.html");
+                        }
+                        MobileCRM.bridge.closeForm();
+                    },
+                    showScrollbar: 'never'
+                }).dxList('instance');
+
+                var popup = $("#popup").dxPopup({
+                    toolbarItems: [
+                        { widget: "dxButton", location: "before", options: { icon: 'back', onClick: MobileCRM.bridge.closeForm, stylingMode: 'text' } },
+                        { text: MobileCRM.Localization.get("Setup.Select"), location: "center" }
+                    ],
+                    showCloseButton: false,
+                    height: '200px',
+                    width: '300px',
+                    visible: true
+                }).dxPopup('instance');
+            }, MobileCRM.bridge.alert);
+        });
+    </script>
+</body>
+</html>

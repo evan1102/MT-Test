@@ -1,0 +1,409 @@
+﻿<!DOCTYPE html>
+<html>
+
+<head>
+    <!-- Activate IE9 document mode, if available -->
+    <meta charset="utf-8" http-equiv="X-UA-Compatible" content="IE=edge" />
+    <!-- Defined iOS viewport -->
+    <meta name="viewport" content="initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=false">
+    <!-- Disable iOS Phone No Detection -->
+    <meta name="format-detection" content="telephone=no" />
+    <!-- DevExtreme dependencies -->
+    <script type="text/javascript" src="../../scripts/jquery.min.js"></script>
+    <!-- Offline HTML JavaScript Bridge-->
+    <script type="text/javascript" src="../../scripts/JSBridge.js"></script>
+    <script type="text/javascript" src="../../scripts/k2aMethods.js"></script>
+    <script type="text/javascript" src="../../enum/Schema.js"></script>
+    <script type="text/javascript" src="../../enum/setupoption.js"></script>
+    <title>Entity Form</title>
+</head>
+
+<body>
+    <script>
+        //============== INITIAL SETTINGS ================
+        var entityName = SCHEMA.appointment.name, selected = {};
+        //============== FETCH DATA ================
+        var requiredSetupOptions = [
+            SETUPOPTION.RequireTravelForCompletion,
+            SETUPOPTION.UseLabor,
+            SETUPOPTION.UseTimeLog,
+            SETUPOPTION.UseTravelTimeLog
+        ];
+
+        $(function () {
+            //============== LOCALIZATION ================
+            MobileCRM.Localization.initialize(function (localization) {
+
+                //============== ANDROID CHECK ================
+                MobileCRM.Platform.preventBackButton(btnBackClicked);
+
+                loadSetupOptions(loadFormOptions);
+
+                MobileCRM.UI.EntityForm.onChange(formValueChanged, true);
+                MobileCRM.UI.EntityForm.onCommand("Complete", completeAppointment, true);
+                MobileCRM.UI.EntityForm.onSave(updateEntity, true);
+                MobileCRM.bridge.onGlobalEvent("CloseApptForm", function (args) {
+                    if (args.formType === "DEFAULT" && args.entityID === selected.appointment.id) {
+                        MobileCRM.UI.EntityForm.closeWithoutSaving();
+                    }
+                }, true);
+            }, alertError);
+        });
+
+        //============== LOAD OPTIONS ================
+        function loadFormOptions() {
+            MobileCRM.UI.EntityForm.requestObject(function (entityForm) {
+                selected[entityName] = entityForm.entity.properties;
+                loadFormItems(entityForm);
+            }, MobileCRM.bridge.alert, null);
+        }
+        function loadFormItems(entityForm) {
+            // Load Form Items
+            var detailView = entityForm.getDetailView(entityName);
+            var formItems = [];
+            $(detailView.items).each(function (index, item) {
+                item.errorMessage = null;
+                formItems[item.name] = item;
+            });
+
+            // Set Form Item Options
+            formItems.gpactivityid.isEnabled = false;
+
+            formItems.estimatehours.isEnabled = true;
+            formItems.estimatehours.upDownVisible = true;
+            formItems.estimatehours.increment = 0.25;
+            formItems.estimatehours.minimum = 0.00;
+            formItems.estimatehours.maximum = 24.00;
+            formItems.estimatehours.decimalPlaces = 2;
+
+            formItems.description.maxLength = 50;
+
+            formItems.appointmentstatusid.isEnabled = false;
+
+            checkLaborExpenseCount();
+            loadFormValues();
+            fetchAppointmentStatus();
+        }
+        function checkLaborExpenseCount() {
+            var entity = new MobileCRM.FetchXml.Entity(SCHEMA.laborexpense.name);
+            entity.addAttribute('id');
+            entity.addFilter().where('appointmentid', 'eq', selected[entityName].id);
+
+            var fetch = new MobileCRM.FetchXml.Fetch(entity);
+            fetch.execute("JSON", function (res) {
+                MobileCRM.UI.EntityForm.requestObject(function (entityForm) {
+                    var estHoursItem = entityForm.getDetailView(entityName).getItemByName("estimatehours");
+                    estHoursItem.isEnabled = res.length < 1;
+                    estHoursItem.upDownVisible = res.length < 1;
+                }, MobileCRM.bridge.alert);
+            }, MobileCRM.bridge.alert);
+        }
+
+        //============== LOAD DATA ================
+        function loadFormValues() {
+            if (selected[entityName].startdate !== selected[entityName].scheduledstart) {
+                // This should only happen on a drag and drop from the iOs/Android calendar
+                MobileCRM.UI.EntityForm.requestObject(function (entityForm) {
+                    entityForm.entity.properties.startdate = selected[entityName].scheduledstart;
+                    entityForm.entity.save(function (err) {
+                        if (err) { alertError(err); }
+                        else { setClean(); }
+                    });
+                }, alertError);
+            }
+        }
+        function fetchAppointmentStatus() {
+            var fetch = "<fetch version='1.0'><entity name='appointmentstatus'><filter type='and'>" +
+                "<condition attribute='name' operator='ne' value='COMPLETE' />" +
+                "<condition attribute='name' operator='ne' value='DEFAULT' />" +
+                "</filter></entity></fetch>";
+
+            addFetchFilter("appointmentstatusid", SCHEMA.appointmentstatus.name, fetch, entityName);
+        }
+
+        function checkOpenTimeLog() {
+            var deferred = $.Deferred();
+
+            var entity = new MobileCRM.FetchXml.Entity(SCHEMA.timelog.name);
+            entity.addAttribute('id');
+
+            entity.addFilter().where('appointmentid', 'eq', selected[entityName].id);
+            entity.addFilter().where('gptimein', 'not-null');
+            entity.addFilter().where('gptimeout', 'null');
+            entity.filter.type = 'and';
+
+            var fetch = new MobileCRM.FetchXml.Fetch(entity);
+            fetch.execute("JSON", function (res) {
+                if (res[0]) {
+                    selected.timelog = res[0];
+                }
+                return deferred.resolve(res.length > 0);
+            }, function (err) { return deferred.reject(err); });
+            return deferred.promise();
+        }
+        function checkForLaborExpense() {
+            var deferred = $.Deferred();
+
+            var entity = new MobileCRM.FetchXml.Entity(SCHEMA.laborexpense.name);
+            entity.addAttribute('id');
+            entity.addFilter().where('appointmentid', 'eq', selected[entityName].id);
+
+            var fetch = new MobileCRM.FetchXml.Fetch(entity);
+            fetch.execute("JSON", function (res) {
+                return deferred.resolve(res.length > 0);
+            }, function (err) { return deferred.reject(err); });
+            return deferred.promise();
+        }
+
+        function apptHasTravel(apptID) {
+            var deferred = $.Deferred();
+            var entity = new MobileCRM.FetchXml.Entity(SCHEMA.timelog.name);
+            entity.addAttribute(SCHEMA.timelog.Properties.appointmentid);
+
+            entity.addFilter().where(SCHEMA.timelog.Properties.appointmentid, 'eq', apptID);
+            entity.addFilter().where(SCHEMA.timelog.Properties.name, 'like', 'Travel%');
+            entity.addFilter().where(SCHEMA.timelog.Properties.gptimeout, 'not-null');
+            entity.addFilter().where(SCHEMA.timelog.Properties.appointmentid, 'not-null');
+
+            var fetch = new MobileCRM.FetchXml.Fetch(entity);
+            fetch.execute("JSON", function (res) {
+                return deferred.resolve(res.length > 0);
+            }, function (err) {
+                return deferred.reject("Appointment Has Travel Error: " + err);
+            });
+            return deferred.promise();
+        }
+
+        function fetchCompleteStatus() {
+            var deferred = $.Deferred();
+
+            var entity = new MobileCRM.FetchXml.Entity(SCHEMA.appointmentstatus.name);
+            entity.addAttribute('id');
+            entity.addFilter().where('name', 'eq', 'COMPLETE');
+
+            var fetch = new MobileCRM.FetchXml.Fetch(entity);
+            fetch.execute("JSON", function (res) {
+                if (res[0])
+                    return deferred.resolve(res[0].id);
+                else
+                    return deferred.reject("Unable to load Complete Status");
+            }, function (err) { return deferred.reject(err); });
+            return deferred.promise();
+        }
+
+        //============== FORM ITEM FUNCTIONS ================
+        function formValueChanged(entityForm) {
+            switch (entityForm.context.changedItem) {
+                case 'estimatehours':   // Estimate Hours cannot be empty.
+                    if (typeof entityForm.entity.properties.estimatehours === 'undefined')
+                        entityForm.entity.properties.estimatehours = 0;
+                    break;
+                case 'startdate':
+                    entityForm.entity.properties.scheduledstart = entityForm.entity.properties.startdate;
+                    break;
+            }
+        }
+
+        //============== FORM EXECUTIONS ================
+        function updateEntity(entityForm) {
+            saveHandler = entityForm.suspendSave();
+            var entityProps = entityForm.entity.properties;
+
+            if (entityProps.description === undefined) {
+                entityProps.description = "";
+            }
+            entityProps.scheduledstart = new Date(entityProps.startdate);
+            entityProps.scheduledend = new Date(
+                (new Date(entityProps.startdate)).setTime(
+                    entityProps.scheduledstart.getTime() +
+                    (parseFloat(entityProps.estimatehours).toFixed(2) * 60 * 60 * 1000)
+                )
+            );
+
+            entityForm.entity.save(error_updateEntity);
+        }
+        function error_updateEntity(err) {
+            if (err)
+                saveHandler.resumeSave("Update Error: " + err);
+            else
+                setCleanAndClose();
+        }
+
+        function completeAppointment(entityForm) {
+            validateForm(entityForm)
+                .then(validateTimeLog_TimeEntries)
+                .then(completeTechActivity);
+        }
+        function validateForm(entityForm) {
+            var deferred = $.Deferred();
+
+            MobileCRM.Configuration.requestObject(function (config) {
+                if (config.isBackgroundSync) {
+                    sayLocalization("Alert.CantSaveWhileSync");
+                }
+                else if (entityForm.isDirty) { // Prompt To Save/Discard Changes
+                    var popup = new MobileCRM.UI.MessageBox("Appointment");
+                    popup.items = ["Save and Continue", "Discard Changes", "Continue Editing"];
+                    popup.multiLine = true;
+                    popup.show(function (item) {
+                        if (item === "Save and Continue") {
+                            entityForm.entity.save(function (err) {
+                                if (err) {
+                                    MobileCRM.bridge.alert("Save Entity Error: " + err);
+                                }
+                                else {
+                                    return deferred.resolve();
+                                }
+                            });
+                        }
+                        else if (item === "Discard Changes") {
+                            return deferred.resolve();
+                        }
+                        return;
+                    });
+                }
+                else {
+                    return deferred.resolve();
+                }
+            }, MobileCRM.bridge.alert);
+
+            return deferred.promise();
+        }
+        function validateTimeLog_TimeEntries() {
+            var deferred = $.Deferred();
+
+            checkOpenTimeLog().then(function (hasOpenTimeLog) {
+                if (hasOpenTimeLog) {
+                    var popup = new MobileCRM.UI.MessageBox(MobileCRM.Localization.get("Alert.ExistingTimeInForActivity"));
+                    popup.items = [
+                        MobileCRM.Localization.get("enum.Yes"),
+                        MobileCRM.Localization.get("enum.No")
+                    ];
+
+                    popup.show(function (btn) {
+                        if (btn === MobileCRM.Localization.get("enum.Yes")) {
+                            MobileCRM.UI.FormManager.showEditDialog(SCHEMA.timelog.name, selected.timelog.id, null, { iFrameOptions: { setComplete: true } });
+                            MobileCRM.UI.EntityForm.closeWithoutSaving();
+                        }
+                    });
+                }
+                else if (setupOptions.UseLabor && setupOptions.UseTimeLog && setupOptions.UseTravelTimeLog && setupOptions.RequireTravelForCompletion) {
+                    if (!selected.appointment) {
+                        return deferred.reject("Check Appointment Has Travel Error: Missing appointment details");
+                    }
+
+                    if (selected.appointment.name.indexOf("\u23F8") > -1) {
+                        // Has Pause Travel Icon
+                        sayLocalization("Alert.FinishTravelTimeLog");
+                    }
+                    else {
+                        apptHasTravel(selected.appointment.id).then(function (hasTravelLogged) {
+                            if (!hasTravelLogged) {
+                                sayLocalization("Alert.MissingTravelTimeLog");
+                            }
+                            else {
+                                confirmCompletion().then(
+                                    function () { return deferred.resolve(); },
+                                    function (err) { return deferred.reject(err); }
+                                );
+                            }
+                        }, function (err) {
+                            return deferred.reject(err);
+                        });
+                    }
+                }
+                else {
+                    confirmCompletion().then(
+                        function () { return deferred.resolve(); },
+                        function (err) { return deferred.reject(err); }
+                    );
+                }
+            }, alertError);
+            return deferred.promise();
+        }
+
+        function confirmCompletion() {
+            var deferred = $.Deferred();
+            var popup = new MobileCRM.UI.MessageBox(MobileCRM.Localization.get("Alert.CompleteMessage"));
+            popup.items = [
+                MobileCRM.Localization.get("enum.Yes"),
+                MobileCRM.Localization.get("enum.No")
+            ];
+
+            popup.show(function (btn) {
+                if (btn === MobileCRM.Localization.get("enum.Yes")) {
+                    if (setupOptions.UseLabor) {
+                        checkForLaborExpense().then(function (hasLaborExpense) {
+                            if (!hasLaborExpense) {
+                                var target = new MobileCRM.Reference(entityName, selected[entityName].id);
+                                var relationship = new MobileCRM.Relationship(SCHEMA.laborexpense.Properties.appointmentid, target);
+                                MobileCRM.UI.FormManager.showNewDialog(SCHEMA.laborexpense.name, relationship, {
+                                    "@initialize": {
+                                        transactiontype: "UNBILLED", costtype: 1, transactionstatus: 1,
+                                        hoursunits: selected[entityName].estimatehours ? parseFloat(selected[entityName].estimatehours) : 0,
+                                        transactiondate: selected[entityName].startdate ? selected[entityName].startdate : new Date()
+                                    },
+                                    iFrameOptions: { setComplete: true }
+                                });
+                                MobileCRM.UI.EntityForm.closeWithoutSaving();
+                            }
+                            else {
+                                return deferred.resolve();
+                            }
+                        }, alertError);
+                    }
+                    else {
+                        return deferred.resolve();
+                    }
+                }
+            });
+            return deferred.promise();
+        }
+
+        function completeTechActivity() {
+            fetchCompleteStatus().then(function (completeStatusID) {
+                fetchAppointmentTotalLaborHours().then(function (totalHours) {
+                    MobileCRM.DynamicEntity.loadById(entityName, selected[entityName].id, function (res) {
+                        res.properties.appointmentstatusid = new MobileCRM.DynamicEntity(SCHEMA.appointmentstatus.name, completeStatusID);
+                        res.properties.completiondate = new Date();
+                        res.properties.actualhours = totalHours;
+                        res.save(function (err) {
+                            if (err) {
+                                alertError(err);
+                            }
+                            else {
+                                MobileCRM.UI.EntityForm.closeWithoutSaving();
+                            }
+                        });
+                    }, alertError);
+                }, alertError);
+            }, alertError);
+        }
+        function fetchAppointmentTotalLaborHours() {
+            var deferred = $.Deferred();
+            if (!selected.appointment) {
+                return deferred.reject("Fetch Appointment Labor Hours Error: Missing Appointment Details.");
+            }
+            var entity = new MobileCRM.FetchXml.Entity(SCHEMA.laborexpense.name);
+            entity.addAttribute(SCHEMA.laborexpense.Properties.hoursunits);
+
+            entity.addFilter().where(SCHEMA.laborexpense.Properties.appointmentid, 'eq', selected.appointment.id);
+            entity.addFilter().where(SCHEMA.laborexpense.Properties.costtype, 'eq', 1);  // 1. Labor
+
+            var fetch = new MobileCRM.FetchXml.Fetch(entity);
+            fetch.execute("JSON", function (res) {
+                var totalHours = 0;
+                $(res).each(function (_, entry) {
+                    totalHours += parseFloat(entry.hoursunits);
+                });
+
+                return deferred.resolve(totalHours);
+            }, function (err) {
+                return deferred.reject("Fetch Appointment Labor Hours Error: " + err);
+            });
+            return deferred.promise();
+        }
+    </script>
+</body>
+
+</html>

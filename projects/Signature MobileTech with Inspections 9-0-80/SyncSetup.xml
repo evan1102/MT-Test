@@ -1,0 +1,18 @@
+﻿<SESetup Version='1'>
+  <UploadOrder>
+    <Sequence>
+      <Entity>purchaseorderreceiptdetail</Entity>
+      <Entity>purchaseorderreceipt</Entity>
+      <Entity>jobsafetytaskresponse</Entity>
+      <Entity>jobsafetytask</Entity>
+    </Sequence>
+    <LastEntities>
+      <Entity>appointmentstatustimestamp</Entity>
+      <Entity>appointment</Entity>
+	  <Entity>timelog</Entity>
+      <Entity>timesheetapprovalrequest</Entity>
+      <Entity>timesheetreportrequest</Entity>
+      <Entity>report</Entity>
+    </LastEntities>
+  </UploadOrder>
+</SESetup>

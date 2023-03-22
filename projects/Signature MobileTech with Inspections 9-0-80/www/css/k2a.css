@@ -1,0 +1,134 @@
+/* K2A Red = #eb2026 */
+/* K2A Charcoal = #3f4044 */
+/* K2A Field Service Teal = #47a2b0 */
+:root {
+    --k2a-red: #eb2026;
+    --k2a-charcoal: #3f4044;
+    --k2a-teal: #47a2b0;
+}
+
+@supports (-webkit-overflow-scrolling: touch) {
+    .fixedPosition {
+        position: fixed;
+        width: calc(100% - 10px);
+    }
+}
+
+.k2ahyperlink .dx-texteditor-input {
+    color: #5174FA;
+    text-decoration: underline;
+}
+
+.listItemLabel {
+    color: #5174FA;
+    font-size: x-small;
+}
+
+.dx-actionsheet-popup-wrapper .dx-popup-title {
+    background-color: #3f4044;
+    color: white;
+}
+
+.dx-form .dx-field-item-label {
+    font-weight: bold;
+}
+
+.dx-form-group-caption {
+    padding-left: 5px;
+    padding-right: 5px;
+}
+
+.uppercase .dx-texteditor-input {
+    text-transform: uppercase;
+}
+
+.dx-accordion-item-title {
+    color: white;
+    padding: 15px 12px;
+    font-size: 14px;
+    font-weight: bold;
+    background-color: #3f4044 !important;
+}
+
+    .dx-accordion-item-title:before {
+        font-weight: 400;
+        font-weight: bold;
+        color: white;
+        content: "\f016";
+        font-family: DXIcons;
+        font-size: 14px;
+        margin-left: 9px;
+        margin-right: 0;
+        line-height: 24px;
+    }
+
+.dx-accordion-item-opened.dx-state-hover > .dx-accordion-item-title, .dx-accordion-item-opened > .dx-accordion-item-title {
+    background-color: #3f4044;
+    color: white;
+}
+
+.dx-popup-content {
+    padding: 7px;
+}
+
+/* BOB Styling */
+.arrow-up {
+    border-left: 10px solid transparent;
+    border-right: 10px solid transparent;
+    border-bottom: 17px solid #DA1E28;
+    margin-bottom: 5px;
+}
+
+.dot {
+    height: 20px;
+    width: 20px;
+    border-radius: 50%;
+    display: inline-block;
+}
+
+.arrow-down {
+    border-left: 10px solid transparent;
+    border-right: 10px solid transparent;
+    border-top: 17px solid #F1C21B;
+    margin-top: 5px;
+}
+
+.rect {
+    text-align: center;
+    font-size: 30px;
+    padding-top: 10px;
+    margin-left: 5px;
+    margin-right: 5px;
+    height: 100%;
+    border-radius: 5px;
+    color: white;
+}
+
+.high-fault {
+    background: #DA1E28;
+}
+
+.medium-fault {
+    background: #FF832B
+}
+
+.low-fault {
+    background: #F1C21B;
+}
+
+.no-fault {
+    background: grey
+}
+
+.bob-entity-icon {
+    width: 16px;
+    height: 16px;
+    padding-right: 2px;
+}
+
+.bob-status-icon {
+    width: 20px;
+    height: 20px;
+    padding-right: 2px;
+    padding-top: 6px;
+}

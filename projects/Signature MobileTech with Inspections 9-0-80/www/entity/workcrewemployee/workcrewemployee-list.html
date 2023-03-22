@@ -1,0 +1,191 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <!-- Activate IE9 document mode, if available -->
+    <meta charset="utf-8" http-equiv="X-UA-Compatible" content="IE=edge" />
+    <!-- Defined iOS viewport -->
+    <meta name="viewport" content="initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=false">
+    <!-- Disable iOS Phone No Detection -->
+    <meta name="format-detection" content="telephone=no" />
+    <!-- DevExtreme dependencies -->
+    <script type="text/javascript" src="../../scripts/jquery.min.js"></script>
+    <!-- DevExtreme themes -->
+    <link rel="stylesheet" type="text/css" href="../../css/dx.light.css" />
+    <!-- A DevExtreme library -->
+    <script type="text/javascript" src="../../scripts/dx.all.js"></script>
+    <!-- Offline HTML JavaScript Bridge-->
+    <script type="text/javascript" src="../../scripts/JSBridge.js"></script>
+    <script type="text/javascript" src="../../scripts/k2aMethods.js"></script>
+    <script type="text/javascript" src="../../enum/Schema.js"></script>
+    <script type="text/javascript" src="../../enum/setupoption.js"></script>
+    <!-- Offline HTML Template Factory-->
+    <script type="text/javascript" src="../../templates/listItem-factory.js"></script>
+    <script type="text/javascript" src="../../templates/toolbar-factory.js"></script>
+    <!-- Offline HTML Styling -->
+    <link rel="stylesheet" type="text/css" href="../../css/k2a.css" />
+    <title>Entity List</title>
+</head>
+<body>
+    <div id="toast"></div>
+    <div class="fixedPosition">
+        <div id="listToolbar"></div>
+        <div id="mainScrollView">
+            <div id='mainList'></div>
+        </div>
+        <div id="filterPopup"></div>
+    </div>
+
+    <script>
+        //============== INITIAL SETTINGS ================
+        var entityName = SCHEMA.workcrewemployee.name, scrollHeight = 80;
+        var sortDesc = false, sortSelector = SCHEMA.workcrewemployee.Properties.employeeid;
+        //============== OFFLINE DATA ================
+        var entityListData, iFrameFormOptions;
+        //============== SELECTED DATA ================
+        var selected = { entityName: null, employees: [] };
+        //============== FETCH DATA ================
+        var entityAttributes = [
+            SCHEMA.workcrewemployee.Properties.id,
+            SCHEMA.workcrewemployee.Properties.name,
+            SCHEMA.workcrewemployee.Properties.gpemployeeid,
+            SCHEMA.workcrewemployee.Properties.employeeid
+        ];
+        var listSortItems = [
+            SCHEMA.workcrewemployee.Properties.employeeid
+        ];
+        var listSearchItems = [
+            SCHEMA.workcrewemployee.Properties.name,
+            SCHEMA.workcrewemployee.Properties.gpemployeeid,
+            SCHEMA.workcrewemployee.Properties.employeeid
+        ];
+        var listFilterItems = [
+            { dataField: SCHEMA.workcrewemployee.Properties.employeeid, dataType: FilterDataType.string }
+        ];
+        var listItemTemplate = function (data, _, element) {
+            element.append(
+                $("<strong>").append(data.employeeid ? data.employeeid.primaryName : data.gpemployeeid),
+                $("<br>"),
+                $("<i>").append(data.gpemployeeid),
+                $("<span>").append(data.name).css("float", "right")
+            );
+        };
+        //============== TOOLBAR ITEMS ================
+        var listToolbarItems = [
+            ToolbarItemType.btnSort, ToolbarItemType.selectSort, ToolbarItemType.btnFilter
+        ];
+
+        $(function () {
+            //============== LOCALIZATION ================
+            MobileCRM.Localization.initialize(function (localization) {
+
+                //============== LOADPANEL ================
+                loading = MobileCRM.UI.Form.showPleaseWait(MobileCRM.Localization.get("Msg.Loading"));
+
+                //============== SCROLLVIEW ================
+                mainScrollView = $("#mainScrollView").dxScrollView({
+                    showScrollbar: "always",
+                    height: function () { return window.innerHeight - scrollHeight; },
+                    width: '100%'
+                }).dxScrollView("instance");
+                $(window).resize(function () {
+                    repaintScrollView(mainScrollView);
+                });
+
+                //============== TOOLBARS ================
+                listToolbar = $("#listToolbar").dxToolbar({
+                    items: (new ToolbarFactory()).addItems(listToolbarItems)
+                }).dxToolbar("instance");
+
+                //============== LIST ================
+                mainList = (new ListFactory()).createItem("#mainList", entityName, [
+                    { name: 'searchExpr', value: listSearchItems },
+                    { name: 'itemTemplate', value: listItemTemplate }
+                ]);
+
+                //============== EVENT HANDLER ================
+                MobileCRM.UI.IFrameForm.onSave(saveWorkCrew, true);
+
+                loadListOptions();
+            }, alertError);
+        });
+
+        //============== LOAD OPTIONS ================
+        function loadListOptions() {
+            MobileCRM.UI.IFrameForm.requestObject(function (iFrameForm) {
+                iFrameFormOptions = iFrameForm.options;
+
+                loadToolbarOptions();
+                loadListItemOptions();
+            }, MobileCRM.bridge.alert);
+        }
+        function loadToolbarOptions() {
+            if (typeof listFilterItems !== 'undefined' && listFilterItems.length > 0)
+                (new FilterFactory()).createFilterPopup(mainList, listToolbar);
+
+            loadSortItemsLocalization(listSortItems).then(function (sortDataSource) {
+                updateToolbarItem(listToolbar, ToolbarItemType.selectSort, "options.dataSource", sortDataSource);
+                updateToolbarItem(listToolbar, ToolbarItemType.selectSort, "options.value", sortSelector);
+            });
+        }
+        function loadListItemOptions() {
+            mainList.option({
+                selectionMode: 'all',
+                showSelectionControls: true
+            });
+
+            fetchListEntityData();
+        }
+
+        //============== LOAD DATA ================
+        function fetchListEntityData() {
+            var entity = new MobileCRM.FetchXml.Entity(entityName);
+            $(entityAttributes).each(function (index, attribute) {
+                entity.addAttribute(attribute);
+            });
+            entity.orderBy(sortSelector, sortDesc);
+
+            entity.addFilter().where(SCHEMA.workcrewemployee.Properties.employeeid, 'ne', iFrameFormOptions.selectedEmployeeID);
+            entity.addFilter().where(SCHEMA.workcrewemployee.Properties.workcrewid, 'eq', iFrameFormOptions.workCrewID);
+            entity.filter.type = 'and';
+
+            var linkEntity = entity.addLink(
+                SCHEMA.paycode.name,
+                SCHEMA.paycode.Properties.employeeid,
+                SCHEMA.workcrewemployee.Properties.employeeid,
+                "inner");
+            linkEntity.addFilter().where(SCHEMA.paycode.Properties.gppaycodeid, 'eq', iFrameFormOptions.gppaycodeid);
+            linkEntity.addAttribute(SCHEMA.paycode.Properties.id);
+            linkEntity.alias = SCHEMA.paycode.name;
+
+            var fetch = new MobileCRM.FetchXml.Fetch(entity);
+            fetch.execute("JSON", function (res) {
+                loadListData(mainList, res);
+                entityListData = res;
+                loading.close();
+            }, alertError);
+        }
+
+        //============== TOOLBAR FUNCTIONS ================
+        function btnSortClicked() {
+            sortSelected();
+        }
+        function sortSelected() {
+            loadListData(mainList, entityListData);
+        }
+
+        //============== LIST EXECUTIONS ================
+        function saveWorkCrew() {
+            if (mainList.option('selectedItems').length === 0)
+                showToast(MobileCRM.Localization.get("Alert.NoEmployeesSelected"), "error");
+            else {
+                MobileCRM.bridge.raiseGlobalEvent("SaveWorkCrew", {
+                    laborexpenseID: iFrameFormOptions.laborexpenseID,
+                    employeeList: mainList.option('selectedItems')
+                });
+                MobileCRM.bridge.closeForm();
+            }
+
+        }
+    </script>
+</body>
+</html>

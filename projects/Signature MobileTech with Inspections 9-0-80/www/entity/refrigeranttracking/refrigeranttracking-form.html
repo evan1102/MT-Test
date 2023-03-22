@@ -1,0 +1,275 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <!-- Activate IE9 document mode, if available -->
+    <meta charset="utf-8" http-equiv="X-UA-Compatible" content="IE=edge" />
+    <!-- Defined iOS viewport -->
+    <meta name="viewport" content="initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=false">
+    <!-- Disable iOS Phone No Detection -->
+    <meta name="format-detection" content="telephone=no" />
+    <!-- DevExtreme dependencies -->
+    <script type="text/javascript" src="../../scripts/jquery.min.js"></script>
+    <!-- Offline HTML JavaScript Bridge-->
+    <script type="text/javascript" src="../../scripts/JSBridge.js"></script>
+    <script type="text/javascript" src="../../scripts/k2aMethods.js"></script>
+    <script type="text/javascript" src="../../enum/Schema.js"></script>
+    <script type="text/javascript" src="../../enum/setupoption.js"></script>
+    <title>Entity Form</title>
+</head>
+<body>
+    <script>
+        //============== INITIAL SETTINGS ================
+        var isNew = true, entityName = SCHEMA.refrigeranttracking.name, entityID;
+        var dbVersion, gpTechnicianId;
+
+        //============== FETCH DATA ================
+        var requiredSetupOptions = [SETUPOPTION.CompanyDatabaseVersion];
+
+        $(function () {
+            //============== ANDROID CHECK ================
+            MobileCRM.Platform.preventBackButton(btnBackClicked);
+
+            //============== LOADPANEL ================
+            loading = MobileCRM.UI.Form.showPleaseWait("Loading");
+
+            MobileCRM.UI.EntityForm.onChange(onChange, true, null);
+            MobileCRM.UI.EntityForm.onPostSave(onPostSave, true, null);
+
+            getTechnicianID(function (technicianId) {
+                gpTechnicianId = technicianId;
+                loadSetupOptions(loadFormOptions);
+            })
+        });
+
+        //============== LOAD OPTIONS ================
+        function loadFormOptions() {
+            var promise = setFormProperties();
+            promise.then(
+                $(function () {
+                    loading.close();
+                })
+            )
+        }
+
+        function setFormProperties() {
+            var deferred = $.Deferred();
+            $(function () {
+                MobileCRM.Localization.initialize(function (localization) {
+                    MobileCRM.UI.EntityForm.requestObject(function (entityForm) {
+                        var detailView = entityForm.getDetailView("refrigeranttracking");
+
+                        dbVersion = setupOptions.CompanyDatabaseVersion.substring(0, setupOptions.CompanyDatabaseVersion.indexOf('.'));
+                        if (dbVersion < 12) {
+                            detailView.getItemByName(SCHEMA.refrigeranttracking.Properties.refrigerantsuppliedby).isEnabled = false;
+                            detailView.getItemByName(SCHEMA.refrigeranttracking.Properties.refrigerantsuppliedby).isVisible = false;
+                            detailView.getItemByName(SCHEMA.refrigeranttracking.Properties.recharged).isEnabled = false;
+                            detailView.getItemByName(SCHEMA.refrigeranttracking.Properties.recharged).isVisible = false;
+                            detailView.getItemByName(SCHEMA.refrigeranttracking.Properties.recycled).isEnabled = false;
+                            detailView.getItemByName(SCHEMA.refrigeranttracking.Properties.recycled).isVisible = false;
+                            detailView.getItemByName(SCHEMA.refrigeranttracking.Properties.disposed).isEnabled = false;
+                            detailView.getItemByName(SCHEMA.refrigeranttracking.Properties.disposed).isVisible = false;
+                            detailView.getItemByName(SCHEMA.refrigeranttracking.Properties.released).isEnabled = false;
+                            detailView.getItemByName(SCHEMA.refrigeranttracking.Properties.released).isVisible = false;
+                            detailView.getItemByName(SCHEMA.refrigeranttracking.Properties.netadded).isEnabled = false;
+                            detailView.getItemByName(SCHEMA.refrigeranttracking.Properties.netadded).isVisible = false;
+                            detailView.getItemByName(SCHEMA.refrigeranttracking.Properties.cylindernumber).isEnabled = false;
+                            detailView.getItemByName(SCHEMA.refrigeranttracking.Properties.cylindernumber).isVisible = false;
+                            detailView.getItemByName(SCHEMA.refrigeranttracking.Properties.circuitcodeid).isEnabled = false;
+                            detailView.getItemByName(SCHEMA.refrigeranttracking.Properties.circuitcodeid).isVisible = false;
+                        }
+
+                        if (detailView.getItemByName(SCHEMA.refrigeranttracking.Properties.gpvoid).value == null) {
+                            detailView.getItemByName(SCHEMA.refrigeranttracking.Properties.gpvoid).value = false;
+                        }
+                        if (detailView.getItemByName(SCHEMA.refrigeranttracking.Properties.leakfound).value == null) {
+                            detailView.getItemByName(SCHEMA.refrigeranttracking.Properties.leakfound).value = false;
+                        }
+                        var leakFound = detailView.getItemByName(SCHEMA.refrigeranttracking.Properties.leakfound).value;
+                        detailView.getItemByName(SCHEMA.refrigeranttracking.Properties.leakrepaired).isEnabled = leakFound;
+                        detailView.getItemByName(SCHEMA.refrigeranttracking.Properties.repairattempted).isEnabled = leakFound;
+                        if (!leakFound) {
+                            detailView.getItemByName(SCHEMA.refrigeranttracking.Properties.refrigerantleaklocationid).value = null;
+                            detailView.getItemByName(SCHEMA.refrigeranttracking.Properties.refrigerantleaklocationid).isEnabled = false;
+                            detailView.getItemByName(SCHEMA.refrigeranttracking.Properties.refrigerantleaksublocationid).value = null;
+                            detailView.getItemByName(SCHEMA.refrigeranttracking.Properties.refrigerantleaksublocationid).isEnabled = false;
+                        }
+
+                        var equipmentId = detailView.getItemByName(SCHEMA.refrigeranttracking.Properties.equipmentid).value;
+                        detailView.getItemByName(SCHEMA.refrigeranttracking.Properties.equipmentid).isEnabled = equipmentId == null;
+                        if (entityForm.entity.properties.servicecallid !== undefined) {
+                            detailView.getItemByName(SCHEMA.refrigeranttracking.Properties.servicecallid).isEnabled = false;
+                            detailView.getItemByName(SCHEMA.refrigeranttracking.Properties.servicecallid).errorMessage = null;
+                            detailView.getItemByName(SCHEMA.refrigeranttracking.Properties.servicecallid).validate = false;
+                        }
+                        else {
+                            var label = detailView.getItemByName(SCHEMA.refrigeranttracking.Properties.servicecallid).label;
+                            detailView.getItemByName(SCHEMA.refrigeranttracking.Properties.servicecallid).isEnabled = true;
+                            detailView.getItemByName(SCHEMA.refrigeranttracking.Properties.servicecallid).errorMessage = MobileCRM.Localization.get('Alert.FmtFieldNotEmpty').format(label);
+                            detailView.getItemByName(SCHEMA.refrigeranttracking.Properties.servicecallid).validate = true;
+
+                            setServiceCallLookup(equipmentId);
+                        }
+
+                        // Set lookups
+                        setLookup(SCHEMA.refrigeranttracking.Properties.faultcodeid, 1);
+                        setLookup(SCHEMA.refrigeranttracking.Properties.actioncodeid, 2);
+                        setLookup(SCHEMA.refrigeranttracking.Properties.initialleaktestcodeid, 3);
+                        setLookup(SCHEMA.refrigeranttracking.Properties.followupleaktestcodeid, 4);
+                        setLookup(SCHEMA.refrigeranttracking.Properties.circuitcodeid, 5);
+
+                        return deferred.resolve(true);
+                    },
+                        function (error) {
+                            MobileCRM.bridge.alert(error);
+                            return deferred.resolve(false);
+                        }, null);
+                });
+            })
+            return deferred.promise();
+        }
+
+        function setLookup(code, filterCode) {
+            var fetch = "<fetch version='1.0'><entity name='refrigerantcode'><filter type='and'>" +
+                "<condition attribute='" + SCHEMA.refrigerantcode.Properties.codetype + "' operator='eq' value='" + filterCode + "' />" +
+                "</filter></entity></fetch>";
+            addFetchFilter(code, SCHEMA.refrigerantcode.name, fetch, "refrigeranttracking");
+        }
+
+        function setServiceCallLookup(equipment) {
+            if (!equipment) {
+                MobileCRM.bridge.alert("Unable to filter Service Call Lookup: Missing Equipment Details");
+                return;
+            }
+
+            var entity = new MobileCRM.FetchXml.Entity(SCHEMA.task.name);
+            entity.addAttribute(SCHEMA.task.Properties.gpservicecallid);
+            entity.attributes[0].groupby = true;
+            entity.addFilter().where(SCHEMA.task.Properties.equipmentid, "eq", equipment.id);
+
+            var entityFetch = new MobileCRM.FetchXml.Fetch(entity);
+            entityFetch.execute("JSON", function (res) {
+
+                var fetch = "<fetch version='1.0'><entity name='servicecall'><filter type='or'>";
+                $(res).each(function (_, task) {
+                    fetch += "<condition attribute='gpservicecallid' operator='eq' value='" + task.gpservicecallid + "' />";
+                });
+                fetch += "</filter></entity></fetch>";
+
+                addFetchFilter(SCHEMA.refrigeranttracking.Properties.servicecallid, SCHEMA.servicecall.name, fetch, "refrigeranttracking");
+            }, MobileCRM.bridge.alert);
+        }
+
+        function setRefrigerantLeakSublocationLookup(leakLocationId) {
+            var fetch = "<fetch version='1.0'><entity name='" + SCHEMA.refrigerantleaksublocation.name + "'><filter type='and'>" +
+                "<condition attribute='" + SCHEMA.refrigerantleaksublocation.Properties.refrigerantleaklocationid + "' operator='eq' value='" + leakLocationId + "' />" +
+                "</filter></entity></fetch>";
+            addFetchFilter(SCHEMA.refrigeranttracking.Properties.refrigerantleaksublocationid, SCHEMA.refrigerantleaksublocation.name, fetch, "refrigeranttracking");
+        }
+
+        function onChange(entityForm) {
+            var changedItem = entityForm.context.changedItem;
+            var detailView = entityForm.getDetailView("refrigeranttracking");
+            var item = detailView.getItemByName(changedItem);
+            switch (changedItem) {
+                case SCHEMA.refrigeranttracking.Properties.leakfound:
+                    if (item.value) {
+                        detailView.getItemByName(SCHEMA.refrigeranttracking.Properties.leakrepaired).isEnabled = true;
+                        detailView.getItemByName(SCHEMA.refrigeranttracking.Properties.repairattempted).isEnabled = true;
+                        detailView.getItemByName(SCHEMA.refrigeranttracking.Properties.refrigerantleaklocationid).isEnabled = true;
+                        detailView.getItemByName(SCHEMA.refrigeranttracking.Properties.refrigerantleaksublocationid).isEnabled = true;
+                    }
+                    else {
+                        detailView.getItemByName(SCHEMA.refrigeranttracking.Properties.leakrepaired).value = false;
+                        detailView.getItemByName(SCHEMA.refrigeranttracking.Properties.leakrepaired).isEnabled = false;
+                        detailView.getItemByName(SCHEMA.refrigeranttracking.Properties.repairattempted).value = false;
+                        detailView.getItemByName(SCHEMA.refrigeranttracking.Properties.repairattempted).isEnabled = false;
+                        detailView.getItemByName(SCHEMA.refrigeranttracking.Properties.refrigerantleaklocationid).value = null;
+                        detailView.getItemByName(SCHEMA.refrigeranttracking.Properties.refrigerantleaklocationid).isEnabled = false;
+                        detailView.getItemByName(SCHEMA.refrigeranttracking.Properties.refrigerantleaksublocationid).value = null;
+                        detailView.getItemByName(SCHEMA.refrigeranttracking.Properties.refrigerantleaksublocationid).isEnabled = false;
+                    }
+                    break;
+                case SCHEMA.refrigeranttracking.Properties.leakrepaired:
+                    if (item.value) {
+                        detailView.getItemByName(SCHEMA.refrigeranttracking.Properties.repairattempted).value = false;
+                    }
+                    break;
+                case SCHEMA.refrigeranttracking.Properties.repairattempted:
+                    if (item.value) {
+                        detailView.getItemByName(SCHEMA.refrigeranttracking.Properties.leakrepaired).value = false;
+                    }
+                    break;
+                case SCHEMA.refrigeranttracking.Properties.refrigerantleaklocationid:
+                    setRefrigerantLeakSublocationLookup(item.value.id);
+                    detailView.getItemByName(SCHEMA.refrigeranttracking.Properties.refrigerantleaksublocationid).value = null;
+                    break;
+                case SCHEMA.refrigeranttracking.Properties.initialleaktestcodeid:
+                    var dt = detailView.getItemByName(SCHEMA.refrigeranttracking.Properties.initialleaktestdate).value;
+                    if (dt == null || dt < new Date(1900, 0, 1)) {
+                        detailView.getItemByName(SCHEMA.refrigeranttracking.Properties.initialleaktestdate).value = new Date();
+                    }
+                    break;
+                case SCHEMA.refrigeranttracking.Properties.followupleaktestcodeid:
+                    var dt = detailView.getItemByName(SCHEMA.refrigeranttracking.Properties.followupleaktestdate).value;
+                    if (dt == null || dt < new Date(1900, 0, 1)) {
+                        detailView.getItemByName(SCHEMA.refrigeranttracking.Properties.followupleaktestdate).value = new Date();
+                    }
+                    break;
+            }
+        }
+
+        function onPostSave(entityForm) {
+            var saveHandler = entityForm.suspendPostSave();
+            MobileCRM.DynamicEntity.loadById(SCHEMA.refrigeranttracking.name,
+                entityForm.entity.id,
+                function (entity) {
+                    var properties = entity.properties;
+                    properties.modifiedtechnicianid = gpTechnicianId;
+                    properties.modifieddatetime = new Date();
+                    $.each(properties, function (key, value) {
+                        switch (key) {
+                            case SCHEMA.refrigeranttracking.Properties.added:
+                            case SCHEMA.refrigeranttracking.Properties.disposed:
+                            case SCHEMA.refrigeranttracking.Properties.recharged:
+                            case SCHEMA.refrigeranttracking.Properties.recycled:
+                            case SCHEMA.refrigeranttracking.Properties.recovered:
+                            case SCHEMA.refrigeranttracking.Properties.released:
+                                if (value === undefined || value === null) {
+                                    properties[key] = 0;
+                                }
+                                break;
+                            case SCHEMA.refrigeranttracking.Properties.assettagnumber:
+                            case SCHEMA.refrigeranttracking.Properties.initialleaktestmethod:
+                            case SCHEMA.refrigeranttracking.Properties.epacertification:
+                            case SCHEMA.refrigeranttracking.Properties.cylindernumber:
+                            case SCHEMA.refrigeranttracking.Properties.comments:
+                            case SCHEMA.refrigeranttracking.Properties.refrigerantsuppliedby:
+                            case SCHEMA.refrigeranttracking.Properties.storenumber:
+                            case SCHEMA.refrigeranttracking.Properties.followupleaktestmethod:
+                            case SCHEMA.refrigeranttracking.Properties.systemtype:
+                            case SCHEMA.refrigeranttracking.Properties.thirdpartyconfirmation:
+                                if (value === undefined || value === null) {
+                                    properties[key] = '';
+                                }
+                                break;
+                        }
+                    })
+                    entity.properties = properties;
+                    entity.save(function (error) {
+                        if (error) {
+                            saveHandler.resumePostSave(error);
+                        }
+                        else {
+                            setCleanAndClose();
+                        }
+                    });
+                },
+                function (error) {
+                    saveHander.resumePostSave(error);
+                },
+                null
+            );
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,1091 @@
+﻿<!DOCTYPE html>
+<html>
+
+<head>
+    <!-- Activate IE9 document mode, if available -->
+    <meta charset="utf-8" http-equiv="X-UA-Compatible" content="IE=edge" />
+    <!-- Defined iOS viewport -->
+    <meta name="viewport" content="initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=false">
+    <!-- Disable iOS Phone No Detection -->
+    <meta name="format-detection" content="telephone=no" />
+    <!-- DevExtreme dependencies -->
+    <script type="text/javascript" src="scripts/jquery.min.js"></script>
+    <!-- DevExtreme themes -->
+    <link rel="stylesheet" type="text/css" href="css/dx.light.css" />
+    <!-- A DevExtreme library -->
+    <script type="text/javascript" src="scripts/dx.all.js"></script>
+    <!-- Offline HTML JavaScript Bridge-->
+    <script type="text/javascript" src="scripts/JSBridge.js"></script>
+    <script type="text/javascript" src="scripts/k2aMethods.js"></script>
+    <script type="text/javascript" src="enum/Schema.js"></script>
+    <style>
+        html {
+            background-color: #808080
+        }
+
+        .dx-toolbar {
+            background-color: #808080;
+            color: white
+        }
+
+        .dx-popup-title {
+            background-color: #3f4044;
+            color: white;
+            font-size: large;
+        }
+
+        .dx-icon-back:before {
+            color: white
+        }
+
+        .dx-popup-content {
+            padding: 0px;
+        }
+    </style>
+    <title>UIReplacement</title>
+</head>
+
+<body onload="onBodyLoad()">
+    <div id='toolbar'></div>
+    <div id="popup">
+        <div id="syncPrompt"></div>
+    </div>
+    <script>
+        var useSyncMaintenance = true; // Prompt for sync when open app and when syncInterval time has been reached
+        var syncInterval = 4;           // Interval value in Hours, How frequently should the technician be syncing
+        var checkInterval = 0.25;       // Interval value in Hours, How frequently should it check if the syncInterval has been reached
+        var syncMaintenanceStarted = false;
+        var homeItemTitlesToPluralize = ["Appointment", "Customer", "Service Call", "Invoice", "PO Line"];
+        var listFilters = {};
+        var reportPreviewTries = 0;
+
+        function onBodyLoad() {
+            MobileCRM.UI.HomeForm.updateHomeItems([{ path: "@Setup", isVisible: false }]);
+            hideRescoSyncErrorPage();
+            showSyncPromptOnInitialLoad();
+            createIFrameFormItems();
+
+            // MTW-500: When user is not logged in the fetch against setup options fails.
+            // Try getting any setup option.
+            getSetupOption('CompanyDatabaseVersion').then(function (result) {
+                if (result != null) {
+                    performMaintenance();
+                    updateSyncErrorsHomeItem();
+                    if (useSyncMaintenance) {
+                        MobileCRM.Configuration.requestObject(function (config) {
+                            var timeSinceLastSync = (new Date()) - config.settings.lastSyncDate;
+                            if (timeSinceLastSync <= 1000 || config.isBackgroundSync) {
+                                MobileCRM.UI.HomeForm.hideUIReplacement();
+                            }
+                        }, MobileCRM.bridge.alert);
+                    }
+                }
+                else {
+                    MobileCRM.UI.HomeForm.updateHomeItems([
+                        { path: "@@SyncErrors;file://utility/syncerrors/syncerrors-list.html", isVisible: false }
+                    ]);
+                }
+            }, MobileCRM.bridge.alert);
+
+            MobileCRM.bridge.onGlobalEvent("SyncFinished", performMaintenance, true);
+            MobileCRM.bridge.onGlobalEvent("EntityFormClosed", MobileCRM.UI.HomeForm.hideUIReplacement, true);
+            MobileCRM.bridge.onGlobalEvent("ConfigChanged", function () {
+                performMaintenance();
+                updateSyncErrorsHomeItem();
+            }, true);
+            MobileCRM.bridge.onGlobalEvent("ResubmitRejectedTimesheet", timesheetMaintenance, true);
+            MobileCRM.bridge.onGlobalEvent("ListFilterCreated", addFilter, true);
+            MobileCRM.bridge.onGlobalEvent("ListFilterRequested", getFilter, true);
+            MobileCRM.bridge.onGlobalEvent("OpenApptForm", function (args) {
+                // To change between an appointment's default and complete form
+                var target = new MobileCRM.Reference("appointmentcompletion", null);
+                var relationship = new MobileCRM.Relationship("regardingobjectid", target);
+                setTimeout(function () {
+                    MobileCRM.UI.FormManager.showEditDialog("appointment", args.entityID,
+                        args.formType === "COMPLETE" ? relationship : null);
+                }, 375);
+            }, true);
+            MobileCRM.bridge.onGlobalEvent("TimestampUpdated", updateMobileAuditDescription, true);
+            MobileCRM.bridge.onGlobalEvent("ExecuteSyncWithDelay", function (args) {
+                if (args.delay) {
+                    setTimeout(executeSync, args.delay);
+                }
+            }, true);
+            MobileCRM.bridge.onGlobalEvent("SaveTimeLogAudit", saveTimeLogAudit, true);
+        }
+
+        //============== COMMON UTILITY FUNCTIONS ================
+        function performMaintenance(syncJustCompleted) {
+            // --- Update Tab Visibility ---
+            // Use Offline HTML to choose Resco or MobileTech Setup modal to show
+            MobileCRM.UI.HomeForm.updateHomeItems([{ path: "@Setup", isVisible: false }]);
+            setAdditionalWorkVisibility(syncJustCompleted);
+            setBobDashboardVisibility(syncJustCompleted);
+            setInvoiceVisibility(syncJustCompleted);
+            setQuestionnaireVisibility(syncJustCompleted);
+            setNewServiceCallVisibility(syncJustCompleted);
+
+            // Pluralize home item titles as necessary (single localization is needed to load correct icon and subtitle)
+            $(homeItemTitlesToPluralize).each(function (i, singleTitle) {
+                getHomeItemByTitle(singleTitle, function (homeItem) {
+                    homeItem.title = singleTitle + "s";
+                });
+            });
+
+            MobileCRM.UI.HomeForm.requestObject(function (homeForm) {
+                // Only perform data maintenance after a successful sync
+                if (!homeForm.lastSyncResult.syncAborted && !homeForm.lastSyncResult.webError && !homeForm.lastSyncResult.connectFailed) {
+                    if (syncJustCompleted) {
+                        checkForDuplicateDataAndSystemUser();
+                        appointmentAutoStatusUpdate().then(function (result) { }, MobileCRM.bridge.alert);
+                        paymentMaintenance();
+                        reportMaintenance(homeForm.lastSyncResult.appWasLocked);
+                    }
+                    if (useSyncMaintenance && !syncMaintenanceStarted) {
+                        syncMaintenanceStarted = true;
+                        syncMaintenance();
+                    }
+                    servicecallMainentance();
+                    timesheetMaintenance(syncJustCompleted);
+                }
+                if (homeForm.lastSyncResult.dataErrorsEncountered) {
+                    // Check if delete data has happened
+                    fetchSystemUser().then(function (systemuser) {
+                        if (!systemuser) {
+                            // Hide K2A Sync Error Home Item
+                            MobileCRM.UI.HomeForm.updateHomeItems([
+                                { path: "@@SyncErrors;file://utility/syncerrors/syncerrors-list.html", isVisible: false }
+                            ]);
+                        }
+                        else {
+                            // Hide Resco's Sync Error Home Item and show K2A Sync Error
+                            MobileCRM.UI.HomeForm.updateHomeItems([
+                                { path: "@@SyncErrors;file://utility/syncerrors/syncerrors-list.html", isVisible: true }
+                            ]);
+
+                            if (syncJustCompleted) {
+                                MobileCRM.UI.HomeForm.openHomeItemAsync(
+                                    "@@SyncErrors;file://utility/syncerrors/syncerrors-list.html", MobileCRM.bridge.alert, null);
+                            }
+
+                            hideRescoSyncErrorPage();
+                        }
+                    }, MobileCRM.bridge.alert);
+                }
+                else {
+                    // Hide K2A Sync Error Home Item
+                    MobileCRM.UI.HomeForm.updateHomeItems([
+                        { path: "@@SyncErrors;file://utility/syncerrors/syncerrors-list.html", isVisible: false }
+                    ]);
+                }
+            }, MobileCRM.bridge.alert);
+        }
+        function getHomeItemByTitle(homeItemTitle, callback) {
+            MobileCRM.UI.HomeForm.requestObject(function (homeForm) {
+                for (var i in homeForm.items) {
+                    if (homeForm.items[i].title === homeItemTitle) {
+                        callback(homeForm.items[i]);
+                        break;
+                    }
+                }
+            }, MobileCRM.bridge.alert, null);
+        }
+        function clearBadgeIfExists(homeItem) {
+            if (typeof homeItem.badge !== 'undefined')
+                MobileCRM.UI.HomeForm.updateHomeItems([{ path: homeItem.name, badge: "" }]);
+        }
+        function updateHomeItemBadge(homeItemPath, badgeCount, homeItemTitle) {
+            if (badgeCount > 0)
+                MobileCRM.UI.HomeForm.updateHomeItems([{
+                    path: homeItemPath,
+                    badge: badgeCount
+                }]);
+            else
+                getHomeItemByTitle(homeItemTitle, clearBadgeIfExists);
+        }
+        function hideRescoSyncErrorPage() {
+            MobileCRM.UI.HomeForm.requestObject(function (homeForm) {
+                $(homeForm.items).each(function (i, item) {
+                    if (item.name === "@SyncErrors" && item.isVisible) {
+                        item.isVisible = false;
+                    }
+                });
+            }, MobileCRM.bridge.alert);
+        }
+        // ----- ENTITY LIST FILTERS -----
+        function addFilter(args) {
+            listFilters[args.entityName] = args.filterArray;
+        }
+        function getFilter(arg) {
+            if (listFilters[arg.entityName])
+                MobileCRM.bridge.raiseGlobalEvent("FilterList", {
+                    entityName: arg.entityName,
+                    filterArray: listFilters[arg.entityName]
+                });
+        }
+
+        // ----- DATA MAINTENANCE -----
+        function checkForDuplicateDataAndSystemUser() {
+            // Check to make sure duplicate records don't exist. Can happen if middle tier tables are cleared without dropping the database
+            fetchCompleteAppointmentStatus().then(function (status) {
+                if (status.length > 1)
+                    sayLocalization("Alert.DuplicateDataError");
+                else
+                    fetchSystemUser().then(function (systemuser) {
+                        if (!systemuser) {
+                            sayLocalization("Alert.SystemUserNoLongerValid");
+                        }
+                    }, MobileCRM.bridge.alert);
+            }, MobileCRM.bridge.alert);
+        }
+        function fetchCompleteAppointmentStatus() {
+            var deferred = $.Deferred();
+            var entity = new MobileCRM.FetchXml.Entity('appointmentstatus');
+            entity.addAttribute('name');
+            entity.addFilter().where('name', 'eq', 'COMPLETE');
+
+            var fetch = new MobileCRM.FetchXml.Fetch(entity);
+            fetch.execute("JSON", function (res) {
+                return deferred.resolve(res);
+            }, function (err) { return deferred.reject(err); });
+            return deferred.promise();
+        }
+        function fetchSystemUser() {
+            var deferred = $.Deferred();
+            var entity = new MobileCRM.FetchXml.Entity('systemuser');
+            entity.addAttribute('id');
+
+            var fetch = new MobileCRM.FetchXml.Fetch(entity);
+            fetch.execute("JSON", function (res) {
+                return deferred.resolve(res[0] ? res[0] : null);
+            }, function (err) {
+                if (err && err.toUpperCase().indexOf('ENTITY NOT FOUND') < 0) {
+                    return deferred.reject(err);
+                }
+            });
+            return deferred.promise();
+        }
+        function getSetupOption(name) {
+            var deferred = $.Deferred();
+
+            var entity = new MobileCRM.FetchXml.Entity("setupoption");
+            entity.addAttribute('optionvalue');
+            entity.addFilter().where('name', 'eq', name);
+
+            var fetch = new MobileCRM.FetchXml.Fetch(entity);
+            fetch.execute("JSON", function (res) {
+                if (res[0] && typeof res[0].optionvalue !== 'undefined')
+                    return deferred.resolve(
+                        res[0].optionvalue.toString().toUpperCase() === 'TRUE' ? true :
+                            (res[0].optionvalue.toString().toUpperCase() === 'FALSE' ? false :
+                                res[0].optionvalue));
+                else
+                    return deferred.resolve(null);
+            }, function (err) {
+                // MTW-500: if password is not saved we will get this error. just return null and the calling method will handle
+                // stopping the next line from running.
+                if (err && err.toLowerCase() === "can't decrypt database key, no user password") {
+
+                    return deferred.resolve(null);
+                }
+                else if (err && err.toUpperCase().indexOf('ENTITY NOT FOUND') < 0) {
+                    return deferred.reject(err);
+                }
+            });
+
+            return deferred.promise();
+        }
+        function updateSyncErrorsHomeItem() {
+            checkForSyncErrors().then(function (hasSyncErrors) {
+                MobileCRM.UI.HomeForm.updateHomeItems([
+                    { path: "@@SyncErrors;file://utility/syncerrors/syncerrors-list.html", isVisible: hasSyncErrors }
+                ]);
+            }, function (err) {
+                MobileCRM.bridge.log(err);
+                MobileCRM.UI.HomeForm.updateHomeItems([
+                    { path: "@@SyncErrors;file://utility/syncerrors/syncerrors-list.html", isVisible: false }
+                ]);
+            });
+        }
+        function checkForSyncErrors() {
+            var deferred = $.Deferred();
+            var fileName = "syncLog.txt";
+            var splitSync = "SyncStart:";
+            var splitSummary = "<Summary>";
+            var splitException = "<EXCEPTION>";
+
+            MobileCRM.Application.fileExists(fileName, function (exists) {
+                if (exists) {
+                    MobileCRM.Application.readFile(fileName, function (fileString) {
+                        var splitBySync = fileString.split(splitSync);
+                        var syncCount = splitBySync.length;
+
+                        if (syncCount > 0) {
+                            var splitBySummary = splitBySync[syncCount - 1].split(splitSummary);
+
+                            if (splitBySummary.length > 0) {
+                                var splitByException = splitBySummary[0].split(splitException);
+
+                                return deferred.resolve(splitByException.length > 1);
+                            }
+                            else
+                                return deferred.resolve(false);
+                        }
+                        else
+                            return deferred.resolve(false);
+                    }, function (err) { return deferred.reject("Read File Error: " + fileName + "\n" + err); });
+                }
+                else
+                    return deferred.resolve(false);
+            }, function (err) { return deferred.reject("File Exists Error: " + fileName + "\n" + err); });
+            return deferred.promise();
+        }
+
+        //============== SERVICECALL ================
+        function setNewServiceCallVisibility(syncJustCompleted) {
+            checkCanCreate('servicecall').then(function (canCreate) {
+                MobileCRM.UI.HomeForm.updateHomeItems([{
+                    path: "@@newcall;file://entity/servicecall/servicecall-form_new.html",
+                    isVisible: canCreate
+                }]);
+            }, MobileCRM.bridge.alert);
+        }
+
+        function servicecallMainentance() {
+            checkforPendingGpequipmentid();
+        }
+        function checkforPendingGpequipmentid() {
+            var entity = new MobileCRM.FetchXml.Entity("servicecall");
+            entity.addAttribute('id');
+
+            entity.filter = new MobileCRM.FetchXml.Filter();
+            entity.filter.where('gpequipmentid', 'eq', 'PENDING');
+
+            var fetch = new MobileCRM.FetchXml.Fetch(entity);
+            fetch.execute("JSON", function (res) {
+                res.forEach(function (call) {
+                    fetchTask_EquipCall(call.id);
+                });
+            }, function (err) {
+                if (err && err.toUpperCase().indexOf('ENTITY NOT FOUND') < 0) {
+                    MobileCRM.bridge.alert(err);
+                }
+            }, null);
+        }
+        function fetchTask_EquipCall(servicecallid) {
+            var entity = new MobileCRM.FetchXml.Entity("task");
+            entity.addAttribute('gpequipmentid');
+            entity.addAttribute('equipmentid');
+
+            entity.filter = new MobileCRM.FetchXml.Filter();
+            entity.filter.where('servicecallid', 'eq', servicecallid);
+
+            var fetch = new MobileCRM.FetchXml.Fetch(entity);
+            fetch.execute("JSON", function (res) {
+                if (res.length === 1 && res[0].gpequipmentid !== 'PENDING')
+                    MobileCRM.DynamicEntity.loadById("servicecall", servicecallid, function (call) {
+                        call.properties.gpequipmentid = res[0].gpequipmentid;
+                        call.properties.equipmentid = res[0].equipmentid;
+                        call.save(function (err) { if (err) MobileCRM.bridge.alert(err); });
+                    }, MobileCRM.bridge.alert, null);
+            }, MobileCRM.bridge.alert, null);
+        }
+
+        //============== APPOINTMENT ==============
+        function appointmentAutoStatusUpdate() {
+            var deferred = $.Deferred();
+
+            getSetupOption('AutoStatusUpdate').then(function (autoStatusUpdate) {
+                getSetupOption('JobSafetyUnsafeStatus').then(function (jobSafetyUnsafeStatus) {
+                    var peformAutoSync = false;
+                    if (autoStatusUpdate === '' || autoStatusUpdate === null) {
+                        return deferred.resolve(peformAutoSync);
+                    }
+                    else {
+                        fetchSystemUser().then(function (systemuser) {
+                            if (!systemuser) {
+                                sayLocalization("Alert.SystemUserNoLongerValid");
+                            }
+                            else {
+                                // get the appointmentstatusid for the autostatusupdate
+                                var statusEntity = new MobileCRM.FetchXml.Entity("appointmentstatus");
+                                statusEntity.addAttributes();
+                                statusEntity.filter = new MobileCRM.FetchXml.Filter();
+                                statusEntity.filter.where("name", 'eq', autoStatusUpdate);
+
+                                var statusFetch = new MobileCRM.FetchXml.Fetch(statusEntity);
+                                statusFetch.execute("JSON", function (result) {
+                                    if (result.length === 0) {
+                                        return deferred.resolve(peformAutoSync);
+                                    }
+
+                                    var entity = new MobileCRM.FetchXml.Entity("appointment");
+                                    entity.addAttribute('id');
+                                    entity.addAttribute('gpappointmenttype');
+                                    entity.addAttribute('appointmentstatusid');
+                                    entity.addAttribute('createdon');
+                                    entity.addAttribute('modifiedon');
+                                    entity.addAttribute('name');
+
+                                    entity.addFilter().isIn('gpappointmenttype', ['1', '3']);
+                                    if (jobSafetyUnsafeStatus) {
+                                        linkEntity = entity.addLink("appointmentstatus", "id", "appointmentstatusid", "inner");
+                                        linkEntity.addFilter().where("name", "ne", jobSafetyUnsafeStatus);
+                                    }
+
+                                    var fetch = new MobileCRM.FetchXml.Fetch(entity);
+                                    fetch.execute("JSON", function (res) {
+                                        var apptsToUpdate = [];
+                                        res.forEach(function (appointment, index, _) {
+                                            if (appointment.modifiedon === appointment.createdon) {
+                                                apptsToUpdate.push(setAutoStatus(appointment, result[0].id, autoStatusUpdate, systemuser.id));
+                                            }
+                                        });
+                                        $.when.apply($, apptsToUpdate).then(function (updateResults) {
+                                            var resync = false;
+                                            if (updateResults) {
+                                                if ($.isArray(updateResults)) {
+                                                    updateResults.forEach(function (updateResult, index, updateResults) {
+                                                        if (updateResult) {
+                                                            resync = true;
+                                                        }
+                                                    })
+                                                }
+                                                else {
+                                                    return deferred.resolve(updateResults);
+                                                }
+                                            }
+                                            return deferred.resolve(resync);
+                                        }, function (error) {
+                                            return deferred.reject(error);
+                                        });
+                                    }, function (error) {
+                                        return deferred.reject(error);
+                                    }, null);
+                                }, function (error) {
+                                    return deferred.reject(error);
+                                }, null);
+
+                            }
+                        }, MobileCRM.bridge.alert);
+                    }
+                }, function (err) { return deferred.reject(err); });
+            }, function (error) { return deferred.reject(error); });
+            return deferred.promise();
+        }
+
+        function setAutoStatus(appointment, autoStatusUpdateId, autoStatusUpdate, systemuser) {
+            var deferred = $.Deferred();
+            $(function () {
+                var apptStatus = new MobileCRM.Reference("appointmentstatus", autoStatusUpdateId, autoStatusUpdate);
+                MobileCRM.DynamicEntity.loadById("appointment", appointment.id, function (appt) {
+                    updateAppointmentStatusTimeStamp(
+                        appt.properties,
+                        appt.properties.appointmentstatusid.primaryName,
+                        autoStatusUpdate,
+                        false);
+                    appt.properties.appointmentstatusid = apptStatus;
+                    appt.properties.modifiedon = new Date();
+                    appt.properties.modifiedby = new MobileCRM.Reference("systemuser", systemuser);
+                    appt.save(function (err) {
+                        if (err) {
+                            return deferred.reject(err);
+                        }
+                        else {
+                            this.save(function (error) {
+                                if (error) {
+                                    return deferred.reject(error);
+                                }
+                                else {
+                                    return deferred.resolve(true);
+                                }
+                            }, true);
+                        }
+                    });
+                }, function (error) {
+                    return deferred.reject(error);
+                }, null);
+            });
+            return deferred.promise();
+        }
+
+        //============== TIMESHEET ================
+        function timesheetMaintenance(syncJustCompleted) {
+            cleanUpFixedTimesheets()
+                .then(checkForTimesheetIssues, MobileCRM.bridge.alert)
+                .then(function (failed) {
+                    if (syncJustCompleted && failed.length > 0)
+                        promptForResubmit(failed);
+                });
+        }
+
+        function getPreviousWeekStartDate() {
+            var deferred = $.Deferred();
+
+            getSetupOption('DefaultWeekday').then(function (defaultWeekday) {
+                if (defaultWeekday) {
+                    weekEndInt = -1;
+                    switch (defaultWeekday) {
+                        case "SUNDAY": weekEndInt = 0; break;
+                        case "MONDAY": weekEndInt = 1; break;
+                        case "TUESDAY": weekEndInt = 2; break;
+                        case "WEDNESDAY": weekEndInt = 3; break;
+                        case "THURSDAY": weekEndInt = 4; break;
+                        case "FRIDAY": weekEndInt = 5; break;
+                        default: weekEndInt = 6;
+                    }
+                    currentDate = (new Date()).getDate();
+                    currentWeekDay = (new Date()).getDay();    // Sunday = 0
+                    today = ((currentWeekDay - weekEndInt) + 7 + 1) % 7;
+
+                    diffToEnd = (7 + 1 - today) % 7;
+                    diffToBegin = 13 - diffToEnd;
+                    minDate = (new Date()).setDate(currentDate - diffToBegin);
+                    var startDateValue = (new Date(minDate)).setHours(0, 0, 0, 0)
+
+                    return deferred.resolve(new Date(startDateValue));
+                }
+            }, function (err) { return deferred.reject(err); });
+
+            return deferred.promise();
+        }
+
+        // ----- Clean Up Fixed Timesheets -----
+        function cleanUpFixedTimesheets() {
+            var deferred = $.Deferred();
+
+            getSetupOption('UseManagerApproval')
+                .then(cleanOtherTimesheets, function (err) { return deferred.reject(err); })
+                .then(function (useManagerApproval) {
+                    return deferred.resolve(useManagerApproval);
+                }, function (err) { return deferred.reject(err); })
+
+            return deferred.promise();
+        }
+        function cleanOtherTimesheets(useManagerApproval) {
+            var deferred = $.Deferred();
+
+            if (useManagerApproval) {
+                fetchNotRejectedTimesheetsWithManagerComments()
+                    .then(removeManagerComment, function (err) { return deferred.reject(err); })
+                    .then(function () { return deferred.resolve(useManagerApproval); })
+            }
+            else {
+                return deferred.resolve(useManagerApproval);
+            }
+
+            return deferred.promise();
+        }
+
+        function fetchNotRejectedTimesheetsWithManagerComments() {
+            // Status is not rejected (3), but still has manager comments
+            var deferred = $.Deferred();
+
+            var entity = new MobileCRM.FetchXml.Entity("laborexpense");
+            entity.addAttribute('id');
+            entity.addAttribute('transactionstatus');
+            entity.addAttribute('managercomment');
+
+            entity.addFilter().where('transactionstatus', 'ne', 3);
+            entity.addFilter().where('managercomment', 'not-null');
+            entity.filter.type = 'and'
+
+            var fetch = new MobileCRM.FetchXml.Fetch(entity);
+            fetch.execute("JSON", function (res) {
+                return deferred.resolve(res);
+            }, function (err) { return deferred.reject(err); });
+
+            return deferred.promise();
+        }
+
+        // ----- Check For Timesheet Issues -----
+        function checkForTimesheetIssues(useManagerApproval) {
+            var deferred = $.Deferred();
+            var totalIssueCount = 0;
+
+            fetchFailedTimesheets().then(function (failed) {
+                totalIssueCount = failed.length;
+
+                if (useManagerApproval)
+                    fetchRejectedTimesheets().then(function (rejected) {
+
+                        var totalIssues = [];
+                        $(failed).each(function (index, le) { totalIssues.push(le); });
+                        $(rejected).each(function (index, le) { totalIssues.push(le); });
+
+                        var groupedIssues = new DevExpress.data.DataSource({
+                            store: totalIssues,
+                            group: ["id"],
+                            paginate: false
+                        })
+                        groupedIssues.load().done(function (data) {
+                            totalIssueCount = data.length;
+                            updateTimeEntriesHomeBadge(totalIssueCount);
+                        });
+                    }, function (err) { return deferred.reject(err); });
+                else
+                    updateTimeEntriesHomeBadge(totalIssueCount);
+
+                return deferred.resolve(failed);
+
+            }, function (err) { return deferred.reject(err); });
+
+            return deferred.promise();
+        }
+
+        function fetchRejectedTimesheets() {
+            // UseManagerApproval = true and timesheet status = 3 (rejected)
+            var deferred = $.Deferred();
+
+            getPreviousWeekStartDate().then(function (startDate) {
+                var entity = new MobileCRM.FetchXml.Entity("laborexpense");
+                entity.addAttribute('id');
+                entity.addAttribute('name');
+
+                entity.addFilter().where('transactionstatus', 'eq', 3);
+                entity.addFilter().where('transactiondate', 'ge', startDate);
+                entity.filter.type = 'and';
+
+                var fetch = new MobileCRM.FetchXml.Fetch(entity);
+                fetch.execute("JSON", function (res) {
+                    return deferred.resolve(res);
+                }, function (err) { return deferred.reject(err); });
+            }, function (err) { return deferred.reject(err); });
+
+            return deferred.promise();
+        }
+        function fetchFailedTimesheets() {
+            // Timesheet is in middle tier, but not processed through TimeTrack
+            var deferred = $.Deferred();
+
+            getPreviousWeekStartDate().then(function (startDate) {
+                MobileCRM.Configuration.requestObject(function (config) {
+                    var entity = new MobileCRM.FetchXml.Entity("laborexpense");
+                    entity.addAttribute('id');
+                    entity.addAttribute('name');
+
+                    entity.addFilter().where('isprocessed', 'eq', 0);
+                    entity.addFilter().where('createdon', 'lt', config.settings.lastSyncDate);
+                    entity.addFilter().where('transactiondate', 'ge', startDate);
+                    entity.addFilter().where('modifiedon', 'lt', config.settings.lastSyncDate);
+                    entity.filter.type = 'and';
+
+                    var fetch = new MobileCRM.FetchXml.Fetch(entity);
+                    fetch.execute("JSON", function (res) {
+                        return deferred.resolve(res);
+                    }, function (err) { return deferred.reject(err); });
+                }, function (err) { return deferred.reject(err); });
+            });
+
+            return deferred.promise();
+        }
+        function promptForResubmit(failed) {
+            var popup = new MobileCRM.UI.MessageBox("Time Entries Failed to Process");
+            popup.items = ["Resubmit", "Cancel"];
+            popup.multiLine = true;
+            popup.show(function (button) {
+                if (button === "Resubmit") {
+                    MobileCRM.Application.synchronize(false);
+                }
+                return;
+            });
+        }
+
+        function removeManagerComment(entities) {
+            var deferred = $.Deferred();
+            $(entities).each(function (i, timesheet) {
+                MobileCRM.DynamicEntity.loadById("laborexpense", timesheet.id, function (entity) {
+                    entity.properties.managercomment = "";
+                    entity.save(function (err) { if (err) return deferred.reject(err); })
+                }, function (err) { return deferred.reject(err); });
+            });
+            return deferred.resolve();
+            return deferred.promise();
+        }
+
+        function updateTimeEntriesHomeBadge(badgeCount) {
+            updateHomeItemBadge(
+                "@@laborexpense;file://entity/laborexpense/laborexpense-list.html", badgeCount, "Time Entries");
+        }
+
+        //============== ADDITIONAL WORK ================
+        function setAdditionalWorkVisibility(syncJustCompleted) {
+            getSetupOption('UseAdditionalWork').then(function (useAdditionalWork) {
+                MobileCRM.UI.HomeForm.updateHomeItems([{
+                    path: "@@additionalwork;file://entity/additionalwork/additionalwork-list.html",
+                    isVisible: useAdditionalWork
+                }]);
+
+                if (useAdditionalWork && syncJustCompleted) {
+                    // Reset Server Mode - Call Data file
+                    var fileName = "ServerMode_callData.txt";
+                    MobileCRM.Application.fileExists(fileName, function (exists) {
+                        if (exists) {
+                            MobileCRM.Application.deleteFile(fileName, function () { },
+                                function (err) { MobileCRM.bridge.alert("Delete File Error: " + fileName + "\n" + err); });
+                        }
+                    }, function (err) { MobileCRM.bridge.alert("File Exists Error: " + fileName + "\n" + err); });
+                }
+            }, MobileCRM.bridge.alert);
+        }
+
+        //============== BOB DATA DASHBOARD ================
+        function setBobDashboardVisibility(syncJustCompleted) {
+            getSetupOption('UseBOBIntegration').then(function (useBOBIntegration) {
+                MobileCRM.UI.HomeForm.updateHomeItems([{
+                    path: "@@bobdata;file://entity/bobdata/bobdata-list_dashboard.html",
+                    isVisible: useBOBIntegration
+                }]);
+            }, MobileCRM.bridge.alert);
+        }
+
+        //============== INVOICING AND PAYMENTS ================
+        function setInvoiceVisibility(syncJustCompleted) {
+            getSetupOption('UseFieldInvoicing').then(function (useFieldInvoicing) {
+                MobileCRM.UI.HomeForm.updateHomeItems([{
+                    path: "@@invoice;file://entity/invoice/invoice-list.html",
+                    isVisible: useFieldInvoicing
+                }]);
+            }, MobileCRM.bridge.alert);
+        }
+
+        function paymentMaintenance() {
+            getSetupOption('UseFieldPayments').then(function (useFieldPayments) {
+                if (!useFieldPayments)
+                    return;
+
+                MobileCRM.Configuration.requestObject(function (config) {
+                    var entity = new MobileCRM.FetchXml.Entity('invoice');
+                    entity.addAttribute('id');
+                    entity.addAttribute('paymentid');
+                    entity.addAttribute('gpinvoicenumber');
+                    entity.addAttribute('servicecallid');
+                    entity.addAttribute('appointmentid');
+                    entity.orderBy('createdon', true);
+
+                    entity.addFilter().where('createdon', 'on-or-after', config.settings.lastSyncDate);
+                    entity.addFilter().where('amount', 'gt', 0);
+                    entity.addFilter().where('ispaymentnotified', 'eq', 0);
+
+                    var fetch = new MobileCRM.FetchXml.Fetch(entity);
+                    fetch.execute("JSON", function (res) {
+                        if (res.length > 0) {
+                            if (res[0].paymentid) {
+                                MobileCRM.UI.FormManager.showEditDialog('payment', res[0].paymentid.id, null,
+                                    { "iFrameOptions": { PaymentFormMode: '1' } }  // PaymentFormMode.detail
+                                );
+                            }
+                            else {
+                                var target = new MobileCRM.Reference('invoice', res[0].id);
+                                var relationship = new MobileCRM.Relationship('invoiceid', target);
+                                MobileCRM.UI.FormManager.showNewDialog('payment', relationship, {
+                                    "@initialize": {
+                                        gpinvoicenumber: res[0].gpinvoicenumber,
+                                        transactiondate: new Date(),
+                                        servicecallid: res[0].servicecallid,
+                                        appointmentid: res[0].appointmentid
+                                    },
+                                    "iFrameOptions": { PaymentFormMode: '1' }  // PaymentFormMode.detail
+                                });
+                            }
+                        }
+                    }, MobileCRM.bridge.alert);
+                }, MobileCRM.bridge.alert);
+            }, MobileCRM.bridge.alert);
+        }
+
+        //============== REPORTS ================
+        function reportMaintenance(isLocked) {
+            loadReportParameters().then(function (p) {
+                if (!p.reportsFinished && !isLocked && reportPreviewTries <= p.reportPreviewMaxRetryAttempts && p.reportPreviewRetryInterval >= 30) {
+                    tryRefreshReportList();
+                    if (!p.requireSyncLogin) {
+                        setTimeout(function () {
+                            // Background Sync after delay
+                            MobileCRM.Application.synchronize(true);
+                        }, p.reportPreviewRetryInterval * 1000);
+                    }
+                    reportPreviewTries++;
+                }
+                else if (!isLocked && p.autoSyncDelay > 0 && !p.requireSyncLogin) {
+                    setTimeout(function () {
+                        // Background Sync after delay
+                        MobileCRM.Application.synchronize(true);
+                    }, p.autoSyncDelay * 1000);
+                }
+
+                if (p.reportsFinished || reportPreviewTries > p.reportPreviewMaxRetryAttempts) {
+                    reportPreviewTries = 0;
+                    tryRefreshReportList();
+                }
+            });
+        }
+        function loadReportParameters() {
+            var deferred = $.Deferred();
+            getSetupOption('ReportPreviewRetryInterval').then(function (reportPreviewRetryInterval) {
+                getSetupOption('ReportPreviewMaxRetryAttempts').then(function (reportPreviewMaxRetryAttempts) {
+                    allReportsFinished().then(function (reportsFinished) {
+                        MobileCRM.Configuration.requestObject(function (config) {
+                            return deferred.resolve({
+                                reportPreviewRetryInterval: parseInt(reportPreviewRetryInterval ? reportPreviewRetryInterval : 0),
+                                reportPreviewMaxRetryAttempts: parseInt(reportPreviewMaxRetryAttempts ? reportPreviewMaxRetryAttempts : 0),
+                                reportsFinished: reportsFinished,
+                                autoSyncDelay: config.settings.autoSyncDelay,
+                                requireSyncLogin: config.settings.requireSyncLogin
+                            });
+                        }, MobileCRM.bridge.alert);
+                    }, MobileCRM.bridge.alert);
+                }, MobileCRM.bridge.alert);
+            }, MobileCRM.bridge.alert);
+            return deferred.promise();
+        }
+        function allReportsFinished() {
+            var deferred = $.Deferred();
+            fetchReports(
+                ['Field Invoice Report', 'Inspection Report'],
+                ['REQUESTED', 'IN PROGRESS'],
+                ['ispreview', 'eq', true]
+            ).then(function (reports) {
+                return deferred.resolve(reports.length === 0);
+            }, MobileCRM.bridge.alert);
+            return deferred.promise();
+        }
+
+        function fetchReports(nameArr, statusArr, whereArr) {
+            var deferred = $.Deferred();
+            var entity = new MobileCRM.FetchXml.Entity('report');
+            entity.addAttribute('id');
+
+            if (nameArr) {
+                entity.addFilter().isIn('name', nameArr);
+            }
+            if (statusArr) {
+                entity.addFilter().isIn('status', statusArr);
+            }
+            if (whereArr && whereArr.length === 3) {
+                entity.addFilter().where(whereArr[0], whereArr[1], whereArr[2])
+            }
+
+            var fetch = new MobileCRM.FetchXml.Fetch(entity);
+            fetch.execute("JSON",
+                function (res) { return deferred.resolve(res); },
+                function (err) { return deferred.reject("Fetch Reports Error: " + err); }
+            );
+            return deferred.promise();
+        }
+
+        function tryRefreshReportList() {
+            fetchReports(null, ['REQUESTED', 'IN PROGRESS'], null).then(function (reports) {
+                if (reports.length > 0) {
+                    // Raise Dynamic Entity Modified Event
+                    MobileCRM.DynamicEntity.loadById('report', reports[0].id, function (reportEntity) {
+                        reportEntity.properties.modifiedon = new Date();
+                        reportEntity.save(function (err) {
+                            if (err) { MobileCRM.bridge.alert("Save Report Error: " + err); }
+                        });
+                    }, MobileCRM.bridge.alert);
+                }
+                else {
+                    fetchReports(null, ['READY'], null).then(function (readyReports) {
+                        if (readyReports.length > 0) {
+                            // Raise Dynamic Entity Modified Event
+                            MobileCRM.DynamicEntity.loadById('report', readyReports[0].id, function (reportEntity) {
+                                reportEntity.properties.modifiedon = new Date();
+                                reportEntity.save(function (err) {
+                                    if (err) { MobileCRM.bridge.alert("Save Report Error: " + err); }
+                                });
+                            }, MobileCRM.bridge.alert);
+                        }
+                    }, MobileCRM.bridge.alert);
+                }
+            }, MobileCRM.bridge.alert);
+        }
+
+        //============== QUESTIONNAIRE ================
+        function setQuestionnaireVisibility(syncJustCompleted) {
+            MobileCRM.Application.checkUserRoles(['Inspector'], function (roleCount) {
+                updateQuestionnaireFolderViewVisibility(roleCount === 1);
+
+                if (roleCount === 1) {    // User has Inspector Role
+                    MobileCRM.UI.HomeForm.updateHomeItems([
+                        { path: "resco_questionnaire", isVisible: true }
+                    ]);
+                }
+                else if (roleCount === 0) {   // User does NOT have Inspector Role
+                    MobileCRM.UI.HomeForm.updateHomeItems([
+                        { path: "resco_questionnaire", isVisible: false }
+                    ]);
+                }
+                else {
+                    MobileCRM.bridge.alert("User Role Count Error: There are " + roleCount + " roles");
+                }
+            }, function (err) {
+                MobileCRM.bridge.alert("Check User Roles Error: " + err);
+            });
+        }
+
+        function updateQuestionnaireFolderViewVisibility(hasInspectorRole) {
+            MobileCRM.UI.HomeForm.requestObject(function (homeForm) {
+                $(homeForm.items).each(function (i, homeItem) {
+                    if (homeItem.url && homeItem.url.indexOf("questionnaire-list_folder.html") > -1) {
+                        MobileCRM.UI.HomeForm.updateHomeItems([
+                            { path: homeItem.name, isVisible: hasInspectorRole }
+                        ]);
+                    }
+                });
+            }, function (err) {
+                MobileCRM.bridge.alert("Request Home Form Object Error: " + err);
+            });
+        }
+
+        //============== SYNC PROMPTS ================
+        function syncMaintenance() {
+            var syncInterval_ms = syncInterval * 3600000;   // Interval in Hours
+            var checkInterval_ms = checkInterval * 3600000; // Interval in Hours
+
+            setTimeout(function () {
+                MobileCRM.Configuration.requestObject(function (config) {
+                    var timeSinceLastSync = (new Date()) - config.settings.lastSyncDate;
+                    if (timeSinceLastSync > syncInterval_ms && !config.isBackgroundSync) {
+                        promptForSync();
+                    }
+                    else {
+                        syncMaintenance();
+                    }
+                }, MobileCRM.bridge.alert);
+            }, checkInterval_ms);
+        }
+        function promptForSync() {
+            var popup = new MobileCRM.UI.MessageBox("It's time to sync");
+            popup.items = ["Sync", "Cancel"];
+            popup.multiLine = true;
+            popup.show(function (btn) {
+                if (btn === "Sync") {
+                    executeSync();
+                }
+                else if (btn === "Cancel") {
+                    MobileCRM.bridge.log("User selected cancel when prompted to sync at " + formatDateTime(new Date()));
+                }
+                syncMaintenance();
+                return;
+            });
+        }
+        function executeSync() {
+            MobileCRM.Configuration.requestObject(function (config) {
+                if (!config.isBackgroundSync) { // Background sync is not currently in progress
+                    var backgroundOnlySync = !config.settings.requireSyncLogin && config.settings.savePassword;
+                    var ifNotSyncedBefore = new Date();
+                    MobileCRM.Application.synchronize(backgroundOnlySync, ifNotSyncedBefore);
+                }
+            }, MobileCRM.bridge.alert);
+        }
+
+        function showSyncPromptOnInitialLoad() {
+            var promptList = $("#syncPrompt").dxList({
+                height: '200px',
+                items: ["Sync", "Cancel"],
+                itemTemplate: function (data, _, element) {
+                    element.append(
+                        $("<div>").append(data).css({ 'padding': '12px' })
+                    ).css({ 'font-size': 'large', 'text-align': 'center' })
+                },
+                onItemClick: function (e) {
+                    if (e.itemData === "Sync") {
+                        executeSync();
+                    }
+                    else if (e.itemData === "Cancel") {
+                        MobileCRM.bridge.log("User selected cancel when prompted to sync at " + formatDateTime(new Date()));
+                    }
+                    MobileCRM.UI.HomeForm.hideUIReplacement();
+                },
+                showScrollbar: 'never'
+            }).dxList("instance");
+
+            var popup = $("#popup").dxPopup({
+                toolbarItems: [{ text: "It's time to sync", location: "center" }],
+                showCloseButton: false,
+                height: '200px',
+                width: '300px',
+                visible: true
+            }).dxPopup('instance');
+        }
+
+        function createIFrameFormItems() {
+            var toolbar = $("#toolbar").dxToolbar({
+                items: [{
+                    text: "MobileTech",
+                    location: 'center',
+                    locateInMenu: 'never'
+                }]
+            }).dxToolbar('instance');
+        }
+
+        //============== APPOINTMENTSTATUSTIMESTAMP ================
+        function updateMobileAuditDescription(args) {
+            fetchLatestMobileAudit("appointmentstatustimestamp", args.timestampId).then(function (latestAudit) {
+                if (latestAudit) {
+                    latestAudit.properties.resco_description = args.statusName;
+                    latestAudit.save(function (err) {
+                        if (err) {
+                            MobileCRM.bridge.log("Save Mobile Audit Error: " + err);
+                        }
+                    });
+                }
+            });
+        }
+        function fetchLatestMobileAudit(entityName, entityId) {
+            var deferred = $.Deferred();
+            var entity = new MobileCRM.FetchXml.Entity("resco_mobileaudit");
+            entity.addAttributes();
+            entity.orderBy('resco_loggedon', true);
+
+            entity.addFilter().where('resco_entityname', 'eq', entityName);
+            entity.addFilter().where('resco_entityid', 'eq', entityId);
+
+            var fetch = new MobileCRM.FetchXml.Fetch(entity);
+            fetch.count = 1;
+            fetch.execute("DynamicEntities", function (res) {
+                return deferred.resolve(res[0] ? res[0] : null);
+            }, function (err) {
+                MobileCRM.bridge.log("Fetch Mobile Audits Error: " + err);
+            });
+            return deferred.promise();
+        }
+
+        //============== TIMELOG AUDIT ================
+        function saveTimeLogAudit(args) {
+            if (!args.timelog) {
+                MobileCRM.bridge.log("Save TimeLog Audit Error: Missing TimeLog Details");
+                return;
+            }
+
+            try {
+                var entity = new MobileCRM.DynamicEntity('audit_timelog');
+                entity.properties.name = args.name;
+                entity.properties.timelogid = args.timelog;
+                entity.properties.gptimein = args.timelog.properties.gptimein;
+                entity.properties.gptimein_latitude = args.timelog.properties.gptimein_latitude;
+                entity.properties.gptimein_longitude = args.timelog.properties.gptimein_longitude;
+                entity.properties.gptimeout = args.timelog.properties.gptimeout;
+                entity.properties.gptimeout_latitude = args.timelog.properties.gptimeout_latitude;
+                entity.properties.gptimeout_longitude = args.timelog.properties.gptimeout_longitude;
+                entity.properties.gpservicecallid = args.timelog.properties.gpservicecallid;
+                entity.properties.gpappointmentid = args.timelog.properties.gpappointmentid;
+                entity.properties.appointmenttype = args.timelog.properties.appointmenttype;
+                entity.properties.employeeid = args.timelog.properties.employeeid;
+                entity.properties.laborexpenseid = args.timelog.properties.laborexpenseid;
+
+                entity.save(function (err) {
+                    if (err) {
+                        MobileCRM.bridge.log("Save TimeLog Audit Error: " + err);
+                    }
+                }, true);
+            }
+            catch (e) {
+                MobileCRM.bridge.log("Save TimeLog Audit Error: " + e);
+            }
+        }
+    </script>
+</body>
+
+</html>

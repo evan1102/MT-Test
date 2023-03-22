@@ -1,0 +1,271 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <!-- Activate IE9 document mode, if available -->
+    <meta charset="utf-8" http-equiv="X-UA-Compatible" content="IE=edge" />
+    <!-- Defined iOS viewport -->
+    <meta name="viewport" content="initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=false">
+    <!-- Disable iOS Phone No Detection -->
+    <meta name="format-detection" content="telephone=no" />
+    <!-- DevExtreme dependencies -->
+    <script type="text/javascript" src="../../scripts/jquery.min.js"></script>
+    <!-- DevExtreme themes -->
+    <link rel="stylesheet" type="text/css" href="../../css/dx.light.css" />
+    <!-- A DevExtreme library -->
+    <script type="text/javascript" src="../../scripts/dx.all.js"></script>
+    <!-- Offline HTML JavaScript Bridge-->
+    <script type="text/javascript" src="../../scripts/JSBridge.js"></script>
+    <script type="text/javascript" src="../../scripts/k2aMethods.js"></script>
+    <script type="text/javascript" src="../../enum/Schema.js"></script>
+    <script type="text/javascript" src="../../enum/setupoption.js"></script>
+    <!-- Offline HTML Template Factory-->
+    <script type="text/javascript" src="../../templates/formItem-factory.js"></script>
+    <script type="text/javascript" src="../../templates/toolbar-factory.js"></script>
+    <!-- Offline HTML Styling -->
+    <link rel="stylesheet" type="text/css" href="../../css/k2a.css" />
+    <title>Entity Form</title>
+</head>
+<body>
+    <div id="toast"></div>
+    <div class="fixedPosition">
+        <div id="formToolbar"></div><br>
+        <div id="mainScrollView">
+            <div id="searchFilter"></div>
+            <div id='mainForm'></div>
+        </div>
+    </div>
+    <script>
+        //============== INITIAL SETTINGS ================
+        // TODO: Update var entityName
+        var isNew = true, isOnline = false, entityName = SCHEMA.servicecall.name, entityID, scrollHeight = 80;
+        //============== OFFLINE/ONLINE DATA ================
+        // TODO: If form has select boxes, create var for data objects
+        // For example if using server mode --> var locationData, onLocationData;
+        //============== SELECTED DATA ================
+        // TODO: If form has select boxes, create mapping for the selected entities using its dataField
+        // For example --> var selected = {'servicecall': null};
+        var selected = {};
+        //============== FETCH DATA ================
+        // TODO: Update list of setupoptions needed
+        var requiredSetupOptions = ['UseServerMode'];
+        // TODO: If form has select boxes, create array of attributes for the entity that will be fetched
+        // For example --> var appointmentAttributes = ['id', 'gpappointmentid'];
+        //============== TOOLBAR ITEMS ================
+        // TODO: Update Toolbar Items if needed
+        // TODO: Update 'TOOLBAR FUNCTIONS' section of this file using toolbar-factory.js
+        // to see if any functions are needed - have to match name (for example --> btnDiscardClicked)
+        var toolbarItems = [
+            ToolbarItemType.btnBack, ToolbarItemType.switchMode, ToolbarItemType.btnClear, ToolbarItemType.btnSave
+        ];
+        //============== FORM ITEMS ================
+        // TODO: Update Form Items using editorType from formItem-factory.js
+        // to see what EditorTypes are available and what the default settings are
+        // TODO: Update 'FORM ITEM FUNCTIONS' section of this file using formItem-factory.js
+        // to see what function are needed for specific editorTypes
+        var formItems = [
+            { label: "Name", dataField: "name", editorType: EditorType.dxTextBox }
+        ];
+        // TODO: If a form item needs an editorOption different than the default settings then add it here
+        // TODO: If an item is required, use 'validationMsg' to customize the toast message that is displayed
+        // TODO: If using select box have to include onSelectionChanged: function(e) {selected[insert entityname] = e.selectedItem; }
+        var formItemOptions = {
+            "name": { maxLength: 15, validationMsg: "Must have a name" }
+        };
+        // TODO: Update list of required form items
+        var requiredFormItems = ['name'];
+
+        $(function () {
+            //============== ANDROID CHECK ================
+            MobileCRM.Platform.preventBackButton(btnBackClicked);
+
+            //============== LOADPANEL ================
+            loading = MobileCRM.UI.Form.showPleaseWait("Loading");
+
+            //============== SCROLLVIEW ================
+            mainScrollView = $("#mainScrollView").dxScrollView({
+                showScrollbar: "always",
+                height: function () { return window.innerHeight - scrollHeight; },
+                width: '100%'
+            }).dxScrollView("instance");
+            $(window).resize(function () {
+                checkIsMultiPanel(formToolbar); // Update toolbar if needed
+                repaintScrollView(mainScrollView);
+            });
+
+            //============== TOOLBARS ================
+            formToolbar = $("#formToolbar").dxToolbar({
+                items: (new ToolbarFactory()).addItems(toolbarItems)
+            }).dxToolbar("instance");
+
+            //============== FORM ================
+            mainForm = $("#mainForm").dxForm({}).dxForm("instance");
+
+            loadSetupOptions(loadFormOptions);
+        });
+
+        //============== LOAD OPTIONS ================
+        function loadFormOptions() {
+            //MobileCRM.UI.IFrameForm.requestObject(function (iFrame) {
+            //    if (iFrame.options) {
+            //        // TODO: update iFrame Options if needed
+            //        isNew = iFrame.options.isNew === "true" ? true : false;
+            //        entityID = iFrame.options.entityID ? iFrame.options.entityID : null;
+            //    }
+
+            loadToolbarOptions();
+            loadFormItemOptions();
+            //}, alertError, null);
+        }
+        function loadToolbarOptions() {
+            // TODO: Update Toolbar Options if needed
+            if (setupOptions.UseServerMode)
+                updateToolbarItem(formToolbar, ToolbarItemType.switchMode, "visible", true);
+
+            checkIsMultiPanel(formToolbar);
+        }
+        function loadFormItemOptions() {
+            // Load formItems
+            mainForm.option("items", (new FormItemFactory()).createAndUpdateItems(formItems, formItemOptions));
+
+            // Update formItem Options
+            $(requiredFormItems).each(function (index, itemName) {
+                mainForm.itemOption(itemName, 'isRequired', true);
+            });
+
+
+            // TODO: Update Form Items as needed
+
+
+            if (isNew)
+                checkCanCreate(entityName).then(function (canCreate) {
+                    if (canCreate) {
+                        enableForm();
+                    }
+                    else {
+                        disableForm();
+                    }
+                }, alertError);
+            else {
+                MobileCRM.DynamicEntity.loadById(entityName, entityID, function (res) {
+                    loadFormValues(mainForm, res.properties);
+                    enableForm();
+                }, alertError);
+            }
+        }
+
+        function disableForm() {
+            mainForm.option("readOnly", true);
+            formToolbar.option("disabled", true);
+            loading.close();
+            showToast("Entity Creation Disabled", "error");
+        }
+        function enableForm() {
+            // TODO: remove showToast
+            showToast("Form Enabled", "success");
+            // TODO: Move loading.close() to the end of the fetchDropDowns
+            loading.close();
+
+
+            // TODO: Add any additional fetches that are needed (for example fetchEmployee), ending with fetchDropDowns()
+            // Otherwise --> fetchDropDowns();
+        }
+
+        //============== LOAD DATA ================
+        function fetchDropDowns() {
+            // TODO: If not using Server Mode, can remove connection check and just fetch data
+            connectionCheck(isOnline, function () {
+                // TODO: Add fetch for each select box
+            });
+        }
+
+        //============== TOOLBAR FUNCTIONS ================
+        function switchModeChanged(e) {
+            loading = MobileCRM.UI.Form.showPleaseWait("Loading");
+            isOnline = e.value;
+            fetchDropDowns();
+        }
+        function btnClearClicked() {
+            resetFormValues(mainForm, formItems);
+            // TODO: Set any selected entities to null
+            // TODO: Reset any date box values to today, if needed
+            setClean();
+            showToast("Form Reset", "success");
+        }
+        function btnSaveClicked() {
+            loading = MobileCRM.UI.Form.showPleaseWait("Loading");
+            mainForm.validate();
+            checkForRequiredValues(mainForm, requiredFormItems, function () {
+                if (isNew)
+                    createEntity();
+                else
+                    MobileCRM.DynamicEntity.loadById(entityName, entityID, updateEntity, alertError);
+            }, loading.close);
+        }
+
+        //============== FORM ITEM FUNCTIONS ================
+        // TODO: Update as needed, for example --> locationSelected(location), barcodeBtnClicked()
+
+        //============== FORM EXECUTIONS ================
+        function createEntity() {
+            var formData = mainForm.option("formData");
+            var entity = new MobileCRM.DynamicEntity.createNew(entityName);
+
+
+            // TODO: Update per entity properties
+            // for example -->
+            //entity.properties.gpcalltype = formData.gpcalltype
+            // entity.properties.calltypeid = new new MobileCRM.DynamicEntity("calltype", selectedCallType.id);
+
+
+
+            entity.save(error_createEntity);
+        }
+        function error_createEntity(err) {
+            loading.close();
+            if (err)
+                MobileCRM.bridge.alert(err);
+            else
+                // TODO: Update success callback
+                // for example -->
+                // setCleanAndClose();
+                // if (setupOptions.UseEventBasedSync) {
+                //     MobileCRM.Application.synchronize(false);
+                //     MobileCRM.bridge.closeForm();
+                // }
+                // else
+                //     MobileCRM.UI.HomeForm.openHomeItemAsync("servicecall", MobileCRM.bridge.alert, null);
+                showToast("Create Entity", "success");
+        }
+        function updateEntity(entity) {
+            var formData = mainForm.option("formData");
+
+
+            // TODO: Update per entity properties
+            // for example -->
+            //entity.properties.gpcalltype = formData.gpcalltype
+            // entity.properties.calltypeid = new new MobileCRM.DynamicEntity("calltype", selected.calltype.id);
+
+
+
+            entity.save(error_updateEntity);
+
+        }
+        function error_updateEntity(err) {
+            loading.close();
+            if (err)
+                MobileCRM.bridge.alert(err);
+            else
+                // TODO: Update success callback
+                // for example -->
+                // setCleanAndClose();
+                // if (setupOptions.UseEventBasedSync) {
+                //     MobileCRM.Application.synchronize(false);
+                //     MobileCRM.bridge.closeForm();
+                // }
+                // else
+                //     MobileCRM.UI.HomeForm.openHomeItemAsync("servicecall", MobileCRM.bridge.alert, null);
+                showToast("Update Entity", "success");
+        }
+    </script>
+</body>
+</html>

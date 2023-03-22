@@ -1,0 +1,302 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <!-- Activate IE9 document mode, if available -->
+    <meta charset="utf-8" http-equiv="X-UA-Compatible" content="IE=edge" />
+    <!-- Defined iOS viewport -->
+    <meta name="viewport" content="initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=false">
+    <!-- Disable iOS Phone No Detection -->
+    <meta name="format-detection" content="telephone=no" />
+    <!-- DevExtreme dependencies -->
+    <script type="text/javascript" src="../../scripts/jquery.min.js"></script>
+    <!-- DevExtreme themes -->
+    <link rel="stylesheet" type="text/css" href="../../css/dx.light.css" />
+    <!-- A DevExtreme library -->
+    <script type="text/javascript" src="../../scripts/dx.all.js"></script>
+    <!-- Offline HTML JavaScript Bridge-->
+    <script type="text/javascript" src="../../scripts/JSBridge.js"></script>
+    <script type="text/javascript" src="../../scripts/k2aMethods.js"></script>
+    <script type="text/javascript" src="../../enum/Schema.js"></script>
+    <script type="text/javascript" src="../../enum/setupoption.js"></script>
+    <!-- Offline HTML Template Factory-->
+    <script type="text/javascript" src="../../templates/listItem-factory.js"></script>
+    <script type="text/javascript" src="../../templates/toolbar-factory.js"></script>
+    <!-- Offline HTML Styling -->
+    <link rel="stylesheet" type="text/css" href="../../css/k2a.css" />
+    <title>Entity List</title>
+</head>
+<body>
+    <script>
+        //============== LOAD ENTITY LIST DATA ================
+        var dataSource = new MobileCRM.UI.ListDataSource();
+        dataSource.loadNextChunk = function (page, count) {
+            var fetch = this.fetch;
+            fetch.count = count;
+            fetch.page = page;
+
+            // Filter out Technician Activities
+            var linkApptEntity = fetch.entity.addLink(
+                SCHEMA.appointment.name,
+                SCHEMA.appointment.Properties.name,
+                SCHEMA.resco_questionnaire.Properties.resco_regardingidlabel,
+                "outer");
+            linkApptEntity.addAttribute(SCHEMA.appointment.Properties.gpappointmenttype);
+            linkApptEntity.alias = 'appt';
+
+            fetch.execute("DynamicEntities", function (entities) {
+                var updatedEntities = [];
+                $(entities).each(function (i, item) {
+                    if (item.properties['appt.gpappointmenttype'] !== 2) {
+                        item.properties['appt.gpappointmenttype'] = undefined;
+                        updatedEntities.push(item);
+                    }
+                });
+                this.chunkReady(updatedEntities);
+            }, alertError, this);
+        };
+        MobileCRM.UI.EntityList.setDataSource(dataSource);
+
+        //============== INITIAL SETTINGS ================
+        var supportedEntities = [
+            SCHEMA.appointment.name,
+            SCHEMA.equipment.name,
+            SCHEMA.location.name,
+            SCHEMA.servicecall.name
+        ];
+        //============== FETCH DATA ================
+        var requiredSetupOptions = [SETUPOPTION.UseInspectionServerEmail];
+
+        $(function () {
+            //============== LOCALIZATION ================
+            MobileCRM.Localization.initialize(function (localization) {
+
+                //============== EVENT HANDLERS ================
+                MobileCRM.UI.EntityList.onCommand("custom_Email", emailReport, true);
+
+                loadSetupOptions(loadCommandOptions);
+            }, alertError);
+        });
+
+        //============== LOAD COMMANDS ================
+        function loadCommandOptions() {
+            MobileCRM.UI.EntityList.setPrimaryCommand("Report", function () {
+                MobileCRM.UI.IFrameForm.show(
+                    MobileCRM.Localization.get("DetailView.InspectionReports"),
+                    "file:///utility/questionnaire/report-list_questionnaire.html", false, options = {});
+            });
+        }
+
+        //============== LIST EXECUTIONS ================
+        function emailReport(entityList) {
+            var regardingEntityName = entityList.selectedEntity.properties.resco_regardingidname;
+            var regardingEntityId = entityList.selectedEntity.properties.resco_regardingid;
+
+            if (supportedEntities.indexOf(regardingEntityName) < 0) {
+                alertError("Related Entity is not a supported entity type: " + regardingEntityName);
+                return;
+            }
+
+            checkIfRegardingEntityIsOnDevice(regardingEntityName, regardingEntityId).then(function (isOnDevice) {
+                if (isOnDevice) {
+                    chooseEmailType(entityList.selectedEntity, regardingEntityName, regardingEntityId, isOnDevice);
+                }
+                else {
+                    var popup = new MobileCRM.UI.MessageBox(MobileCRM.Localization.get("Alert.RegardingEntityNotOnDevice"));
+                    popup.items = [MobileCRM.Localization.get("enum.Yes"), MobileCRM.Localization.get("enum.No")];
+                    popup.multiLine = true;
+                    popup.show(function (btn) {
+                        if (btn === MobileCRM.Localization.get("enum.Yes")) {
+                            chooseEmailType(entityList.selectedEntity, regardingEntityName, regardingEntityId, isOnDevice);
+                        }
+                        return;
+                    });
+                }
+            }, alertError);
+        }
+
+        // ----- LOAD DATA -----
+        function checkIfRegardingEntityIsOnDevice(regardingEntityName, regardingEntityId) {
+            var deferred = $.Deferred();
+
+            MobileCRM.DynamicEntity.loadById(regardingEntityName, regardingEntityId, function (entity) {
+                return deferred.resolve(true);
+            }, function (err) {
+                return deferred.resolve(false);
+            });
+            return deferred.promise();
+        }
+
+        function fetchInspectionAttachment(inspection) {
+            var deferred = $.Deferred();
+            var entity = new MobileCRM.FetchXml.Entity(SCHEMA.annotation.name);
+            entity.addAttributes();
+            entity.addFilter().where(SCHEMA.annotation.Properties.objectid, 'eq', inspection.properties.resco_questionnaireid);
+            entity.addFilter().contains(SCHEMA.annotation.Properties.filename, inspection.properties.resco_name);
+            entity.orderBy(SCHEMA.annotation.Properties.filename);
+
+            var fetch = new MobileCRM.FetchXml.Fetch(entity);
+            fetch.execute("DynamicEntities", function (res) {
+                if (res.length === 0) {
+                    var msg = MobileCRM.Localization.get("Alert.NoInspectionAttachmentFile");
+                    MobileCRM.UI.MessageBox.sayText(msg, function () {
+                        MobileCRM.Questionnaire.showForm(inspection.id, alertError);
+                    });
+                }
+                else if (res.length === 1) {
+                    return deferred.resolve(res[0]);
+                }
+                else {
+                    var fileNames = [];
+                    $(res).each(function (i, attachment) {
+                        fileNames.push(attachment.properties.filename);
+                    });
+
+                    var popup = new MobileCRM.UI.MessageBox(MobileCRM.Localization.get("Alert.SelectAttachmentFile"));
+                    popup.items = fileNames;
+                    popup.multiLine = true;
+                    popup.show(function (btn) {
+                        var attachment = res.filter(function (attachment) { return attachment.properties.filename === btn; });
+                        if (attachment.length === 1) {
+                            return deferred.resolve(attachment[0]);
+                        }
+                        else {
+                            return deferred.reject("Selected filename returned " + attachment.length + " results.");
+                        }
+                        return;
+                    });
+                }
+            }, alertError);
+            return deferred.promise();
+        }
+
+        function loadLocationDetails(entityName, entityId, isOnline) {
+            var deferred = $.Deferred();
+            loading = MobileCRM.UI.Form.showPleaseWait(MobileCRM.Localization.get("Msg.Loading"));
+            if (!isOnline) {
+                switch (entityName) {
+                    case SCHEMA.location.name:
+                        MobileCRM.DynamicEntity.loadById(entityName, entityId, function (location) {
+                            return deferred.resolve(location.properties);
+                        }, function (err) {
+                            return deferred.reject("Load location iy ID Error: " + err);
+                        });
+                        break;
+                    case SCHEMA.appointment.name:
+                    case SCHEMA.equipment.name:
+                    case SCHEMA.servicecall.name:
+                        MobileCRM.DynamicEntity.loadById(entityName, entityId, function (regardingEntity) {
+                            var entity = new MobileCRM.FetchXml.Entity(SCHEMA.location.name);
+                            entity.addAttributes();
+                            entity.addFilter().where(SCHEMA.location.Properties.id, 'eq', regardingEntity.properties.locationid.id);
+
+                            var fetch = new MobileCRM.FetchXml.Fetch(entity);
+                            fetch.execute("JSON", function (res) {
+                                if (res.length === 1) {
+                                    return deferred.resolve(res[0]);
+                                }
+                                else {
+                                    return deferred.reject("Fetch Location Error: Fetch returned " + res.length + " results.");
+                                }
+                            }, function (err) {
+                                return deferred.reject("Fetch Location Error: " + err);
+                            });
+                        }, function (err) {
+                            return deferred.reject("Load " + entityName + " by ID Error: " + err);
+                        });
+                        break;
+                    default:
+                        return deferred.reject("Related Entity is not of a supported entity type: " + entityName);
+                }
+            }
+            else {
+                var entity = new MobileCRM.FetchXml.Entity(entityName);
+                entity.addAttributes();
+                entity.addFilter().where('id', 'eq', entityId);
+
+                var fetch = new MobileCRM.FetchXml.Fetch(entity);
+                fetch.executeOnline("JSON", function (res) {
+                    if (res.length === 1) {
+                        if (entityName === SCHEMA.location.name) {
+                            return deferred.resolve(res[0]);
+                        }
+                        else {
+                            var locationEntity = new MobileCRM.FetchXml.Entity(SCHEMA.location.name);
+                            locationEntity.addAttributes();
+                            locationEntity.addFilter().where(SCHEMA.location.Properties.id, 'eq', res[0].locationid.id);
+
+                            var locationFetch = new MobileCRM.FetchXml.Fetch(locationEntity);
+                            locationFetch.executeOnline("JSON", function (res) {
+                                if (res.length === 1) {
+                                    return deferred.resolve(res[0]);
+                                }
+                                else {
+                                    return deferred.reject("Fetch Location Error: Online fetch returned " + res.length + " results.");
+                                }
+                            }, function (err) {
+                                return deferred.reject("Fetch Location Error: " + err);
+                            });
+                        }
+                    }
+                    else {
+                        return deferred.reject("Online Regarding Entity Error: Fetch returned " + res.length + " results for " + entityName + " (" + entityId + ").");
+                    }
+                }, function (err) {
+                    return deferred.reject("Online Fetch for " + entityName + " Error: " + err);
+                });
+            }
+            return deferred.promise();
+        }
+
+        // ----- EMAIL -----
+        function chooseEmailType(selectedEntity, regardingEntityName, regardingEntityId, isOnDevice) {
+            fetchInspectionAttachment(selectedEntity).then(function (attachment) {
+                if (setupOptions.UseInspectionServerEmail) {
+                    sendServerEmail(regardingEntityName, regardingEntityId, attachment, !isOnDevice);
+                }
+                else {
+                    sendClientEmail(regardingEntityName, regardingEntityId, attachment, !isOnDevice);
+                }
+            }, alertError);
+        }
+
+        function sendServerEmail(regardingEntityName, regardingEntityId, attachment, isOnline) {
+            getTechnicianID(function (gptechnicianid) {
+                // Create Report Entity
+                var entity = new MobileCRM.DynamicEntity(SCHEMA.report.name);
+                entity.properties.name = "Questionnaire Report - Server Email";
+                entity.properties.gptechnicianid = gptechnicianid;
+                entity.properties.objectid = attachment;
+                entity.properties.status = "CREATED";
+
+                entity.save(function (err) {
+                    if (err) {
+                        alertError(err);
+                    }
+                    else {
+                        var reportId = this.id;
+                        loadLocationDetails(regardingEntityName, regardingEntityId, isOnline).then(function (location) {
+                            loading.close();
+                            // Need all location attributes sent via iFrameOptions, not just id and name
+                            MobileCRM.UI.FormManager.showNewDialog(SCHEMA.locationcontact.name, null,
+                                { iFrameOptions: { location: location, isOnline: isOnline, reportId: reportId } });
+                        }, alertError);
+                    }
+                });
+            });
+        }
+
+        function sendClientEmail(regardingEntityName, regardingEntityId, attachment, isOnline) {
+            loadLocationDetails(regardingEntityName, regardingEntityId, isOnline).then(function (location) {
+                loading.close();
+                var formId = new Date();
+                MobileCRM.UI.IFrameForm.show(
+                    MobileCRM.Localization.get("Title.EmailInspection"),
+                    "file:///utility/questionnaire/questionnaire-list_email.html", false,
+                    options = { attachment: attachment, isOnline: isOnline, location: location, formId: formId }
+                );
+                MobileCRM.bridge.raiseGlobalEvent("CloseEmailList", { formId: formId });
+            }, alertError);
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,513 @@
+﻿<!DOCTYPE html>
+<html>
+
+<head>
+    <!-- Activate IE9 document mode, if available -->
+    <meta charset="utf-8" http-equiv="X-UA-Compatible" content="IE=edge" />
+    <!-- Defined iOS viewport -->
+    <meta name="viewport" content="initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=false">
+    <!-- Disable iOS Phone No Detection -->
+    <meta name="format-detection" content="telephone=no" />
+    <!-- DevExtreme dependencies -->
+    <script type="text/javascript" src="../../scripts/jquery.min.js"></script>
+    <!-- DevExtreme themes -->
+    <link rel="stylesheet" type="text/css" href="../../css/dx.light.css" />
+    <!-- A DevExtreme library -->
+    <script type="text/javascript" src="../../scripts/dx.all.js"></script>
+    <!-- Offline HTML JavaScript Bridge-->
+    <script type="text/javascript" src="../../scripts/JSBridge.js"></script>
+    <script type="text/javascript" src="../../scripts/k2aMethods.js"></script>
+    <script type="text/javascript" src="../../enum/Schema.js"></script>
+    <script type="text/javascript" src="../../enum/setupoption.js"></script>
+    <!-- Offline HTML Template Factory-->
+    <script type="text/javascript" src="../../templates/listItem-factory.js"></script>
+    <script type="text/javascript" src="../../templates/toolbar-factory.js"></script>
+    <!-- Offline HTML Styling -->
+    <link rel="stylesheet" type="text/css" href="../../css/k2a.css" />
+    <title>Entity List</title>
+</head>
+
+<body>
+    <div id="toast"></div>
+    <div class="fixedPosition">
+        <div id="mainToolbar"></div><br>
+        <div id="listToolbar"></div>
+        <div id="mainScrollView">
+            <div id='mainList'></div>
+        </div>
+        <div id="actionSheet"></div>
+        <div id="filterPopup"></div>
+    </div>
+
+    <script>
+        //============== INITIAL SETTINGS ================
+        var isOnline = false, entityName = SCHEMA.servicecall.name;
+        var sortDesc = false, sortSelector = SCHEMA.servicecall.Properties.dateofcall;
+        var scrollHeight = 110;
+        //============== OFFLINE/ONLINE DATA ================
+        var entityListData;
+        //============== SELECTED DATA ================
+        var selected = { entityName: null };
+        //============== FETCH DATA ================
+        var requiredSetupOptions = [
+            SETUPOPTION.UseBarcoding,
+            SETUPOPTION.UseSublocationValidation
+        ];
+        var entityAttributes = [
+            SCHEMA.servicecall.Properties.id,
+            SCHEMA.servicecall.Properties.name,
+            SCHEMA.servicecall.Properties.dateofcall,
+            SCHEMA.servicecall.Properties.gpservicecallid,
+            SCHEMA.servicecall.Properties.gpequipmentid,
+            SCHEMA.servicecall.Properties.callstatusid,
+            SCHEMA.servicecall.Properties.description
+        ];
+        var locationAttributes = [
+            SCHEMA.location.Properties.name,
+            SCHEMA.location.Properties.city,
+            SCHEMA.location.Properties.state,
+            SCHEMA.location.Properties.zip
+        ];
+        var listSortItems = [
+            SCHEMA.servicecall.Properties.dateofcall,
+            'loc_name',
+            'calltype_name'
+        ];
+        var listSearchItems = [
+            SCHEMA.servicecall.Properties.dateofcall,
+            SCHEMA.servicecall.Properties.name,
+            SCHEMA.servicecall.Properties.gpservicecallid,
+            SCHEMA.servicecall.Properties.gpequipmentid,
+            SCHEMA.servicecall.Properties.callstatusid,
+            SCHEMA.servicecall.Properties.description,
+            'loc_name', 'loc_city', 'loc_state', 'loc_zip',
+            'calltype_name',
+            SCHEMA.equipment.Properties.barcode
+        ];
+        var listFilterItems = [
+            { dataField: SCHEMA.servicecall.Properties.dateofcall, dataType: FilterDataType.date },
+            { dataField: 'loc_name', dataType: FilterDataType.string },
+            { dataField: 'loc_city', dataType: FilterDataType.string },
+            { dataField: 'loc_state', dataType: FilterDataType.string },
+            { dataField: 'loc_zip', dataType: FilterDataType.number },
+            { dataField: 'calltype_name', dataType: FilterDataType.object },
+            { dataField: SCHEMA.servicecall.Properties.description, dataType: FilterDataType.string }
+        ];
+        var listItemTemplate = function (data, _, element) {
+            element.append(
+                $("<span>").append(data.name).css("font-size", "large"),
+                $("<span>").append(formatDateTime(data.dateofcall)).css("float", "right"),
+                $("<br>"),
+                $("<div>").append(MobileCRM.Localization.get(SCHEMA.location.name).toUpperCase()).addClass('listItemLabel'),
+                $("<div>").append(data.loc_name),
+                $("<div>").append(formatAddress(data.loc_city, data.loc_state, data.loc_zip))
+            );
+
+            if (data.gpequipmentid)
+                element.append(
+                    $("<div>").append(
+                        $("<span>").append(MobileCRM.Localization.get(SCHEMA.equipment.name).toUpperCase() + ": ").addClass('listItemLabel'),
+                        $("<span>").append(data.gpequipmentid)
+                    )
+                );
+
+            element.append(
+                $("<span>").append(
+                    $("<span>").append(MobileCRM.Localization.get(entityName + "." + SCHEMA.servicecall.Properties.callstatusid).toUpperCase() + ": ")
+                        .addClass('listItemLabel').css("margin-left", "10px"),
+                    $("<span>").append(data.callstatusid),
+                    $("<span>").append(MobileCRM.Localization.get(SCHEMA.calltype.name).toUpperCase() + ": ").addClass('listItemLabel').css("margin-left", "10px"),
+                    $("<span>").append(data.calltype_name)
+                ).css("float", "right"),
+                $("<br>"),
+                $("<div>").append(data.description)
+            );
+        };
+        //============== TOOLBAR ITEMS ================
+        var mainToolbarItems = [ToolbarItemType.btnBack, ToolbarItemType.btnNew];
+        var listToolbarItems = [
+            ToolbarItemType.btnSort, ToolbarItemType.selectSort, ToolbarItemType.btnFilter
+        ];
+        //============== LIST ACTION ITEMS ================
+        var actionItems = [
+            { text: "More", onClick: editEntity },
+            { text: "New Appt", onClick: newAppointment }
+        ];
+
+        $(function () {
+            //============== LOCALIZATION ================
+            MobileCRM.Localization.initialize(function (localization) {
+
+                //============== ANDROID CHECK ================
+                MobileCRM.Platform.preventBackButton(btnBackClicked);
+
+                //============== LOADPANEL ================
+                loading = MobileCRM.UI.Form.showPleaseWait(MobileCRM.Localization.get("Msg.Loading"));
+
+                //============== SCROLLVIEW ================
+                mainScrollView = $("#mainScrollView").dxScrollView({
+                    showScrollbar: "always",
+                    height: function () { return window.innerHeight - scrollHeight; },
+                    width: '100%'
+                }).dxScrollView("instance");
+                $(window).resize(function () {
+                    checkIsMultiPanel(mainToolbar); // Update toolbar if needed
+                    repaintScrollView(mainScrollView);
+                });
+
+                //============== TOOLBARS ================
+                mainToolbar = $("#mainToolbar").dxToolbar({
+                    items: (new ToolbarFactory()).addItems(mainToolbarItems)
+                }).dxToolbar("instance");
+                listToolbar = $("#listToolbar").dxToolbar({
+                    items: (new ToolbarFactory()).addItems(listToolbarItems)
+                }).dxToolbar("instance");
+
+                //============== LIST ================
+                mainList = (new ListFactory()).createItem("#mainList", entityName, [
+                    { name: 'searchExpr', value: listSearchItems },
+                    { name: 'itemTemplate', value: listItemTemplate }
+                ]);
+
+                //============== ACTION SHEETS ================
+                actionSheet = (new ActionSheetFactory()).createItem(actionItems, "#actionSheet");
+
+                //============== EVENT HANDLERS ================
+                MobileCRM.bridge.raiseGlobalEvent("CloseAllForms");
+                MobileCRM.bridge.onGlobalEvent("EntityFormClosed", function (closedForm) {
+                    if (closedForm.entity && (closedForm.entity.entityName === entityName || closedForm.entity.entityName === SCHEMA.appointment.name))
+                        fetchListEntityData();
+                }, true);
+                MobileCRM.Configuration.requestObject(function (config) {
+                    MobileCRM.bridge.onGlobalEvent("SyncFinished", fetchListEntityData, !config.settings.requireSyncLogin);
+                }, MobileCRM.bridge.alert);
+                MobileCRM.bridge.onGlobalEvent('ReloadEquipmentList', fetchListEntityData, true);
+
+                loadSetupOptions(loadListOptions);
+            }, alertError);
+        });
+
+        //============== LOAD OPTIONS ================
+        function loadListOptions() {
+            loadSelectedView(entityName).then(function (selectedView) {
+                sortDesc = selectedView && selectedView.desc ? JSON.parse(selectedView.desc) : sortDesc;
+                sortSelector = selectedView && selectedView.select ? selectedView.select : sortSelector;
+
+                loadToolbarOptions();
+                loadListItemOptions();
+            }, alertError);
+        }
+        function loadToolbarOptions() {
+            checkCanCreate(entityName).then(function (canCreate) {
+                if (!canCreate) {
+                    updateToolbarItem(mainToolbar, ToolbarItemType.btnNew, "visible", false);
+                }
+            }, alertError);
+
+            if (typeof listFilterItems !== 'undefined' && listFilterItems.length > 0)
+                (new FilterFactory()).createFilterPopup(mainList, listToolbar);
+
+            loadSortItemsLocalization(listSortItems).then(function (sortDataSource) {
+                updateToolbarItem(listToolbar, ToolbarItemType.selectSort, "options.dataSource", sortDataSource);
+                updateToolbarItem(listToolbar, ToolbarItemType.selectSort, "options.value", sortSelector);
+            });
+            updateToolbarItem(listToolbar, ToolbarItemType.btnSort, "options.icon", sortDesc ? 'arrowdown' : 'arrowup');
+            checkIsMultiPanel(mainToolbar);
+        }
+        function loadListItemOptions() {
+            if (setupOptions.UseBarcoding)
+                addBarcodeSearch();
+
+            fetchListEntityData();
+        }
+
+        //============== LOAD DATA ================
+        function fetchListEntityData() {
+            var entity = new MobileCRM.FetchXml.Entity(entityName);
+            $(entityAttributes).each(function (index, attribute) {
+                entity.addAttribute(attribute);
+            });
+            entity.orderBy(SCHEMA.servicecall.Properties.dateofcall, sortDesc);
+
+            // Link Filter: Appointment Status
+            var apptLink = entity.addLink(
+                SCHEMA.appointment.name,
+                SCHEMA.appointment.Properties.servicecallid,
+                SCHEMA.servicecall.Properties.id,
+                "outer");
+            var statusLink = apptLink.addLink(
+                SCHEMA.appointmentstatus.name,
+                SCHEMA.appointmentstatus.Properties.id,
+                SCHEMA.appointment.Properties.appointmentstatusid,
+                "outer");
+            statusLink.addFilter().notIn(SCHEMA.appointmentstatus.Properties.name, ['COMPLETE', 'RE-ASSIGN']);
+            statusLink.alias = SCHEMA.appointmentstatus.name;
+            statusLink.addAttribute(SCHEMA.appointmentstatus.Properties.name);
+
+            // Link: Location
+            var locLink = entity.addLink(
+                SCHEMA.location.name,
+                SCHEMA.location.Properties.id,
+                SCHEMA.servicecall.Properties.locationid,
+                "outer");
+            $(locationAttributes).each(function (index, attribute) {
+                locLink.addAttribute(attribute);
+            });
+            locLink.alias = 'loc';
+
+            // Link: Call Type
+            var calltypeLink = entity.addLink(
+                SCHEMA.calltype.name,
+                SCHEMA.calltype.Properties.id,
+                SCHEMA.servicecall.Properties.calltypeid,
+                "outer");
+            calltypeLink.addAttribute(SCHEMA.calltype.Properties.name);
+            calltypeLink.alias = SCHEMA.calltype.name;
+
+            // Barcode Search--> Link: Task Equipment Barcode
+            var taskLink = entity.addLink(
+                SCHEMA.task.name,
+                SCHEMA.task.Properties.servicecallid,
+                SCHEMA.servicecall.Properties.id,
+                "outer");
+            var taskEquipLink = taskLink.addLink(
+                SCHEMA.equipment.name,
+                SCHEMA.equipment.Properties.id,
+                SCHEMA.task.Properties.equipmentid,
+                "outer");
+            taskEquipLink.addAttribute(SCHEMA.equipment.Properties.barcode);
+            taskEquipLink.alias = 't';
+
+            // Barcode Search --> Link: Sublocation Barcode
+            if (setupOptions.UseSublocationValidation) {
+                sublocationLink = taskEquipLink.addLink(
+                    SCHEMA.sublocation.name,
+                    SCHEMA.sublocation.Properties.id,
+                    SCHEMA.equipment.Properties.sublocationid,
+                    "outer");
+                sublocationLink.addAttribute(SCHEMA.sublocation.Properties.barcode);
+                sublocationLink.alias = 'sl';
+            }
+
+            var fetch = new MobileCRM.FetchXml.Fetch(entity);
+            fetch.execute("DynamicEntities", function (res) {
+                // Note: for filter to work with date attributes have to fetch DynamicEntities
+                // To work with res as JSON then set each value to properties
+                var itemsToRemove = [];
+                $(res).each(function (i, value) {
+                    if (value.properties[statusLink.alias + '.' + SCHEMA.appointmentstatus.Properties.name] ||
+                        value.properties.name === MobileCRM.Localization.get('servicecall.pending')) {
+                        res[i] = value.properties;
+                    }
+                    else {
+                        itemsToRemove.push(i);
+                    }
+                });
+
+                for (var i = itemsToRemove.length - 1; i >= 0; i--) {
+                    res.splice(itemsToRemove[i], 1);
+                }
+
+                // Group and ungroup data because of appointment status link filter
+                var groupedData = new DevExpress.data.DataSource({
+                    store: res,
+                    group: SCHEMA.servicecall.Properties.id,
+                    paginate: false
+                });
+
+                groupedData.load().done(function (data) {
+                    var deGroupedData = [];
+                    $(data).each(function (i, call) {
+                        var servicecall = call.items[0];
+
+                        // For list search to work can not have "." in attribute name
+                        $(locationAttributes).each(function (index, attr) {
+                            servicecall[locLink.alias + "_" + attr] = servicecall[locLink.alias + "." + attr]
+                        });
+                        servicecall[calltypeLink.alias + "_name"] = servicecall[calltypeLink.alias + ".name"];
+
+                        // Create string of linked barcodes (from equipment or sublocation)
+                        $(call.items).each(function (i, _) {
+                            if (call.items[i][taskEquipLink.alias + ".barcode"])
+                                servicecall.barcode = servicecall.barcode + " " + call.items[i][taskEquipLink.alias + ".barcode"];
+                            if (setupOptions.UseSublocationValidation && call.items[i][sublocationLink.alias + ".barcode"])
+                                servicecall.barcode = servicecall.barcode + " " + call.items[i][sublocationLink.alias + ".barcode"];
+                        });
+
+                        deGroupedData.push(servicecall);
+                    });
+
+                    loadListData(mainList, deGroupedData);
+                    entityListData = deGroupedData;
+                    loading.close();
+                });
+            }, alertError);
+        }
+
+        //============== TOOLBAR FUNCTIONS ================
+        function btnSortClicked() {
+            updateSelectedView(entityName, { desc: sortDesc, select: sortSelector }).then(function () {
+                loadListData(mainList, entityListData);
+            }, alertError);
+        }
+        function sortSelected() {
+            btnSortClicked();
+        }
+        function btnNewClicked() {
+            MobileCRM.UI.HomeForm.openHomeItemAsync('@@newcall;file://entity/servicecall/servicecall-form_new.html', alertError, null);
+        }
+        function barcodeScanned(barcode) {
+            var filteredListData = new DevExpress.data.DataSource({
+                store: entityListData,
+                filter: [SCHEMA.equipment.Properties.barcode, 'contains', barcode],
+                paginate: false
+            });
+            filteredListData.load().done(function (res) {
+                if (res.length === 1) {
+                    // Only 1 barcode result, navigate to linked entity
+                    var tabToSelect = (typeof res[0]['t.barcode'] !== 'undefined') ? SCHEMA.task.name : SCHEMA.equipment.name;
+
+                    mainList.option("searchValue", barcode);
+                    MobileCRM.UI.FormManager.showEditDialog(entityName, res[0].id, null,
+                        { iFrameOptions: { barcode: barcode, selectTab: tabToSelect } });
+                }
+                else // No or multiple barcode results
+                    mainList.option("searchValue", barcode);
+            });
+        }
+
+        //============== LIST ITEM FUNCTIONS ================
+        function listItemClicked() {
+            var cancelItem = { text: "Cancel", type: 'default', mode: 'outlined', onClick: function () { actionSheet.hide(); } };
+            var deleteItem = { text: "Delete", onClick: deletePendingCall, type: 'default' };
+
+            checkCanCreate(SCHEMA.appointment.name).then(function (canCreate) {
+                if (canCreate) {
+                    actionSheet.option({
+                        dataSource: (selected[entityName].isNew || selected[entityName].name.toUpperCase().indexOf('PENDING') > -1) ?
+                            [actionItems[0], actionItems[1], deleteItem, cancelItem] : [actionItems[0], actionItems[1], cancelItem],    // 0. More, 1. New Appt
+                        title: MobileCRM.Localization.get(entityName) + ": " + selected[entityName].name,
+                        visible: true
+                    });
+                }
+                else {
+                    if (selected.servicecall.isNew || selected.servicecall.name.toUpperCase().indexOf('PENDING') > -1) {
+                        actionSheet.option({
+                            dataSource: [actionItems[0], deleteItem, cancelItem],   // 0. More
+                            title: MobileCRM.Localization.get(entityName) + ": " + selected[entityName].name,
+                            visible: true
+                        });
+                    }
+                    else {
+                        editEntity();
+                    }
+                }
+            }, alertError);
+        }
+
+        //============== LIST EXECUTIONS ================
+        function editEntity() {
+            MobileCRM.UI.FormManager.showEditDialog(entityName, selected[entityName].id);
+        }
+        function newAppointment() {
+            // Check if call is still pending
+            if (selected[entityName].name === MobileCRM.Localization.get("servicecall.pending"))
+                sayLocalization("Alert.SyncAddAppointment");
+            else {
+                anyOpenAppointmentsOnServiceCall(function () {
+                    // Service call has open appointments
+                    var target = new MobileCRM.Reference(entityName, selected[entityName].id);
+                    var relationship = new MobileCRM.Relationship(SCHEMA.appointment.Properties.servicecallid, target);
+                    MobileCRM.UI.FormManager.showNewDialog(SCHEMA.appointment.name, relationship, null);
+                }, function () {
+                    // No open appointments, service call is completed
+                    sayLocalization("Alert.CallCompleted")
+                });
+            }
+        }
+        function anyOpenAppointmentsOnServiceCall(trueCallback, falseCallback) {
+            var entity = new MobileCRM.FetchXml.Entity(SCHEMA.appointment.name);
+            entity.addAttribute(SCHEMA.appointment.Properties.id);
+
+            entity.addFilter().where(SCHEMA.appointment.Properties.servicecallid, "eq", selected[entityName].id);
+
+            var statusLink = entity.addLink(
+                SCHEMA.appointmentstatus.name,
+                SCHEMA.appointmentstatus.Properties.id,
+                SCHEMA.appointment.Properties.appointmentstatusid,
+                "inner");
+            statusLink.addFilter().where(SCHEMA.appointmentstatus.Properties.name, "ne", "COMPLETE");
+
+            var fetch = new MobileCRM.FetchXml.Fetch(entity);
+            fetch.execute("JSON", function (res) {
+                if (res.length > 0)
+                    trueCallback();
+                else
+                    falseCallback();
+            }, alertError);
+        }
+        function deletePendingCall() {
+            var confirmPopup = new MobileCRM.UI.MessageBox(MobileCRM.Localization.get("Alert.ConfirmDeleteServicecall"));
+            confirmPopup.multiLine = true;
+            confirmPopup.items = [MobileCRM.Localization.get("enum.Yes"), MobileCRM.Localization.get("enum.No")];
+            confirmPopup.show(function (btn) {
+                if (btn === MobileCRM.Localization.get("enum.Yes")) {
+                    MobileCRM.DynamicEntity.deleteById(entityName, selected.servicecall.id, function () {
+                        deletePendingAppointment().then(function () {
+                            selected.servicecall = null;
+                            fetchListEntityData();
+                            showToast(MobileCRM.Localization.get("Alert.PendingCallDeleted"), "success");
+                        }, alertError);
+                    }, alertError);
+                }
+                return;
+            });
+        }
+        function deletePendingAppointment() {
+            var deferred = $.Deferred();
+            var entity = new MobileCRM.FetchXml.Entity(SCHEMA.appointment.name);
+            entity.addAttribute(SCHEMA.appointment.Properties.id);
+
+            entity.addFilter().where(SCHEMA.appointment.Properties.servicecallid, 'eq', selected.servicecall.id);
+
+            var fetch = new MobileCRM.FetchXml.Fetch(entity);
+            fetch.execute("JSON", function (res) {
+                var itemsDeferred = [];
+                $(res).each(function (_, appt) {
+                    itemsDeferred.push(deleteAppointment(appt.id));
+                });
+
+                $.when.apply($, itemsDeferred).then(function () {
+                    return deferred.resolve();
+                }, function (err) {
+                    return deferred.reject("Delete Pending Appointment Error: " + err);
+                })
+            }, function (err) {
+                return deferred.reject("Fetch Pending Appointment Error: " + err);
+            });
+            return deferred.promise();
+        }
+        function deleteAppointment(apptId) {
+            var deferred = $.Deferred();
+            MobileCRM.DynamicEntity.deleteById(SCHEMA.appointment.name, apptId, function () {
+                // Delete related appointment timestamp
+                fetchAppointmentStatusTimeStamp(apptId).then(function (timestamp) {
+                    if (timestamp) {
+                        MobileCRM.DynamicEntity.deleteById(SCHEMA.appointmentstatustimestamp.name, timestamp.id, function () {
+                            return deferred.resolve();
+                        }, function (err) {
+                            return deferred.reject("Delete Appointment Status Timestamp Error: " + err);
+                        });
+                    }
+                    else {
+                        return deferred.resolve();
+                    }
+                }, function (err) { return deferred.reject(err); });
+            }, function (err) { return deferred.reject(err); }
+            );
+            return deferred.promise();
+        }
+    </script>
+</body>
+
+</html>

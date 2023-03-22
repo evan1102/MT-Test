@@ -1,0 +1,399 @@
+﻿<!DOCTYPE html>
+<html>
+
+<head>
+    <!-- Activate IE9 document mode, if available -->
+    <meta charset="utf-8" http-equiv="X-UA-Compatible" content="IE=edge" />
+    <!-- Defined iOS viewport -->
+    <meta name="viewport" content="initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=false">
+    <!-- Disable iOS Phone No Detection -->
+    <meta name="format-detection" content="telephone=no" />
+    <!-- DevExtreme dependencies -->
+    <script type="text/javascript" src="../../scripts/jquery.min.js"></script>
+    <!-- DevExtreme themes -->
+    <link rel="stylesheet" type="text/css" href="../../css/dx.light.css" />
+    <!-- A DevExtreme library -->
+    <script type="text/javascript" src="../../scripts/dx.all.js"></script>
+    <!-- Offline HTML JavaScript Bridge-->
+    <script type="text/javascript" src="../../scripts/JSBridge.js"></script>
+    <script type="text/javascript" src="../../scripts/k2aMethods.js"></script>
+    <script type="text/javascript" src="../../enum/Schema.js"></script>
+    <script type="text/javascript" src="../../enum/setupoption.js"></script>
+    <!-- Offline HTML Template Factory-->
+    <script type="text/javascript" src="../../templates/listItem-factory.js"></script>
+    <script type="text/javascript" src="../../templates/toolbar-factory.js"></script>
+    <!-- Offline HTML Styling -->
+    <link rel="stylesheet" type="text/css" href="../../css/k2a.css" />
+    <title>Entity List</title>
+</head>
+
+<body>
+    <div id="toast"></div>
+    <div class="fixedPosition">
+        <div id="mainToolbar"></div><br>
+        <div id="listToolbar"></div>
+        <div id="mainScrollView">
+            <div id='mainList'></div>
+        </div>
+        <div id="actionSheet"></div>
+        <div id="filterPopup"></div>
+    </div>
+
+    <script>
+        //============== INITIAL SETTINGS ================
+        var entityName = SCHEMA.annotation.name, scrollHeight = 110;
+        var sortDesc = false, sortSelector = SCHEMA.annotation.Properties.subject;
+        var autoOpenNewForm = false, isInitialLoad = true, isJobAppt = false;
+        //============== OFFLINE DATA ================
+        var entityListData;
+        //============== SELECTED DATA ================
+        var selected = { entityName: null, object: null, viewIndex: null };
+        //============== FETCH DATA ================
+        var requiredSetupOptions = [];
+        var entityAttributes = [
+            SCHEMA.annotation.Properties.id,
+            SCHEMA.annotation.Properties.objectid,
+            SCHEMA.annotation.Properties.subject,
+            SCHEMA.annotation.Properties.modifieduser,
+            SCHEMA.annotation.Properties.modifieddate,
+            SCHEMA.annotation.Properties.gpnotetype
+        ];
+        var listSortItems = [
+            SCHEMA.annotation.Properties.subject,
+            SCHEMA.annotation.Properties.modifieduser,
+            SCHEMA.annotation.Properties.modifieddate
+        ];
+        var jobApptListSortItems = [
+            SCHEMA.annotation.Properties.subject,
+            SCHEMA.annotation.Properties.modifieduser,
+            SCHEMA.annotation.Properties.modifieddate,
+            SCHEMA.annotation.Properties.gpnotetype
+        ];
+        var listSearchItems = [
+            SCHEMA.annotation.Properties.subject,
+            SCHEMA.annotation.Properties.modifieduser,
+            SCHEMA.annotation.Properties.modifieddate
+        ];
+        var listFilterItems = [
+            { dataField: SCHEMA.annotation.Properties.subject, dataType: FilterDataType.string },
+            { dataField: SCHEMA.annotation.Properties.modifieduser, dataType: FilterDataType.string },
+            { dataField: SCHEMA.annotation.Properties.modifieddate, dataType: FilterDataType.date }
+        ];
+        var listItemTemplate = function (data, _, element) {
+            element.append(
+                $('<div>').append(data.subject).css('font-size', 'large'),
+                $('<span>').append(data.modifieduser),
+                $('<span>').append(formatDate(data.modifieddate)).css('float', 'right')
+            );
+
+            if (isJobAppt && data.objectid) {
+                element.append(
+                    $("<div>").append(
+                        $("<span>").append(MobileCRM.Localization.get(data.objectid.entityName).toUpperCase() + ": ").addClass('listItemLabel'),
+                        $("<span>").append(data.objectid.primaryName)
+                    )
+                );
+            }
+        };
+        //============== TOOLBAR ITEMS ================
+        var mainToolbarItems = [
+            ToolbarItemType.title, ToolbarItemType.btnNew
+        ];
+        var listToolbarItems = [
+            ToolbarItemType.btnSort, ToolbarItemType.selectSort, ToolbarItemType.btnFilter
+        ];
+
+        $(function () {
+            //============== LOCALIZATION ================
+            MobileCRM.Localization.initialize(function (localization) {
+
+                //============== LOADPANEL ================
+                loading = MobileCRM.UI.Form.showPleaseWait(MobileCRM.Localization.get("Msg.Loading"));
+
+                //============== SCROLLVIEW ================
+                mainScrollView = $("#mainScrollView").dxScrollView({
+                    showScrollbar: "always",
+                    height: function () { return window.innerHeight - scrollHeight; },
+                    width: '100%'
+                }).dxScrollView("instance");
+                $(window).resize(function () {
+                    checkIsMultiPanel(mainToolbar); // Update toolbar if needed
+                    repaintScrollView(mainScrollView);
+                });
+
+                //============== TOOLBARS ================
+                mainToolbar = $("#mainToolbar").dxToolbar({
+                    items: (new ToolbarFactory()).addItems(mainToolbarItems)
+                }).dxToolbar("instance");
+                listToolbar = $("#listToolbar").dxToolbar({
+                    items: (new ToolbarFactory()).addItems(listToolbarItems)
+                }).dxToolbar("instance");
+
+                //============== LIST ================
+                mainList = (new ListFactory()).createItem("#mainList", entityName, [
+                    { name: 'searchExpr', value: listSearchItems },
+                    { name: 'itemTemplate', value: listItemTemplate }
+                ]);
+
+                //============== EVENT HANDLERS ================
+                MobileCRM.bridge.onGlobalEvent("EntityFormClosed", function (closedForm) {
+                    if (closedForm.entity && closedForm.entity.entityName === entityName)
+                        fetchListEntityData();
+                }, true);
+                MobileCRM.Configuration.requestObject(function (config) {
+                    MobileCRM.bridge.onGlobalEvent("SyncFinished", fetchListEntityData, !config.settings.requireSyncLogin);
+                }, MobileCRM.bridge.alert);
+
+                loadSetupOptions(loadListOptions);
+            }, alertError);
+        });
+
+        //============== LOAD OPTIONS ================
+        function loadListOptions() {
+            try {
+                MobileCRM.UI.EntityForm.requestObject(function (entityForm) {
+                    selected.object = entityForm.entity;
+                    selected.viewIndex = entityForm.form.selectedViewIndex;
+                    if (selected.object && selected.object.entityName === SCHEMA.appointment.name && selected.object.properties.gpappointmenttype === 3) {
+                        isJobAppt = true;
+                    }
+
+                    loadToolbarOptions();
+                    fetchListEntityData();
+                }, alertError);
+            }
+            catch (e) {
+                alertError(e);
+            }
+        }
+        function loadToolbarOptions() {
+            if (selected.object.entityName === SCHEMA.appointment.name && parseInt(selected.object.properties.gpappointmenttype) === 3)
+                updateToolbarItem(mainToolbar, ToolbarItemType.btnNew, 'visible', false);
+
+            if (typeof listFilterItems !== 'undefined' && listFilterItems.length > 0)
+                (new FilterFactory()).createFilterPopup(mainList, listToolbar);
+
+            $("#toolbarTitle").text(MobileCRM.Localization.get("DetailView." + entityName));
+
+            loadSortItemsLocalization(isJobAppt ? jobApptListSortItems : listSortItems).then(function (sortDataSource) {
+                updateToolbarItem(listToolbar, ToolbarItemType.selectSort, "options.dataSource", sortDataSource);
+                updateToolbarItem(listToolbar, ToolbarItemType.selectSort, "options.value", sortSelector);
+            });
+        }
+
+        //============== LOAD DATA ================
+        function fetchListEntityData() {
+            var entity = new MobileCRM.FetchXml.Entity(entityName);
+            $(entityAttributes).each(function (index, attribute) {
+                entity.addAttribute(attribute);
+            });
+            entity.orderBy(sortSelector, sortDesc);
+
+            if (selected.object) {
+                entity.addFilter().where(SCHEMA.annotation.Properties.isdocument, 'eq', false);
+                entity.filter.type = 'and';
+
+                if (isJobAppt) {
+                    // Job & Appointment Filter
+                    var job_apptFilter = new MobileCRM.FetchXml.Filter();
+                    job_apptFilter.type = 'or';
+
+                    job_apptFilter.where(SCHEMA.annotation.Properties.objectid, 'eq', selected.object.id);      // Appt
+                    job_apptFilter.where(SCHEMA.annotation.Properties.objectid, 'eq', selected.object.properties.jobid.id);// Job
+
+                    // Change Order & Job Cost Codes Filter
+                    var changeorder_costcodeFilter = new MobileCRM.FetchXml.Filter();
+                    changeorder_costcodeFilter.type = 'and';
+
+                    changeorder_costcodeFilter.where(SCHEMA.annotation.Properties.gpjobnumber, 'eq', selected.object.properties.gpjobnumber);
+                    changeorder_costcodeFilter.isIn(SCHEMA.annotation.Properties.gpnotetype, ['C', 'T']);
+
+                    // Full Job Appointment Filter
+                    var combinedJobApptFilter = new MobileCRM.FetchXml.Filter();
+                    combinedJobApptFilter.type = 'or';
+
+                    combinedJobApptFilter.filters.push(job_apptFilter);
+                    combinedJobApptFilter.filters.push(changeorder_costcodeFilter);
+                    entity.filter.filters.push(combinedJobApptFilter);
+                }
+                else {
+                    entity.addFilter().where(SCHEMA.annotation.Properties.objectid, 'eq', selected.object.id);
+                }
+            }
+
+            var fetch = new MobileCRM.FetchXml.Fetch(entity);
+            fetch.execute("JSON", function (res) {
+                loadListData(mainList, res);
+                entityListData = res;
+                loading.close();
+
+                if (entityListData.length === 0 && autoOpenNewForm && isInitialLoad && parseInt(selected.viewIndex) > 0) {
+                    btnNewClicked();
+                    isInitialLoad = false;
+                }
+            }, alertError);
+        }
+
+        //============== TOOLBAR FUNCTIONS ================
+        function btnSortClicked() {
+            loadListData(mainList, entityListData);
+        }
+        function sortSelected() {
+            btnSortClicked();
+        }
+        function btnNewClicked() {
+            getTechnicianID(function (technicianId) {
+                MobileCRM.UI.EntityForm.requestObject(function (entityForm) {
+                    var promise = initializeData(technicianId);
+                    promise.then(function (data) {
+                        var target = new MobileCRM.Reference(entityForm.entity.entityName, entityForm.entity.id, entityForm.entity.primaryName);
+                        var relationship = new MobileCRM.Relationship(SCHEMA.annotation.Properties.objectid, target, null, null);
+                        MobileCRM.UI.FormManager.showNewDialog(entityName,
+                            relationship,
+                            { "@initialize": data }
+                        );
+                    });
+                }, MobileCRM.bridge.alert, null);
+            });
+        }
+
+        //============== LIST ITEM FUNCTIONS ================
+        function listItemClicked() {
+            MobileCRM.UI.FormManager.showEditDialog(entityName, selected[entityName].id);
+        }
+
+        function initializeData(gpTechnicianId) {
+            var deferred = $.Deferred();
+            MobileCRM.UI.EntityForm.requestObject(function (entityForm) {
+                var initialData = {}
+                var modifieddate = new Date();
+
+                switch (entityForm.entity.entityName) {
+                    case SCHEMA.customer.name:
+                        initialData = {
+                            gpnotetype: 'C',
+                            gpcustomernumber: entityForm.entity.properties.gpcustomernumber,
+                            gplocationnumber: 'x',
+                            gpservicecallid: 'x',
+                            gpreferenceid: 'x',
+                            subject: '',
+                            modifieddate: modifieddate,
+                            modifieduser: gpTechnicianId,
+                            isdocument: false
+                        }
+                        return deferred.resolve(initialData);
+                        break;
+                    case SCHEMA.appointment.name:
+                        var promise = getLocationEntity(entityForm.entity.properties.locationid);
+                        promise.then(function (entity) {
+                            initialData = {
+                                gpnotetype: 'A',
+                                gpcustomernumber: entity.properties.gpcustomernumber,
+                                gplocationnumber: entity.properties.gplocationnumber,
+                                gpservicecallid: entityForm.entity.properties.gpservicecallid,
+                                gpreferenceid: entityForm.entity.properties.gpappointmentid,
+                                subject: '',
+                                modifieddate: modifieddate,
+                                modifieduser: gpTechnicianId,
+                                isdocument: false
+                            }
+                            return deferred.resolve(initialData);
+                        })
+                        break;
+                    case SCHEMA.contract.name:
+                        var contractLength = entityForm.entity.properties.gpcontractnumber.length < 17 ? entityForm.entity.properties.gpcontractnumber.length : 17; // Lenght must be 17 or less
+                        initialData = {
+                            gpnotetype: 'M',
+                            gpcustomernumber: entityForm.entity.properties.gpcustomernumber,
+                            gplocationnumber: entityForm.entity.properties.gplocationnumber,
+                            gpservicecallid: entityForm.entity.properties.gpcontractnumber.substring(0, contractLength),
+                            gpreferenceid: entityForm.entity.properties.gpcontractnumber,
+                            subject: '',
+                            modifieddate: modifieddate,
+                            modifieduser: gpTechnicianId,
+                            isdocument: false
+                        }
+                        return deferred.resolve(initialData);
+                        break;
+                    case SCHEMA.equipment.name:
+                        initialData = {
+                            gpnotetype: 'E',
+                            gpcustomernumber: entityForm.entity.properties.gpcustomernumber,
+                            gplocationnumber: entityForm.entity.properties.gplocationnumber,
+                            gpservicecallid: entityForm.entity.properties.gpequipmentid,
+                            gpreferenceid: entityForm.entity.properties.gpequipmentid,
+                            subject: '',
+                            modifieddate: modifieddate,
+                            modifieduser: gpTechnicianId,
+                            isdocument: false
+                        }
+                        return deferred.resolve(initialData);
+                        break;
+                    case SCHEMA.location.name:
+                        initialData = {
+                            gpnotetype: 'L',
+                            gpcustomernumber: entityForm.entity.properties.gpcustomernumber,
+                            gplocationnumber: entityForm.entity.properties.gplocationnumber,
+                            gpservicecallid: 'x',
+                            gpreferenceid: 'x',
+                            subject: '',
+                            modifieddate: modifieddate,
+                            modifieduser: gpTechnicianId,
+                            isdocument: false
+                        }
+                        return deferred.resolve(initialData);
+                        break;
+                    case SCHEMA.servicecall.name:
+                        initialData = {
+                            gpnotetype: 'S',
+                            gpcustomernumber: entityForm.entity.properties.gpcustomernumber,
+                            gplocationnumber: entityForm.entity.properties.gplocationnumber,
+                            gpservicecallid: entityForm.entity.properties.gpservicecallid,
+                            gpreferenceid: entityForm.entity.properties.gpservicecallid,
+                            subject: '',
+                            modifieddate: modifieddate,
+                            modifieduser: gpTechnicianId,
+                            isdocument: false
+                        }
+                        return deferred.resolve(initialData);
+                        break;
+                    case SCHEMA.changeorder.name:
+                        initialData = {
+                            gpnotetype: 'C',
+                            gpcustomernumber: '',
+                            gplocationnumber: 'x',
+                            gpservicecallid: 'x',
+                            gpreferenceid: entityForm.entity.properties.gpchangeordernumber,
+                            gpjobnumber: entityForm.entity.properties.gpjobnumber,
+                            gptransactionnumber: entityForm.entity.properties.gpchangeordernumber,
+                            subject: '',
+                            modifieddate: modifieddate,
+                            modifieduser: gpTechnicianId,
+                            isdocument: false
+                        }
+                        return deferred.resolve(initialData);
+                        break;
+                    default:
+                        return deferred.resolve(null);
+                }
+            }, function (error) { }, null);
+            return deferred.promise();
+        }
+
+        function getLocationEntity(locationId) {
+            var deferred = $.Deferred();
+            MobileCRM.DynamicEntity.loadById(SCHEMA.location.name,
+                locationId.id,
+                function (entity) {
+                    return deferred.resolve(entity);
+                },
+                function (error) {
+                    MobileCRM.bridge.alert(error);
+                    return deferred.resolve(null);
+                }, null)
+            return deferred.promise();
+        }
+    </script>
+</body>
+
+</html>

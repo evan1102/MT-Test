@@ -1,0 +1,258 @@
+﻿<!DOCTYPE html>
+<html>
+
+<head>
+    <!-- Activate IE9 document mode, if available -->
+    <meta charset="utf-8" http-equiv="X-UA-Compatible" content="IE=edge" />
+    <!-- Defined iOS viewport -->
+    <meta name="viewport" content="initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=false">
+    <!-- Disable iOS Phone No Detection -->
+    <meta name="format-detection" content="telephone=no" />
+    <!-- DevExtreme dependencies -->
+    <script type="text/javascript" src="../../scripts/jquery.min.js"></script>
+    <!-- DevExtreme themes -->
+    <link rel="stylesheet" type="text/css" href="../../css/dx.light.css" />
+    <!-- A DevExtreme library -->
+    <script type="text/javascript" src="../../scripts/dx.all.js"></script>
+    <!-- Offline HTML JavaScript Bridge-->
+    <script type="text/javascript" src="../../scripts/JSBridge.js"></script>
+    <script type="text/javascript" src="../../scripts/k2aMethods.js"></script>
+    <script type="text/javascript" src="../../enum/Schema.js"></script>
+    <script type="text/javascript" src="../../enum/setupoption.js"></script>
+    <!-- Offline HTML Template Factory-->
+    <script type="text/javascript" src="../../templates/listItem-factory.js"></script>
+    <script type="text/javascript" src="../../templates/toolbar-factory.js"></script>
+    <!-- Offline HTML Styling -->
+    <link rel="stylesheet" type="text/css" href="../../css/k2a.css" />
+    <title>Entity List</title>
+</head>
+
+<body>
+    <div id="toast"></div>
+    <div class="fixedPosition">
+        <div id="mainToolbar"></div><br>
+        <div id="listToolbar"></div>
+        <div id="mainScrollView">
+            <div id='mainList'></div>
+        </div>
+        <div id="filterPopup"></div>
+    </div>
+    <script>
+        //============== INITIAL SETTINGS ================
+        var entityName = SCHEMA.changeorderdetail.name, scrollHeight = 110;
+        var sortDesc = false, sortSelector = SCHEMA.changeorderdetail.Properties.costcodealias;
+        var isLookupList, lookupID;
+        var autoOpenNewForm = false, isInitialLoad = true;
+        //============== OFFLINE/ONLINE DATA ================
+        var entityListData;
+        //============== SELECTED DATA ================
+        var selected = { changeorderdetail: null, viewIndex: null };
+        //============== FETCH DATA ================
+        var requiredSetupOptions = [];
+        var entityAttributes = [
+            SCHEMA.changeorderdetail.Properties.id,
+            SCHEMA.changeorderdetail.Properties.costcodealias,
+            SCHEMA.changeorderdetail.Properties.costcodedescription,
+            SCHEMA.changeorderdetail.Properties.estimatedamount
+        ];
+        var listSortItems = [
+            SCHEMA.changeorderdetail.Properties.costcodealias,
+            SCHEMA.changeorderdetail.Properties.costcodedescription,
+            SCHEMA.changeorderdetail.Properties.estimatedamount
+        ];
+        var listSearchItems = [
+            SCHEMA.changeorderdetail.Properties.costcodealias,
+            SCHEMA.changeorderdetail.Properties.costcodedescription,
+            SCHEMA.changeorderdetail.Properties.estimatedamount
+        ];
+        var listFilterItems = [
+            { dataField: SCHEMA.changeorderdetail.Properties.costcodealias, dataType: FilterDataType.string },
+            { dataField: SCHEMA.changeorderdetail.Properties.costcodedescription, dataType: FilterDataType.string },
+            { dataField: SCHEMA.changeorderdetail.Properties.estimatedamount, dataType: FilterDataType.number }
+        ];
+        var listItemTemplate = function (data, _, element) {
+            element.append(
+                $("<span>").append(data.costcodealias).css("font-size", "large"),
+                $("<span>").append(parseFloat(data.estimatedamount).toFixed(2)).css("font-size", "large").css("float", "right"),
+                $("<br>"),
+                $("<span>").append(data.costcodedescription)
+            );
+        };
+        //============== TOOLBAR ITEMS ================
+        var mainToolbarItems = [
+            ToolbarItemType.title, ToolbarItemType.btnNew
+        ];
+        var listToolbarItems = [
+            ToolbarItemType.btnSort, ToolbarItemType.selectSort, ToolbarItemType.btnFilter
+        ];
+
+        $(function () {
+            //============== LOCALIZATION ================
+            MobileCRM.Localization.initialize(function (localization) {
+
+                //============== ANDROID CHECK ================
+                MobileCRM.Platform.preventBackButton(btnBackClicked);
+
+                //============== LOADPANEL ================
+                loading = MobileCRM.UI.Form.showPleaseWait(MobileCRM.Localization.get("Msg.Loading"));
+
+                //============== SCROLLVIEW ================
+                mainScrollView = $("#mainScrollView").dxScrollView({
+                    showScrollbar: "always",
+                    height: function () { return window.innerHeight - scrollHeight; },
+                    width: '100%'
+                }).dxScrollView("instance");
+                $(window).resize(function () {
+                    checkIsMultiPanel(mainToolbar);
+                    repaintScrollView(mainScrollView);
+                });
+
+                //============== TOOLBARS ================
+                mainToolbar = $("#mainToolbar").dxToolbar({
+                    items: (new ToolbarFactory()).addItems(mainToolbarItems)
+                }).dxToolbar("instance");
+                listToolbar = $("#listToolbar").dxToolbar({
+                    items: (new ToolbarFactory()).addItems(listToolbarItems)
+                }).dxToolbar("instance");
+
+                //============== LIST ================
+                mainList = (new ListFactory()).createItem("#mainList", entityName, [
+                    { name: 'searchExpr', value: listSearchItems },
+                    { name: 'itemTemplate', value: listItemTemplate }
+                ]);
+
+                //============== EVENT HANDLERS ================
+                MobileCRM.bridge.onGlobalEvent("EntityFormClosed", function (closedForm) {
+                    if (closedForm.entity && closedForm.entity.entityName === entityName)
+                        fetchListEntityData();
+                }, true);
+                MobileCRM.Configuration.requestObject(function (config) {
+                    MobileCRM.bridge.onGlobalEvent("SyncFinished", fetchListEntityData, !config.settings.requireSyncLogin);
+                }, MobileCRM.bridge.alert);
+
+                loadSetupOptions(loadListOptions);
+            }, alertError);
+        });
+
+        //============== LOAD OPTIONS ================
+        function loadListOptions() {
+            MobileCRM.UI.EntityForm.requestObject(function (entityForm) {
+                if (entityForm) {
+                    isLookupList = true;
+                    lookupID = entityForm.entity.id;
+                    selected.viewIndex = entityForm.form.selectedViewIndex;
+
+                    loadToolbarOptions();
+                    loadListItemOptions();
+                } else {
+                    loadToolbarOptions();
+                    loadListItemOptions();
+                }
+            }, alertError, null);
+        }
+        function loadToolbarOptions() {
+            if (typeof listFilterItems !== 'undefined' && listFilterItems.length > 0)
+                (new FilterFactory()).createFilterPopup(mainList, listToolbar);
+
+            $("#toolbarTitle").text(MobileCRM.Localization.get(SCHEMA.changeorder.name + ".DetailView." + entityName));
+
+            loadSortItemsLocalization(listSortItems).then(function (sortDataSource) {
+                updateToolbarItem(listToolbar, ToolbarItemType.selectSort, "options.dataSource", sortDataSource);
+                updateToolbarItem(listToolbar, ToolbarItemType.selectSort, "options.value", sortSelector);
+            });
+            checkIsMultiPanel(mainToolbar);
+        }
+        function loadListItemOptions() {
+            fetchListEntityData();
+        }
+
+        //============== LOAD DATA ================
+        function fetchListEntityData() {
+            var entity = new MobileCRM.FetchXml.Entity(entityName);
+            $(entityAttributes).each(function (index, attribute) {
+                entity.addAttribute(attribute);
+            });
+            entity.orderBy(sortSelector, sortDesc);
+
+            if (isLookupList) {
+                entity.addFilter().where(SCHEMA.changeorderdetail.Properties.changeorderid, 'eq', lookupID);
+            }
+
+            var fetch = new MobileCRM.FetchXml.Fetch(entity);
+            fetch.execute("JSON", function (res) {
+                loadListData(mainList, res);
+                entityListData = res;
+                loading.close();
+
+                if (entityListData.length === 0 && autoOpenNewForm && isInitialLoad && parseInt(selected.viewIndex) > 0) {
+                    btnNewClicked();
+                    isInitialLoad = false;
+                }
+            }, alertError);
+        }
+
+        //============== TOOLBAR FUNCTIONS ================
+        function btnNewClicked() {
+            getTechnicianID(function (technicianId) {
+                MobileCRM.UI.EntityForm.requestObject(
+                    function (entityForm) {
+                        //var appt = entityForm.entity;
+                        var promise = getInitializeData(technicianId, entityForm.entity.id);
+                        promise.then(function (data) {
+                            var target = new MobileCRM.Reference(SCHEMA.changeorder.name, entityForm.entity.id);
+                            var relationShip = new MobileCRM.Relationship(SCHEMA.changeorderdetail.Properties.changeorderid, target, null, null);
+                            MobileCRM.UI.FormManager.showNewDialog(
+                                SCHEMA.changeorderdetail.name,
+                                relationShip,
+                                {
+                                    "@initialize": data
+                                });
+                        })
+                    }, MobileCRM.bridge.alert, null
+                );
+            });
+        }
+        function btnSortClicked() {
+            loadListData(mainList, entityListData);
+        }
+        function sortSelected() {
+            loadListData(mainList, entityListData);
+        }
+
+        //============== LIST ITEM FUNCTIONS ================
+        function listItemClicked() {
+            viewEntity();
+        }
+
+        //============== LIST EXECUTIONS ================
+        function viewEntity() {
+            MobileCRM.UI.FormManager.showEditDialog(entityName, selected[entityName].id);
+        }
+
+        function getInitializeData(technicianId, id) {
+            var deferred = $.Deferred();
+            MobileCRM.DynamicEntity.loadById(
+                SCHEMA.changeorder.name,
+                id,
+                function (entity) {
+                    var data = {
+                        gpchangeordernumber: entity.properties.gpchangeordernumber,
+                        gpjobnumber: entity.properties.gpjobnumber,
+                        gptechnicianid: technicianId,
+                        estimatedamount: 0,
+                        estimatedamountperunit: 0,
+                        estimatedunits: 0
+                    };
+                    return deferred.resolve(data);
+                },
+                function (error) {
+                    MobileCRM.bridge.alert(error);
+                    return deferred.resolve(null);
+                }, null
+            )
+            return deferred.promise();
+        }
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,382 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <!-- Activate IE9 document mode, if available -->
+    <meta charset="utf-8" http-equiv="X-UA-Compatible" content="IE=edge" />
+    <!-- Defined iOS viewport -->
+    <meta name="viewport" content="initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=false">
+    <!-- Disable iOS Phone No Detection -->
+    <meta name="format-detection" content="telephone=no" />
+    <!-- DevExtreme dependencies -->
+    <script type="text/javascript" src="../../scripts/jquery.min.js"></script>
+    <!-- A DevExtreme library -->
+    <script type="text/javascript" src="../../scripts/dx.all.js"></script>
+    <!-- Offline HTML JavaScript Bridge-->
+    <script type="text/javascript" src="../../scripts/JSBridge.js"></script>
+    <script type="text/javascript" src="../../scripts/k2aMethods.js"></script>
+    <script type="text/javascript" src="../../enum/Schema.js"></script>
+    <script type="text/javascript" src="../../enum/setupoption.js"></script>
+    <title>Entity Form</title>
+</head>
+<body>
+    <script>
+        //============== INITIAL SETTINGS ================
+        var entityName = "jobsafetytask";
+        var taskResponses = [], updatedResponses = [];
+        //============== SELECTED DATA ================
+        var selected = { response: null };
+
+        $(function () {
+            //============== LOCALIZATION ================
+            MobileCRM.Localization.initialize(function (localization) {
+
+                //============== ANDROID CHECK ================
+                MobileCRM.Platform.preventBackButton(btnBackClicked);
+
+                //============== LOADPANEL ================
+                loading = MobileCRM.UI.Form.showPleaseWait(MobileCRM.Localization.get("Msg.Loading"));
+
+                loadFormOptions();
+
+                //============== EVENT HANDLERS ================
+                MobileCRM.UI.EntityForm.onChange(formValueChanged, true);
+                MobileCRM.UI.EntityForm.onSave(btnSaveClicked, true);
+                MobileCRM.UI.EntityForm.onCommand("Next", btnNextClicked, true);
+            }, alertError);
+        });
+
+        //============== LOAD OPTIONS ================
+        function loadFormOptions() {
+            MobileCRM.UI.EntityForm.requestObject(function (entityForm) {
+                selected[entityName] = entityForm.entity.properties;
+
+                fetchTaskResponses().then(loadFormItems, alertError);
+            }, alertError);
+        }
+        function loadFormItems() {
+            MobileCRM.UI.EntityForm.requestObject(function (entityForm) {
+                var responseIDs = [];
+                $(taskResponses).each(function (i, response) {
+                    responseIDs.push(response.id);
+                });
+
+                // Load Form Items
+                var detailView = entityForm.getDetailView(entityName);
+                var formItems = [];
+                var indexesToRemove = [];
+                $(detailView.items).each(function (index, item) {
+                    item.errorMessage = null;
+                    formItems[item.name] = item;
+                    if (item.name !== 'gptaskcode' && item.name !== 'taskdescription') {
+                        // Hide Response Form Items from other tasks
+                        if (responseIDs.indexOf(item.name) < 0)
+                            item.isVisible = false;
+                    }
+                });
+
+                // Set Form Item Options
+                formItems.gptaskcode.isEnabled = false;
+                formItems.taskdescription.isEnabled = false;
+
+                addJobSafetyTaskResponses().then(loading.close, alertError);
+            }, alertError)
+        }
+        function addJobSafetyTaskResponses() {
+            var deferred = $.Deferred();
+            var itemsDeferred = [];
+
+            $(taskResponses).each(function (i, response) {
+                switch (parseInt(response.responsetype)) {
+                    case 5: // List
+                        itemsDeferred.push(createListitem(response));
+                        break;
+                    default: // Text
+                        itemsDeferred.push(createTextItem(response));
+                        break;
+                }
+            });
+
+            $.when.apply($, itemsDeferred).then(
+                function () { return deferred.resolve(); },
+                function (err) { return deferred.reject(err); }
+            );
+            return deferred.promise();
+        }
+
+        function createListitem(response) {
+            var deferred = $.Deferred();
+
+            MobileCRM.UI.EntityForm.requestObject(function (entityForm) {
+                var detailView = entityForm.getDetailView(entityName);
+                var listItem = detailView.getItemByName(response.id);
+                var listItemValue = response.responsevalue ? response.responsevalue : MobileCRM.Localization.get("Link.ClickToSelect");
+                var isRequired = JSON.parse(response.isrequired.toLowerCase());
+                if (isRequired) {
+                    entityForm.isDirty = true;
+                }
+
+                if (listItem) {
+                    listItem.setTypedValue("value", "System.String", listItemValue);
+                    listItem.isVisible = true;
+                    detailView.registerClickHandler(listItem, listItemClicked);
+                }
+                else {
+                    var label = isRequired ? response.responselabel + "*" : response.responselabel;
+                    listItem = new MobileCRM.UI.DetailViewItems.LinkItem(response.id, label);
+                    listItem.value = listItemValue;
+                    listItem.style = isRequired ? "HasNotes" : "Normal";
+                    detailView.registerClickHandler(listItem, listItemClicked);
+                    detailView.insertItem(listItem, -1);    // Last form item
+                }
+                return deferred.resolve();
+            }, function (err) { return deferred.reject(err); });
+            return deferred.promise();
+        }
+        function createTextItem(response) {
+            var deferred = $.Deferred();
+
+            MobileCRM.UI.EntityForm.requestObject(function (entityForm) {
+                var detailView = entityForm.getDetailView(entityName);
+                var textItem = detailView.getItemByName(response.id);
+                var isRequired = JSON.parse(response.isrequired.toLowerCase());
+                if (isRequired) {
+                    entityForm.isDirty = true;
+                }
+
+                if (textItem) {
+                    textItem.value = parseInt(response.responsetype) === 6 ? response.textresponse : "";
+                    textItem.isVisible = true;
+                }
+                else {
+                    var label = isRequired ? response.responselabel + "*" : response.responselabel;
+                    textItem = new MobileCRM.UI.DetailViewItems.TextBoxItem(response.id, label);
+                    textItem.placeholderText = "Enter Response";
+                    textItem.value = parseInt(response.responsetype) === 6 ? response.textresponse : "";
+                    textItem.style = "MultiLine";
+                    textItem.numberOfLines = 3;
+                    textItem.validate = isRequired;
+                    detailView.insertItem(textItem, -1);    // Last form item
+                }
+
+                return deferred.resolve();
+            }, function (err) { return deferred.reject(err); });
+            return deferred.promise();
+        }
+
+        //============== LOAD DATA ================
+        function fetchTaskResponses() {
+            var deferred = $.Deferred();
+            if (!selected[entityName])
+                return deferred.reject("Unable to load task responses");
+
+            var entity = new MobileCRM.FetchXml.Entity('jobsafetytaskresponse');
+            entity.addAttributes();
+            entity.orderBy('gptasklinenumber', false);
+            entity.addFilter().where('jobsafetytaskid', 'eq', selected[entityName].id);
+
+            var fetch = new MobileCRM.FetchXml.Fetch(entity);
+            fetch.execute("JSON", function (res) {
+                taskResponses = res;
+                return deferred.resolve();
+            }, function (err) { return deferred.reject(err); });
+            return deferred.promise();
+        }
+
+        //============== TOOLBAR FUNCTIONS ================
+        function btnSaveClicked(entityForm) {
+            var saveHandler = entityForm.suspendSave();
+            loading = MobileCRM.UI.Form.showPleaseWait(MobileCRM.Localization.get("Msg.Loading"));
+
+            validateResponses().then(function () {
+                saveAllResponses().then(function () {
+                    loading.close();
+                    MobileCRM.UI.EntityForm.closeWithoutSaving();
+                }, alertError);
+            }, alertError);
+        }
+
+        function btnNextClicked(entityForm) {
+            validateResponses().then(function () {
+                saveAllResponses().then(function () {
+                    // 1.1, 1.2, 1.3 ...
+                    getNextTaskInCurrentList(selected[entityName]).then(function (nextTask) {
+                        if (nextTask) {
+                            MobileCRM.UI.FormManager.showDetailDialog("jobsafetytask", nextTask.id, null);
+                            MobileCRM.UI.EntityForm.closeWithoutSaving();
+                        }
+                        else
+                            // 2.1, 3.1, 4.1 ...
+                            getFirstTaskInNextList(selected[entityName]).then(function (nextListTask) {
+                                if (nextListTask) {
+                                    MobileCRM.UI.FormManager.showDetailDialog("jobsafetytask", nextListTask.id, null);
+                                    MobileCRM.UI.EntityForm.closeWithoutSaving();
+                                }
+                                else
+                                    MobileCRM.UI.EntityForm.closeWithoutSaving();
+                            }, MobileCRM.bridge.alert)
+                    }, MobileCRM.bridge.alert);
+                }, MobileCRM.bridge.alert);
+            }, alertError);
+        }
+        function getNextTaskInCurrentList(currentTask) {
+            var deferred = $.Deferred();
+            if (!currentTask)
+                return deferred.reject("Unable to get next task: Missing current task details");
+
+            var entity = new MobileCRM.FetchXml.Entity(entityName);
+            entity.addAttribute('id');
+            entity.orderBy('gptasklinenumber', false);
+
+            entity.addFilter().where('tasklistid', 'eq', currentTask.tasklistid);
+            entity.addFilter().where('gptasklinenumber', 'gt', currentTask.gptasklinenumber);
+            entity.addFilter().where('gptaskcode', 'ne', currentTask.gptaskcode);
+            entity.addFilter().where('gpservicecallid', 'eq', currentTask.gpservicecallid);
+            entity.addFilter().where('gpappointmentid', 'eq', currentTask.gpappointmentid);
+            entity.filter.type = 'and';
+
+            var fetch = new MobileCRM.FetchXml.Fetch(entity);
+            fetch.execute("JSON", function (res) {
+                return deferred.resolve(res[0] ? res[0] : null);
+            }, function (err) { return deferred.reject("Unable to get next task: " + err); });
+            return deferred.promise();
+        }
+        function getFirstTaskInNextList(currentTask) {
+            var deferred = $.Deferred();
+            if (!currentTask)
+                return deferred.reject("Unable to get next task list: Missing current task details");
+
+            var entity = new MobileCRM.FetchXml.Entity(entityName);
+            entity.addAttribute('id');
+            entity.orderBy('tasklistid', false);
+            entity.orderBy('gptasklinenumber', false);
+
+            entity.addFilter().where('tasklistid', 'gt', currentTask.tasklistid);
+            entity.addFilter().where('gptasklinenumber', 'gt', 0);
+            entity.addFilter().where('gpservicecallid', 'eq', currentTask.gpservicecallid);
+            entity.addFilter().where('gpappointmentid', 'eq', currentTask.gpappointmentid);
+            entity.filter.type = 'and';
+
+            var fetch = new MobileCRM.FetchXml.Fetch(entity);
+            fetch.execute("JSON", function (res) {
+                return deferred.resolve(res[0] ? res[0] : null);
+            }, function (err) { return deferred.reject("Unable to get next task list: " + err); });
+            return deferred.promise();
+        }
+
+        //============== FORM ITEM FUNCTIONS ================
+        function formValueChanged(entityForm) {
+            if (entityForm.context.changedItem !== 'gptaskcode' && entityForm.context.changedItem !== 'taskdescription') {
+                entityForm.isDirty = true;
+                if (updatedResponses.indexOf(entityForm.context.changedItem) < 0)
+                    updatedResponses.push(entityForm.context.changedItem);
+            }
+        }
+        function listItemClicked(itemName, detailViewName) {
+            selected.response = { 'id': itemName };
+
+            MobileCRM.DynamicEntity.loadById('jobsafetytaskresponse', itemName, function (response) {
+                var lookupForm = new MobileCRM.UI.LookupForm();
+                var fetch = "<fetch><entity name='taskresponselistvalue'><filter type='and'>" +
+                    "<condition attribute='name' operator='eq' value='" + response.properties.responselistid + "' />" +
+                    "</filter></entity></fetch>";
+                lookupForm.addEntityFilter("taskresponselistvalue", fetch);
+                lookupForm.allowNull = false;
+                lookupForm.addView("taskresponselistvalue", "Default");
+                lookupForm.show(responseListItemSelected, MobileCRM.bridge.alert, null);
+            }, MobileCRM.bridge.alert);
+        }
+        function responseListItemSelected(taskresponselistvalue) {
+            MobileCRM.DynamicEntity.loadById('taskresponselistvalue', taskresponselistvalue.id, function (listvalue) {
+                MobileCRM.UI.EntityForm.requestObject(function (entityForm) {
+                    entityForm.isDirty = true;
+                    if (updatedResponses.indexOf(selected.response.id) < 0)
+                        updatedResponses.push(selected.response.id);
+
+                    var listResponseItem = entityForm.getDetailView(entityName).getItemByName(selected.response.id);
+                    listResponseItem.setTypedValue("value", "System.String", listvalue.properties.responsevalue);
+                    listResponseItem.errorMessage = null;
+                    selected.response = null;
+                })
+            }, MobileCRM.bridge.alert);
+        }
+
+        //============== FORM EXECUTIONS ================
+        function validateResponses() {
+            var deferred = $.Deferred();
+            MobileCRM.UI.EntityForm.requestObject(function (entityForm) {
+                var detailView = entityForm.getDetailView(entityName);
+                for (var i in taskResponses) {
+                    var response = taskResponses[i];
+                    if (JSON.parse(response.isrequired.toLowerCase())) {
+                        var responseItem = detailView.getItemByName(response.id);
+                        if ((parseInt(response.responsetype) === 5 && responseItem.value === MobileCRM.Localization.get("Link.ClickToSelect")) ||   // 5: List
+                            (parseInt(response.responsetype) === 6 && (!responseItem.value || responseItem.value.trim() === ""))) {   // 6: Text
+                            responseItem.errorMessage = MobileCRM.Localization.get("Alert.FmtFieldNotEmpty").format(responseItem.label);
+                            return deferred.reject(responseItem.errorMessage);
+                        }
+                        else {
+                            responseItem.errorMessage = null;
+                        }
+                    }
+                }
+                return deferred.resolve();
+            }, alertError);
+            return deferred.promise();
+        }
+
+        function saveAllResponses() {
+            var deferred = $.Deferred();
+            var itemsDeferred = [];
+
+            $(updatedResponses).each(function (i, responseID) {
+                itemsDeferred.push(saveResponse(responseID));
+            });
+
+            $.when.apply($, itemsDeferred).then(
+                function () { return deferred.resolve(); },
+                function (err) { return deferred.reject(err); }
+            );
+
+            return deferred.promise();
+        }
+        function saveResponse(responseID) {
+            var deferred = $.Deferred();
+            if (!responseID)
+                return deferred.reject("Unable to save response: Missing response ID");
+
+            MobileCRM.UI.EntityForm.requestObject(function (entityForm) {
+                var detailView = entityForm.getDetailView(entityName);
+                var responseItem = detailView.getItemByName(responseID);
+
+                MobileCRM.DynamicEntity.loadById('jobsafetytaskresponse', responseID, function (response) {
+                    var valueProperty = parseInt(response.properties.responsetype) === 5 ? 'responsevalue' : // 5: List
+                        parseInt(response.properties.responsetype) === 6 ? 'textresponse' : null;   // 6: Text
+
+                    if (valueProperty)
+                        response.properties[valueProperty] = responseItem.value;
+
+                    response.save(function (err) {
+                        if (err)
+                            return deferred.reject("Save Response Error: " + err);
+                        else {
+                            if (responseItem.value) // Update Job Safety Task Completion Date
+                                MobileCRM.DynamicEntity.loadById(entityName, this.properties.jobsafetytaskid.id, function (task) {
+                                    task.properties.completiondate = new Date();
+                                    task.save(function (err) {
+                                        if (err)
+                                            return deferred.reject("Save Task Error: " + err);
+                                        else
+                                            return deferred.resolve();
+                                    });
+                                }, function (err) { return deferred.reject("Update Task Completion Date Error: " + err); });
+                            else
+                                return deferred.resolve();
+                        }
+                    });
+                }, function (err) { return deferred.reject("Save Response/Load Response Error: " + err); });
+            }, function (err) { return deferred.reject("Save Response/Request EntityForm Error: " + err); });
+            return deferred.promise();
+        }
+    </script>
+</body>
+</html>

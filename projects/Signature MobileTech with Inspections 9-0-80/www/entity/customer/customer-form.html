@@ -1,0 +1,58 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <!-- Activate IE9 document mode, if available -->
+    <meta charset="utf-8" http-equiv="X-UA-Compatible" content="IE=edge" />
+    <!-- Defined iOS viewport -->
+    <meta name="viewport" content="initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=false">
+    <!-- Disable iOS Phone No Detection -->
+    <meta name="format-detection" content="telephone=no" />
+    <!-- DevExtreme dependencies -->
+    <script type="text/javascript" src="../../scripts/jquery.min.js"></script>
+    <!-- A DevExtreme library -->
+    <script type="text/javascript" src="../../scripts/dx.all.js"></script>
+    <!-- Offline HTML JavaScript Bridge-->
+    <script type="text/javascript" src="../../scripts/JSBridge.js"></script>
+    <script type="text/javascript" src="../../scripts/k2aMethods.js"></script>
+    <script type="text/javascript" src="../../enum/Schema.js"></script>
+    <script type="text/javascript" src="../../enum/setupoption.js"></script>
+    <title>Entity Form</title>
+</head>
+<body>
+    <script>
+        //============== INITIAL SETTINGS ================
+        var entityName = SCHEMA.customer.name, selected = {};
+
+        $(function () {
+            //============== ANDROID CHECK ================
+            MobileCRM.Platform.preventBackButton(btnBackClicked);
+
+            loadSetupOptions(loadFormOptions);
+
+            MobileCRM.bridge.onGlobalEvent("SelectTab", function (args) {
+                if (args.entity === entityName && args.entityID === selected[entityName].id)
+                    MobileCRM.UI.EntityForm.requestObject(function (entityForm) {
+                        entityForm.selectTab(args.tabName);
+                    }, MobileCRM.bridge.alert);
+            }, true);
+        });
+
+        //============== LOAD OPTIONS ================
+        function loadFormOptions() {
+            setInspectionReportsTabVisibility();
+            MobileCRM.Localization.initialize(function (localization) {
+                MobileCRM.UI.EntityForm.requestObject(function (entityForm) {
+                    if (entityForm.iFrameOptions && entityForm.iFrameOptions.selectTab)
+                        entityForm.selectTab(entityForm.iFrameOptions.selectTab);
+
+                    entityForm.form.caption = MobileCRM.Localization.get(entityForm.entity.entityName) + ": " + entityForm.entity.properties.gpcustomernumber;
+                    selected[entityName] = entityForm.entity.properties;
+                }, MobileCRM.bridge.alert, null);
+            }, function (error) {
+                MobileCRM.bridge.alert(error);
+                resolve(false);
+            })
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,789 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <!-- Activate IE9 document mode, if available -->
+    <meta charset="utf-8" http-equiv="X-UA-Compatible" content="IE=edge" />
+    <!-- Defined iOS viewport -->
+    <meta name="viewport" content="initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=false">
+    <!-- Disable iOS Phone No Detection -->
+    <meta name="format-detection" content="telephone=no" />
+    <!-- DevExtreme dependencies -->
+    <script type="text/javascript" src="../../scripts/jquery.min.js"></script>
+    <!-- DevExtreme themes -->
+    <link rel="stylesheet" type="text/css" href="../../css/dx.light.css" />
+    <!-- A DevExtreme library -->
+    <script type="text/javascript" src="../../scripts/dx.all.js"></script>
+    <!-- Offline HTML JavaScript Bridge-->
+    <script type="text/javascript" src="../../scripts/JSBridge.js"></script>
+    <script type="text/javascript" src="../../scripts/k2aMethods.js"></script>
+    <script type="text/javascript" src="../../enum/Schema.js"></script>
+    <script type="text/javascript" src="../../enum/setupoption.js"></script>
+    <!-- Offline HTML Template Factory-->
+    <script type="text/javascript" src="../../templates/formItem-factory.js"></script>
+    <script type="text/javascript" src="../../templates/toolbar-factory.js"></script>
+    <!-- Offline HTML Styling -->
+    <link rel="stylesheet" type="text/css" href="../../css/k2a.css" />
+    <style>
+        .wrapText {
+            white-space: normal;
+        }
+    </style>
+    <title>Entity Form</title>
+</head>
+<body>
+    <div id="toast"></div>
+    <div class="fixedPosition">
+        <div id="mainScrollView">
+            <div id="searchFilter"></div>
+            <div id='mainForm'></div>
+        </div>
+    </div>
+    <div class="popups">
+        <div id="addRolePopup"></div>
+        <div id="duplicatePopup"></div>
+    </div>
+    <script>
+        //============== INITIAL SETTINGS ================
+        var isNew = true, entityName = SCHEMA.locationcontact.name;
+        var scrollHeight = 20;
+        //============== OFFLINE DATA ================
+        var locContacts, allContactEntities, roletypeData, phonetypeData;
+        //============== SELECTED DATA ================
+        var selected = { location: null };
+        //============== FETCH DATA ================
+        var roleTypeAttributes = [
+            SCHEMA.contactroletype.Properties.name,
+            SCHEMA.contactroletype.Properties.description
+        ];
+        var phoneTypeAttributes = [
+            SCHEMA.contactphonetype.Properties.name,
+            SCHEMA.contactphonetype.Properties.description
+        ];
+        //============== FORM ITEMS ================
+        var formItems = [
+            { dataField: SCHEMA.locationcontact.Properties.gpcontactname, editorType: EditorType.dxTextBox },
+            { dataField: SCHEMA.locationcontact.Properties.gpemail, editorType: EditorType.emailTextBox },
+            { dataField: SCHEMA.locationcontact.Properties.gpcontactroletype, editorType: EditorType.newSelectBox },
+            { dataField: SCHEMA.locationcontact.Properties.gpphone, editorType: EditorType.phoneTextBox },
+            { dataField: SCHEMA.locationcontact.Properties.gpcontactphonetype, editorType: EditorType.dxSelectBox },
+            { label: "", dataField: 'addPhoneBtn', editorType: EditorType.addPhoneBtn }
+        ];
+        var formItemOptions = {
+            gpcontactname: { validationMsg: "Alert.MissingContactName", placeholder: "Enter Contact Name" },
+            gpemail: { validationMsg: "Alert.MissingContactEmail", maxLength: 320, placeholder: "Enter Email" },
+            gpcontactroletype: {
+                displayExpr: SCHEMA.contactroletype.Properties.name,
+                valueExpr: SCHEMA.contactroletype.Properties.name,
+                dataSource: roletypeData,
+                itemTemplate: function (data, _, element) {
+                    return element.append(
+                        $("<b>").text(data.name),
+                        $("<i>").text(data.description ? " - " + data.description : "")
+                    );
+                },
+                onItemClick: MobileCRM.UI.IFrameForm.setDirty
+            },
+            gpphone: { placeholder: "Enter Phone" },
+            gpcontactphonetype: {
+                displayExpr: SCHEMA.contactphonetype.Properties.name,
+                valueExpr: SCHEMA.contactphonetype.Properties.name,
+                dataSource: phonetypeData,
+                itemTemplate: function (data, _, element) {
+                    return element.append(
+                        $("<b>").text(data.name),
+                        $("<i>").text(data.description ? " - " + data.description : "")
+                    );
+                }
+            }
+        };
+        var requiredFormItems = [
+            SCHEMA.locationcontact.Properties.gpcontactname,
+            SCHEMA.locationcontact.Properties.gpemail
+        ];
+
+        $(function () {
+            checkIfMaximized_Multipanel();
+            //============== LOCALIZATION ================
+            MobileCRM.Localization.initialize(function (localization) {
+
+                //============== ANDROID CHECK ================
+                MobileCRM.Platform.preventBackButton(btnBackClicked);
+
+                //============== LOADPANEL ================
+                loading = MobileCRM.UI.Form.showPleaseWait(MobileCRM.Localization.get("Msg.Loading"));
+
+                //============== SCROLLVIEW ================
+                mainScrollView = $("#mainScrollView").dxScrollView({
+                    showScrollbar: "always",
+                    height: function () { return window.innerHeight - scrollHeight; },
+                    width: '100%'
+                }).dxScrollView("instance");
+                $(window).resize(function () {
+                    repaintScrollView(mainScrollView);
+                    checkIfMaximized_Multipanel();
+
+                    if (addRolePopup.option('visible')) {
+                        MobileCRM.UI.Form.requestObject(function (form) {
+                            addRolePopup.repaint();
+                        }, MobileCRM.bridge.alert);
+                    }
+                    if (duplicatePopup.option('visible')) {
+                        MobileCRM.UI.Form.requestObject(function (form) {
+                            duplicatePopup.repaint();
+                        }, MobileCRM.bridge.alert);
+                    }
+                });
+
+                //============== FORM ================
+                mainForm = $("#mainForm").dxForm({}).dxForm("instance");
+                addRoleForm = $("<div id='addRoleForm' />").dxForm({
+                    items: [{
+                        dataField: SCHEMA.contactroletype.Properties.name,
+                        label: {
+                            location: "top",
+                            text: MobileCRM.Localization.get(entityName + "." + SCHEMA.locationcontact.Properties.gpcontactroletype)
+                        },
+                        editorType: "dxTextBox",
+                        editorOptions: { maxLength: 10, inputAttr: { 'style': 'text-transform: uppercase' } },
+                        isRequired: true
+                    }]
+                }).dxForm("instance");
+
+                //============== POPUPS ================
+                addRolePopup = $("#addRolePopup").dxPopup({
+                    shading: true,
+                    shadingColor: "rgba(0,0,0,0.2)",
+                    contentTemplate: function (container) {
+                        container.append(
+                            addRoleForm.element(),
+                            $("<span style='float:right;margin:10px'>").dxButton({
+                                text: MobileCRM.Localization.get("Cmd.Save"),
+                                icon: "save", type: 'success',
+                                onClick: btnSaveRoleClicked
+                            }),
+                            $("<span style='float:right;margin:10px'>").dxButton({
+                                text: MobileCRM.Localization.get("Cmd.Cancel"),
+                                icon: "close", type: 'danger',
+                                onClick: function () { addRolePopup.hide(); }
+                            })
+                        );
+                        return container;
+                    },
+                    showTitle: false,
+                    position: 'center',
+                    height: '150px',
+                    width: '300px'
+                }).dxPopup("instance");
+                duplicatePopup = $("#duplicatePopup").dxPopup({
+                    shading: true,
+                    shadingColor: "rgba(0,0,0,0.2)",
+                    contentTemplate: function (container) {
+                        var scrollView = $("<div id='scrollView'></div>");
+                        scrollView.append(
+                            $("<strong>").append(MobileCRM.Localization.get("Alert.UpdateDiscardDuplicateContact")),
+                            $("<br><div id='contactCompare'/><br><br>"),
+                            $("<span style='float:right;margin:10px'>").dxButton({
+                                text: MobileCRM.Localization.get("Cmd.Update"),
+                                type: 'success',
+                                onClick: updateDuplicateContact
+                            }),
+                            $("<span style='float:right;margin:10px'>").dxButton({
+                                text: MobileCRM.Localization.get("Cmd.Discard"),
+                                type: 'danger',
+                                onClick: discardDuplicateContact
+                            })
+                        );
+                        scrollView.dxScrollView({
+                            height: '100%',
+                            width: '100%'
+                        });
+                        container.append(scrollView);
+                        return container;
+                    },
+                    title: MobileCRM.Localization.get(entityName + ".Title.DuplicateContact"),
+                    showCloseButton: false
+                }).dxPopup("instance");
+
+                //============== EVENT HANDLERS ================
+                MobileCRM.UI.IFrameForm.onSave(btnSaveClicked, true);
+
+                loadFormOptions();
+            }, alertError);
+        });
+
+        //============== MAXIMIZE FORM ================
+        function checkIfMaximized_Multipanel() {
+            MobileCRM.UI.Form.requestObject(function (form) {
+                MobileCRM.Platform.requestObject(function (platform) {
+                    if (platform.isMultiPanel && !form.isMaximized)
+                        maximizeForm();
+                }, MobileCRM.bridge.alert, null);
+            }, MobileCRM.bridge.alert, null);
+        }
+        function maximizeForm() {
+            MobileCRM.UI.Form.requestObject(function (form) {
+                form.isMaximized = true;
+            }, MobileCRM.bridge.alert, null);
+        }
+
+        //============== LOAD OPTIONS ================
+        function loadFormOptions() {
+            MobileCRM.UI.IFrameForm.requestObject(function (iFrame) {
+                // iFrame.form.showTitle = false;
+                isNew = iFrame.form.caption.indexOf("Create") > -1;
+
+                if (iFrame.options) {
+                    selected[entityName] = iFrame.options.selectedContact;
+                    selected.location = iFrame.options.locationid;
+                    locContacts = iFrame.options.contactList;
+
+                    allContactEntities = (isNew || typeof selected[entityName].gpcontactid === 'undefined') ?
+                        null : new DevExpress.data.DataSource({
+                            store: locContacts,
+                            filter: [SCHEMA.locationcontact.Properties.gpcontactid, "=", selected[entityName].gpcontactid],
+                            paginate: false
+                        });
+                }
+
+                loadFormItemOptions();
+            }, alertError, null);
+        }
+        function loadFormItemOptions() {
+            var isIE = window.navigator.userAgent.indexOf("MSIE ") > -1;
+            if (isIE) {
+                formItemOptions.gpcontactphonetype.searchEnabled = true;
+                formItemOptions.gpcontactphonetype.onOpened = null;
+            }
+            mainForm.option("items", (new FormItemFactory()).createAndUpdateItems(formItems, formItemOptions));
+
+            $(requiredFormItems).each(function (index, itemName) {
+                mainForm.itemOption(itemName, 'isRequired', true);
+            });
+
+            mainForm.itemOption(SCHEMA.locationcontact.Properties.gpphone, 'visible', isNew);
+            mainForm.itemOption(SCHEMA.locationcontact.Properties.gpcontactphonetype, 'visible', isNew);
+
+            if (isNew)
+                mainForm.itemOption('addPhoneBtn', 'visible', false);
+            else {
+                mainForm.updateData(selected[entityName]);
+                mainForm.updateData(SCHEMA.locationcontact.Properties.gpphone, '');
+                mainForm.updateData(SCHEMA.locationcontact.Properties.gpcontactphonetype, '');
+
+                // Can only add multiple phones to contacts that have an actual gpcontactid
+                mainForm.itemOption('addPhoneBtn', 'visible',
+                    selected[entityName].gpcontactid.toString().length < 32);
+            }
+
+            fetchDropDowns();
+        }
+
+        //============== LOAD DATA ================
+        function fetchDropDowns() {
+            fetchContactRoleType();
+            fetchContactPhoneType();
+            loading.close();
+        }
+        function loadDropDowns() {
+            $("#gpcontactroletype").dxSelectBox("instance").option('dataSource', roletypeData);
+            if (mainForm.itemOption(SCHEMA.locationcontact.Properties.gpcontactphonetype).visible)
+                mainForm.getEditor(SCHEMA.locationcontact.Properties.gpcontactphonetype).option('dataSource', phonetypeData);
+        }
+
+        function fetchContactRoleType() {
+            var entity = new MobileCRM.FetchXml.Entity(SCHEMA.contactroletype.name);
+            $(roleTypeAttributes).each(function (index, attribute) {
+                entity.addAttribute(attribute);
+            });
+            entity.orderBy(SCHEMA.contactroletype.Properties.name);
+
+            var fetch = new MobileCRM.FetchXml.Fetch(entity);
+            fetch.execute("JSON", function (res) {
+                roletypeData = res;
+
+                $("#gpcontactroletype").dxSelectBox("instance").option('dataSource', roletypeData);
+                if (mainForm.option("formData").gpcontactroletype)
+                    addRoleToDataSource(mainForm.option("formData").gpcontactroletype);
+            }, MobileCRM.bridge.alert);
+        }
+        function fetchContactPhoneType() {
+            var entity = new MobileCRM.FetchXml.Entity(SCHEMA.contactphonetype.name);
+            $(phoneTypeAttributes).each(function (index, attribute) {
+                entity.addAttribute(attribute);
+            });
+            entity.orderBy(SCHEMA.contactphonetype.Properties.name);
+
+            var fetch = new MobileCRM.FetchXml.Fetch(entity);
+            fetch.execute("JSON", function (res) {
+                phonetypeData = res;
+                if (isNew || mainForm.itemOption(SCHEMA.locationcontact.Properties.gpcontactphonetype).visible)
+                    mainForm.getEditor(SCHEMA.locationcontact.Properties.gpcontactphonetype).option('dataSource', phonetypeData);
+            }, MobileCRM.bridge.alert);
+        }
+
+        //============== TOOLBAR FUNCTIONS ================
+        function btnBackClicked() {
+            if (addRolePopup.option('visible')) {
+                addRoleForm.getEditor(SCHEMA.contactroletype.Properties.name).blur();
+                if (addRoleForm.getEditor(SCHEMA.contactroletype.Properties.name).option('value').trim() !== '') {
+                    sayLocalization("Alert.UnsavedData");
+                }
+                else {
+                    addRolePopup.hide();
+                }
+            }
+            else {
+                MobileCRM.bridge.closeForm();
+            }
+        }
+        function btnSaveClicked(iFrameForm) {
+            saveHandler = iFrameForm.suspendSave();
+            loading = MobileCRM.UI.Form.showPleaseWait(MobileCRM.Localization.get("Msg.Loading"));
+
+            //Lose Form Item Focus before validation check
+            try {
+                mainForm.focus();
+                mainForm.validate();
+            }
+            catch (e) {
+                alertError("Lose Form Item Focus error:\n" + e);
+            }
+
+            if (!mainForm.getEditor(SCHEMA.locationcontact.Properties.gpcontactname).option("value")) {
+                formItemInvalid(SCHEMA.locationcontact.Properties.gpcontactname, MobileCRM.Localization.get("Alert.MissingContactName"));
+            }
+            else if (!mainForm.getEditor(SCHEMA.locationcontact.Properties.gpemail).option("value")) {
+                formItemInvalid(SCHEMA.locationcontact.Properties.gpemail, MobileCRM.Localization.get("Alert.MissingContactEmail"));
+            }
+            else if (!isValidEmailAddress(mainForm.getEditor(SCHEMA.locationcontact.Properties.gpemail).option("value")) ||
+                !mainForm.getEditor(SCHEMA.locationcontact.Properties.gpemail).option("isValid")) {
+                formItemInvalid(SCHEMA.locationcontact.Properties.gpemail, MobileCRM.Localization.get("Alert.InvalidEmail"));
+            }
+            else if (mainForm.itemOption(SCHEMA.locationcontact.Properties.gpcontactphonetype).visible &&  // Have phone type but no phonenumber
+                mainForm.getEditor(SCHEMA.locationcontact.Properties.gpcontactphonetype).option("value") &&
+                !mainForm.getEditor(SCHEMA.locationcontact.Properties.gpphone).option("value")) {
+                formItemInvalid(SCHEMA.locationcontact.Properties.gpphone, MobileCRM.Localization.get("Alert.MissingPhoneNumber"));
+            }
+            else if (isNew && !mainForm.getEditor(SCHEMA.locationcontact.Properties.gpphone).option("value")) { // No way to have duplicate
+                createEntity();
+            }
+            else if ((isNew || mainForm.itemOption(SCHEMA.locationcontact.Properties.gpphone).visible) &&
+                mainForm.getEditor(SCHEMA.locationcontact.Properties.gpphone).option("value")) {
+                checkForDuplicate();    // Check for duplicate using the form's gpphone
+            }
+            else { // Check for duplicate using the gpphone of each contact entities
+                checkAllContactEntitiesForDuplicate();
+            }
+        }
+        function formItemInvalid(dataField, msg) {
+            loading.close();
+            mainForm.getEditor(dataField).option('isValid', false);
+            mainForm.getEditor(dataField).focus();
+            showToast(msg, 'error');
+        }
+
+        function checkForDuplicate() {
+            var formData = mainForm.option("formData");
+            var phoneNum = formData.gpphone ? formData.gpphone.replace(/[^0-9\.]/g, '') : "";
+
+            var existingContact = $.map(locContacts, function (contact) {
+                if (contact.id === formData.id && isNew)
+                    return null;
+                var matchContactId = formData.gpcontactid !== undefined && contact.gpcontactid === formData.gpcontactid;
+                var matchEmail = false;
+                // Remove extension if it is "0000"
+                var comparePhone = typeof contact.gpphone !== 'undefined' && contact.gpphone.substring(10) === "0000" ?
+                    contact.gpphone.substring(0, 10) : contact.gpphone;
+                var matchPhone = comparePhone === phoneNum;
+                if (contact.gpemail) {
+                    matchEmail = $.trim(contact.gpemail.toUpperCase()) === $.trim(formData.gpemail.toUpperCase());
+                }
+                return (matchContactId || matchEmail) && matchPhone ? contact : null;
+            });
+
+            if (existingContact[0]) {
+                if (isNew)
+                    duplicateContact(formData, existingContact[0]);
+                else {
+                    if (loading !== undefined)
+                        loading.close();
+                    showToast(MobileCRM.Localization.get("Alert.DuplicateContact"), "error");
+                }
+            }
+            else if (isNew)
+                createEntity();
+            else
+                updateAllContactEntities().then(addPhoneEntity, alertError);
+        }
+        function checkAllContactEntitiesForDuplicate() {
+            var formData = mainForm.option("formData");
+
+            allContactEntities.load().done(function (entities) {
+                var duplicateFound = false;
+
+                for (var index in entities) {
+                    var item = entities[index];
+                    var phoneNum = item.gpphone ? item.gpphone.replace(/[^0-9\.]/g, '') : "";
+
+                    if (phoneNum) {
+                        var existingContact = $.map(locContacts, function (contact) {
+                            if (contact.id === item.id)
+                                return null;
+                            var matchEmail = false;
+                            // Remove extension if it is "0000"
+                            var comparePhone = typeof contact.gpphone !== 'undefined' && contact.gpphone.substring(10) === "0000" ?
+                                contact.gpphone.substring(0, 10) : contact.gpphone;
+                            var matchPhone = comparePhone === phoneNum;
+                            if (contact.gpemail) {
+                                matchEmail = $.trim(contact.gpemail.toUpperCase()) === $.trim(formData.gpemail.toUpperCase());
+                            }
+                            return matchEmail && matchPhone ? contact : null;
+                        });
+
+                        loading.close();
+                        if (existingContact[0]) {
+                            showToast(MobileCRM.Localization.get("Alert.DuplicateContactPhone").format(formatPhone(phoneNum)), "error");
+                            break;
+                        }
+                        else if (parseInt(index) === entities.length - 1) { // Last entity to check
+                            updateAllContactEntities().then(updateCaption_CloseForm, alertError);
+                        }
+                    }
+                    else if (parseInt(index) === entities.length - 1) { // Last entity to check
+                        updateAllContactEntities().then(updateCaption_CloseForm, alertError);
+                    }
+                }
+            });
+        }
+
+        function duplicateContact(newContact, existingContact) {
+            var matchName = sameValues(newContact.gpcontactname, existingContact.gpcontactname);
+            var matchRole = sameValues(newContact.gpcontactroletype, existingContact.gpcontactroletype);
+            var matchPhoneType = sameValues(newContact.gpcontactphonetype, existingContact.gpcontactphonetype);
+
+            if (matchName && matchRole && matchPhoneType) {
+                MobileCRM.UI.IFrameForm.requestObject(function (IFrameForm) {
+                    IFrameForm.form.caption = MobileCRM.Localization.get("locationcontact.Title.ContactAlreadyExists");
+                    IFrameForm.isDirty = false;
+                    loading.close();
+                    MobileCRM.bridge.closeForm();
+                }, MobileCRM.bridge.alert, null);
+            }
+            else {
+                newContact.id = existingContact.id;
+                newContact.gpcontactid = existingContact.gpcontactid;
+                mainForm.updateData(newContact);
+                var lblName = MobileCRM.Localization.get(entityName + "." + SCHEMA.locationcontact.Properties.gpcontactname);
+                var lblEmail = MobileCRM.Localization.get(entityName + "." + SCHEMA.locationcontact.Properties.gpemail);
+                var lblRole = MobileCRM.Localization.get(entityName + "." + SCHEMA.locationcontact.Properties.gpcontactroletype);
+                var lblPhone = MobileCRM.Localization.get(entityName + "." + SCHEMA.locationcontact.Properties.gpphone);
+                var lblPhoneType = MobileCRM.Localization.get(entityName + "." + SCHEMA.locationcontact.Properties.gpcontactphonetype);
+                var lblNoChange = MobileCRM.Localization.get(entityName + ".Label.NoChange");
+                var lblExisting = MobileCRM.Localization.get(entityName + ".Label.Existing");
+                var lblNew = MobileCRM.Localization.get(entityName + ".Label.New");
+
+                var noChangeString = "<i>" + lblEmail + ": </i>" + newContact.gpemail +
+                    "<br><i>" + lblPhone + ": </i>" + formatNoneString(newContact.gpphone) + "<br>";
+                noChangeString += matchName ? "<i>" + lblName + ": </i>" + newContact.gpcontactname + "<br>" : "";
+                noChangeString += matchRole ? "<i>" + lblRole + ": </i>" + formatNoneString(newContact.gpcontactroletype) + "<br>" : "";
+                noChangeString += matchPhoneType ? "<i>" + lblPhoneType + ": </i>" + formatNoneString(newContact.gpcontactphonetype) + "<br>" : "";
+
+                var changeData = [];
+                if (!matchName) {
+                    changeData.push({
+                        attribute: lblName,
+                        existing: existingContact.gpcontactname,
+                        new: newContact.gpcontactname
+                    });
+                }
+
+                if (!matchRole) {
+                    changeData.push({
+                        attribute: lblRole,
+                        existing: formatNoneString(existingContact.gpcontactroletype),
+                        new: formatNoneString(newContact.gpcontactroletype)
+                    });
+                }
+
+                if (!matchPhoneType) {
+                    changeData.push({
+                        attribute: lblPhoneType,
+                        existing: formatNoneString(existingContact.gpcontactphonetype),
+                        new: formatNoneString(newContact.gpcontactphonetype)
+                    });
+                }
+
+                if (isNew || mainForm.itemOption(SCHEMA.locationcontact.Properties.gpphone).visible)
+                    mainForm.getEditor(SCHEMA.locationcontact.Properties.gpphone).blur();
+
+                loading.close();
+                duplicatePopup.show();
+                $("#contactCompare").empty();
+                $("#contactCompare").append(
+                    $("<br>"),
+                    $("<div>").append(
+                        $("<strong>").append(lblNoChange),
+                        $("<div>").append(noChangeString),
+                        $("<br>")
+                    ).css("color", "#808080"),
+                    $("<div>").dxDataGrid({
+                        dataSource: changeData,
+                        columns: [
+                            { dataField: "attribute", headerCellTemplate: $(), cssClass: "wrapText" },
+                            {
+                                dataField: "existing", cssClass: "wrapText",
+                                headerCellTemplate: $('<strong style="color: black">' + lblExisting + '</strong>')
+                            }, {
+                                dataField: "new", cssClass: "wrapText",
+                                headerCellTemplate: $('<strong style="color: green">' + lblNew + '</strong>'),
+                            }
+                        ]
+                    })
+                );
+            }
+        }
+        function sameValues(value1, value2) {
+            var match = !value1 && !value2 ? true : false;
+            if (value1 && value2)
+                match = $.trim(value1.toString().toUpperCase()) === $.trim(value2.toString().toUpperCase());
+
+            return match;
+        }
+        function formatNoneString(str) {
+            return str ? str : MobileCRM.Localization.get(entityName + ".Label.None");
+        }
+
+        //============== FORM ITEM FUNCTIONS ================
+        function newItemBtnClicked() {
+            addRolePopup.show();
+            addRoleForm.resetValues();
+        }
+        function btnSaveRoleClicked() {
+            addRoleForm.validate();
+            if (!addRoleForm.getEditor(SCHEMA.contactroletype.Properties.name).option("value")) {
+                addRoleForm.getEditor(SCHEMA.contactroletype.Properties.name).focus();
+                showToast(MobileCRM.Localization.get("Alert.MissingRoleName"), "error");
+            }
+            else
+                createRole();
+        }
+
+        function createRole() {
+            var formData = addRoleForm.option("formData");
+            addRoleToDataSource($.trim(formData.name.toUpperCase()));
+            MobileCRM.UI.IFrameForm.setDirty();
+            addRolePopup.hide();
+        }
+        function addRoleToDataSource(newRole) {
+            // CHECK IF gpcontactroletype ALREADY EXISTS AS A contactroletype ENTITY
+            var result = $.map(roletypeData, function (entry) {
+                var match = entry.name.toUpperCase().indexOf(newRole.toUpperCase()) !== -1;
+                return match ? entry : null;
+            });
+            if (result[0])
+                $("#gpcontactroletype").dxSelectBox("instance").option("value", result[0].name);
+            else {
+                var roleData = new DevExpress.data.DataSource({
+                    store: roletypeData,
+                    sort: SCHEMA.contactroletype.Properties.name,
+                    paginate: false
+                });
+                roleData.store().insert({
+                    name: newRole
+                }).done(function () {
+                    roleData.load();
+                    $("#gpcontactroletype").dxSelectBox("instance").option("dataSource", roleData);
+                    $("#gpcontactroletype").dxSelectBox("instance").option("value", newRole);
+                });
+            }
+        }
+
+        function showPhoneFormItems() {
+            mainForm.itemOption(SCHEMA.locationcontact.Properties.gpphone, 'visible', true);
+            mainForm.itemOption(SCHEMA.locationcontact.Properties.gpcontactphonetype, 'visible', true);
+            mainForm.itemOption('addPhoneBtn', 'visible', false);
+
+            loadDropDowns();
+        }
+
+        //============== FORM EXECUTIONS ================
+        function createEntity() {
+            // This is the first locationcontact entity for the customer
+            // That means gpphone and gpphonetype are visible
+            var formData = mainForm.option("formData");
+            var phoneNum = formData.gpphone ? formData.gpphone.replace(/[^0-9\.]/g, '') : "";
+
+            MobileCRM.DynamicEntity.loadById(SCHEMA.location.name, selected.location, function (loc) {
+                var entity = new MobileCRM.DynamicEntity.createNew(entityName);
+
+                entity.properties.name = "MT_Created";
+                entity.properties.gpcontacttype = "Signature";
+                entity.properties.gpcustomernumber = loc.properties.gpcustomernumber;
+                entity.properties.gplocationnumber = loc.properties.gplocationnumber;
+                entity.properties.locationid = new MobileCRM.DynamicEntity(SCHEMA.location.name, loc.id);
+
+                entity.properties.gpcontactname = formData.gpcontactname;
+                entity.properties.gpemail = formData.gpemail;
+                entity.properties.gpcontactroletype = formData.gpcontactroletype;
+                entity.properties.gpphone = phoneNum;
+                entity.properties.gpcontactphonetype = formData.gpcontactphonetype;
+
+                entity.save(error_createEntity);
+            }, MobileCRM.bridge.alert, null);
+        }
+        function error_createEntity(err) {
+            loading.close();
+            if (err)
+                MobileCRM.bridge.alert("Create New Contact Error:\n" + err);
+            else
+                updateCaption_CloseForm();
+        }
+
+        function updateDuplicateContact() {
+            updateAllContactEntities().then(function () {
+                duplicatePopup.hide();
+                var formData = mainForm.option("formData");
+                MobileCRM.DynamicEntity.loadById(entityName, formData.id, function (entity) {
+                    var phoneNum = formData.gpphone ? formData.gpphone.replace(/[^0-9\.]/g, '') : "";
+
+                    entity.properties.gpcontactname = formData.gpcontactname;
+                    entity.properties.gpemail = formData.gpemail;
+                    entity.properties.gpcontactroletype = formData.gpcontactroletype ? formData.gpcontactroletype : "";
+                    entity.properties.gpphone = phoneNum;
+                    entity.properties.gpcontactphonetype = formData.gpcontactphonetype;
+                    entity.save(error_updateDuplicateContact);
+                }, alertError);
+            }, alertError);
+        }
+        function error_updateDuplicateContact(err) {
+            loading.close();
+            if (err)
+                MobileCRM.bridge.alert("Error Updating Duplicate Contact:\n" + err);
+            else
+                updateCaption_CloseForm();
+        }
+        function discardDuplicateContact() {
+            duplicatePopup.hide();
+            MobileCRM.UI.IFrameForm.requestObject(function (iFrameForm) {
+                iFrameForm.isDirty = false;
+                MobileCRM.bridge.closeForm();
+            }, MobileCRM.bridge.alert);
+        }
+
+        function updateAllContactEntities() {
+            var deferred = $.Deferred();
+            if (!allContactEntities)
+                return deferred.resolve();
+
+            // No added phone, just need to update the common contact attributes
+            allContactEntities.load().done(function (entities) {
+                if (entities.length > 0) {
+                    var itemsDeferred = [];
+
+                    $(entities).each(function (i, contact) {
+                        itemsDeferred.push(
+                            updateContactEntity(contact, mainForm.option('formData'))
+                        );
+                    });
+
+                    $.when.apply($, itemsDeferred).then(function (res) {
+                        return deferred.resolve();
+                    }, function (err) { return deferred.reject(err); });
+                }
+                else
+                    return deferred.resolve();
+            });
+            return deferred.promise();
+        }
+        function updateContactEntity(contact, formData) {
+            var deferred = $.Deferred();
+
+            if (!contact || !formData)
+                return deferred.reject("Unable to update contact entity");
+
+            MobileCRM.DynamicEntity.loadById(entityName, contact.id, function (entity) {
+                entity.properties.gpcontactname = formData.gpcontactname;
+                entity.properties.gpemail = formData.gpemail;
+                entity.properties.gpcontactroletype = formData.gpcontactroletype ? formData.gpcontactroletype : "";
+                entity.save(function (err) {
+                    if (err)
+                        return deferred.reject("Error Updating Contact Entities:\n" + err);
+                    else
+                        return deferred.resolve();
+                });
+            }, function (err) { return deferred.reject(err); });
+            return deferred.promise();
+        }
+
+        function addPhoneEntity() {
+            // This contact already exists, just need to add a new phone
+            // Check if there is an existing entity with a blank gpphone - update
+            // Otherwise create a new locationcontact entity
+            var idToUpdate = null;
+            allContactEntities.load().done(function (entities) {
+                entities.forEach(function (item) {
+                    if (!item.gpphone)
+                        idToUpdate = item.id;
+                });
+            });
+
+            var formData = mainForm.option("formData");
+            var phoneNum = formData.gpphone ? formData.gpphone.replace(/[^0-9\.]/g, '') : "";
+
+            if (idToUpdate) { // Add phone number to existing Entity
+                MobileCRM.DynamicEntity.loadById(entityName, idToUpdate, function (entity) {
+                    entity.properties.gpphone = phoneNum;
+                    entity.properties.gpcontactphonetype = formData.gpcontactphonetype;
+                    entity.save(error_addPhoneEntity);
+                }, MobileCRM.bridge.alert, null);
+            }
+            else { // Create New Entity with corresponding gpcontactid
+                MobileCRM.DynamicEntity.loadById(SCHEMA.location.name, selected.location, function (loc) {
+                    var entity = new MobileCRM.DynamicEntity.createNew(entityName);
+                    entity.properties.gpcontacttype = "Signature";
+                    entity.properties.gpcustomernumber = loc.properties.gpcustomernumber;
+                    entity.properties.gplocationnumber = loc.properties.gplocationnumber;
+                    entity.properties.locationid = new MobileCRM.DynamicEntity(SCHEMA.location.name, loc.id);
+
+                    entity.properties.gpcontactname = formData.gpcontactname;
+                    entity.properties.gpemail = formData.gpemail;
+                    entity.properties.gpcontactroletype = formData.gpcontactroletype;
+                    entity.properties.gpphone = phoneNum;
+                    entity.properties.gpcontactphonetype = formData.gpcontactphonetype;
+
+                    if (formData.gpcontactid.toString().length > 32)
+                        entity.properties.name = formData.gpcontactid;
+                    else {
+                        entity.properties.name = "MT_Created";
+                        entity.properties.gpcontactid = parseInt(formData.gpcontactid);
+                    }
+                    entity.save(error_addPhoneEntity);
+                }, MobileCRM.bridge.alert, null);
+            }
+        }
+        function error_addPhoneEntity(err) {
+            loading.close();
+            if (err)
+                MobileCRM.bridge.alert("Error Adding Phone Number:\n" + err);
+            else
+                updateCaption_CloseForm();
+        }
+
+        function updateCaption_CloseForm() {
+            updateCaptionSetClean()
+                .then(MobileCRM.bridge.closeForm, alertError);
+        }
+        function updateCaptionSetClean() {
+            var deferred = $.Deferred();
+
+            MobileCRM.UI.IFrameForm.requestObject(function (iFrameForm) {
+                iFrameForm.isDirty = false;
+                iFrameForm.form.caption = isNew ? "Contact Added" : "Contact Updated";
+
+                return deferred.resolve();
+            }, function (err) { return deferred.reject(err); });
+            return deferred.promise();
+        }
+    </script>
+</body>
+</html>

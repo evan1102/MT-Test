@@ -1,0 +1,167 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<EntityList xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" UseSyncFilter="true">
+  <Attributes>
+    <EntityName>servicecall</EntityName>
+    <CamelCase>servicecall</CamelCase>
+    <VisualStudioProjectId>00000000-0000-0000-0000-000000000000</VisualStudioProjectId>
+    <ClassBinding />
+  </Attributes>
+  <ComponentId>00000000-0000-0000-0000-000000000000</ComponentId>
+  <Name>by Newest First</Name>
+  <Kind>List</Kind>
+  <IsDefault>false</IsDefault>
+  <AutoWideWidth>0</AutoWideWidth>
+  <AutoHeader>0</AutoHeader>
+  <MaxColumns>0</MaxColumns>
+  <Fetch version="1.0">
+    <entity name="servicecall">
+      <link-entity name="appointment" alias="L0" from="servicecallid" to="id" link-type="inner">
+        <link-entity name="appointmentstatus" alias="L1" from="id" to="appointmentstatusid" link-type="outer">
+          <filter type="and">
+            <filter type="and">
+              <condition attribute="name" operator="ne" value="COMPLETE" />
+              <condition attribute="name" operator="ne" value="RE-ASSIGN" />
+            </filter>
+          </filter>
+        </link-entity>
+      </link-entity>
+    </entity>
+  </Fetch>
+  <Search>
+    <attribute schema="callstatusid" method="Contains" />
+    <attribute schema="description" method="Contains" />
+    <attribute schema="gpequipmentid" method="Contains" />
+    <attribute schema="gpservicecallid" method="Contains" />
+    <attribute schema="name" method="Contains" />
+  </Search>
+  <OrderBy>!dateofcall</OrderBy>
+  <SerializedBindings>
+    <string>callstatusid</string>
+    <string>dateofcall</string>
+    <string>description</string>
+    <string>gpequipmentid</string>
+    <string>gpservicecallid</string>
+    <string>id</string>
+    <string>name</string>
+    <string>calltypeid.calltype.name</string>
+    <string>locationid.location.city</string>
+    <string>locationid.location.name</string>
+    <string>locationid.location.state</string>
+    <string>locationid.location.zip</string>
+  </SerializedBindings>
+  <SerializedTemplates>
+    <RowTemplate>
+      <DesignWidth>240</DesignWidth>
+      <DesignHeight>40</DesignHeight>
+      <Name>Default</Name>
+      <Width>300</Width>
+      <Height>110</Height>
+      <SerializedBackground>0</SerializedBackground>
+      <SerializedSelectedBackground>0</SerializedSelectedBackground>
+      <SerializedChildren>
+        <CellTemplate SchemaName="dateofcall">
+          <IsConstant>false</IsConstant>
+          <StyleName>black_date</StyleName>
+          <Bounds>204,6,94,12</Bounds>
+          <CellKind>0</CellKind>
+          <Anchor>9</Anchor>
+        </CellTemplate>
+        <CellTemplate SchemaName="locationid.location.name">
+          <IsConstant>false</IsConstant>
+          <StyleName>gray</StyleName>
+          <Bounds>2,36,296,14</Bounds>
+          <CellKind>0</CellKind>
+          <Anchor>5</Anchor>
+        </CellTemplate>
+        <CellTemplate SchemaName="locationid.location.city">
+          <IsConstant>false</IsConstant>
+          <StyleName>gray</StyleName>
+          <Bounds>2,51,122,14</Bounds>
+          <CellKind>0</CellKind>
+          <Anchor>5</Anchor>
+        </CellTemplate>
+        <CellTemplate SchemaName="locationid.location.state">
+          <IsConstant>false</IsConstant>
+          <StyleName>gray</StyleName>
+          <Bounds>125,51,78,14</Bounds>
+          <CellKind>0</CellKind>
+          <Anchor>5</Anchor>
+        </CellTemplate>
+        <CellTemplate SchemaName="locationid.location.zip">
+          <IsConstant>false</IsConstant>
+          <StyleName>gray</StyleName>
+          <Bounds>204,51,94,14</Bounds>
+          <CellKind>0</CellKind>
+          <Anchor>9</Anchor>
+        </CellTemplate>
+        <CellTemplate SchemaName="calltypeid.calltype.name">
+          <IsConstant>false</IsConstant>
+          <StyleName>gray</StyleName>
+          <Bounds>204,79,94,14</Bounds>
+          <CellKind>0</CellKind>
+          <Anchor>9</Anchor>
+        </CellTemplate>
+        <CellTemplate SchemaName="gpequipmentid">
+          <IsConstant>false</IsConstant>
+          <StyleName>gray</StyleName>
+          <Bounds>2,79,122,14</Bounds>
+          <CellKind>0</CellKind>
+          <Anchor>13</Anchor>
+        </CellTemplate>
+        <CellTemplate SchemaName="callstatusid">
+          <IsConstant>false</IsConstant>
+          <StyleName>gray</StyleName>
+          <Bounds>125,79,78,14</Bounds>
+          <CellKind>0</CellKind>
+          <Anchor>5</Anchor>
+        </CellTemplate>
+        <CellTemplate SchemaName="name">
+          <IsConstant>false</IsConstant>
+          <StyleName>primary</StyleName>
+          <Bounds>2,2,201,20</Bounds>
+          <CellKind>0</CellKind>
+          <Anchor>5</Anchor>
+        </CellTemplate>
+        <CellTemplate SchemaName="description">
+          <IsConstant>false</IsConstant>
+          <StyleName>gray</StyleName>
+          <Bounds>2,94,296,14</Bounds>
+          <CellKind>0</CellKind>
+          <Anchor>13</Anchor>
+        </CellTemplate>
+        <CellTemplate SchemaName="LOCATION">
+          <IsConstant>true</IsConstant>
+          <StyleName>blue_bold</StyleName>
+          <Bounds>2,23,78,12</Bounds>
+          <CellKind>0</CellKind>
+          <Anchor>5</Anchor>
+        </CellTemplate>
+        <CellTemplate SchemaName="EQUIPMENT">
+          <IsConstant>true</IsConstant>
+          <StyleName>blue_bold</StyleName>
+          <Bounds>2,66,122,12</Bounds>
+          <CellKind>0</CellKind>
+          <Anchor>5</Anchor>
+        </CellTemplate>
+        <CellTemplate SchemaName="STATUS">
+          <IsConstant>true</IsConstant>
+          <StyleName>blue_bold</StyleName>
+          <Bounds>125,66,78,12</Bounds>
+          <CellKind>0</CellKind>
+          <Anchor>5</Anchor>
+        </CellTemplate>
+        <CellTemplate SchemaName="CALL TYPE">
+          <IsConstant>true</IsConstant>
+          <StyleName>blue_bold</StyleName>
+          <Bounds>204,66,94,12</Bounds>
+          <CellKind>0</CellKind>
+          <Anchor>9</Anchor>
+        </CellTemplate>
+      </SerializedChildren>
+    </RowTemplate>
+  </SerializedTemplates>
+  <CustomProperties />
+  <SharedVariables>&lt;SharedVariables&gt;&lt;Variables /&gt;&lt;/SharedVariables&gt;</SharedVariables>
+  <SerializedChildren />
+  <Height>80</Height>
+</EntityList>

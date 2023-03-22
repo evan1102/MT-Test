@@ -1,0 +1,379 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <!-- Activate IE9 document mode, if available -->
+    <meta charset="utf-8" http-equiv="X-UA-Compatible" content="IE=edge" />
+    <!-- Defined iOS viewport -->
+    <meta name="viewport" content="initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=false">
+    <!-- Disable iOS Phone No Detection -->
+    <meta name="format-detection" content="telephone=no" />
+    <!-- DevExtreme dependencies -->
+    <script type="text/javascript" src="../../scripts/jquery.min.js"></script>
+    <!-- DevExtreme themes -->
+    <link rel="stylesheet" type="text/css" href="../../css/dx.light.css" />
+    <!-- A DevExtreme library -->
+    <script type="text/javascript" src="../../scripts/dx.all.js"></script>
+    <!-- Offline HTML JavaScript Bridge-->
+    <script type="text/javascript" src="../../scripts/JSBridge.js"></script>
+    <script type="text/javascript" src="../../scripts/k2aMethods.js"></script>
+    <script type="text/javascript" src="../../enum/Schema.js"></script>
+    <script type="text/javascript" src="../../enum/setupoption.js"></script>
+    <!-- Offline HTML Template Factory-->
+    <script type="text/javascript" src="../../templates/listItem-factory.js"></script>
+    <script type="text/javascript" src="../../templates/toolbar-factory.js"></script>
+    <!-- Offline HTML Styling -->
+    <link rel="stylesheet" type="text/css" href="../../css/k2a.css" />
+    <title>Entity List</title>
+    <style>
+        .folder-icon {
+            width: 25px;
+            height: 25px;
+            padding-right: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div id="toast"></div>
+    <div class="fixedPosition">
+        <div id="mainToolbar"></div><br>
+        <div id="listToolbar"></div>
+        <div id="mainScrollView">
+            <div id='treeView'></div>
+        </div>
+    </div>
+
+    <script>
+        //============== INITIAL SETTINGS ================
+        var entityName = SCHEMA.resco_questionnaire.name;
+        var tabName = 'inspectionfolder', scrollHeight = 110;
+        var sortDesc = false, sortSelector = SCHEMA.resco_questionnaire.Properties.resco_name;
+        //============== OFFLINE DATA ================
+        var folderData, inspectionData, treeViewItems, isCollapsed = true;
+        //============== SELECTED DATA ================
+        var selected = { entityName: null };
+        //============== FETCH DATA ================
+        var requiredSetupOptions = [];
+        var entityAttributes = [
+            SCHEMA.resco_questionnaire.Properties.resco_questionnaireid,
+            SCHEMA.resco_questionnaire.Properties.resco_name,
+            SCHEMA.resco_questionnaire.Properties.resco_folderid
+        ];
+        var folderAttributes = [
+            SCHEMA.resco_questionnairefolder.Properties.resco_questionnairefolderid,
+            SCHEMA.resco_questionnairefolder.Properties.resco_name,
+            SCHEMA.resco_questionnairefolder.Properties.resco_parentid
+        ];
+        var listSortItems = [
+            SCHEMA.resco_questionnaire.Properties.resco_name
+        ];
+        var listSearchItems = [SCHEMA.resco_questionnaire.Properties.resco_name];
+        var folderTemplate = function (data, _, element) {
+            var openFolderImg = "../../images/folder-open.png";
+            var closedFolderImg = "../../images/folder-closed.png";
+            element.append(
+                $("<div>").append(
+                    $("<img>").attr('src', data.expanded ? openFolderImg : closedFolderImg).addClass('folder-icon'),
+                    data.resco_name
+                ).css('padding-bottom', '10px')
+            ).css('border-bottom', '1px solid #3f4044')
+        };
+        var inspectionTemplate = function (data, _, element) {
+            element.append(data.resco_name).click(function () {
+                openInspectionForm(data);
+            });
+        };
+        //============== TOOLBAR ITEMS ================
+        var mainToolbarItems = [
+            ToolbarItemType.btnBack, ToolbarItemType.title
+        ];
+        var listToolbarItems = [
+            ToolbarItemType.btnSort, ToolbarItemType.selectSort, ToolbarItemType.btnExpandCollapse
+        ];
+
+        $(function () {
+            //============== LOCALIZATION ================
+            MobileCRM.Localization.initialize(function (localization) {
+
+                //============== ANDROID CHECK ================
+                MobileCRM.Platform.preventBackButton(btnBackClicked);
+
+                //============== LOADPANEL ================
+                loading = MobileCRM.UI.Form.showPleaseWait(MobileCRM.Localization.get("Msg.Loading"));
+
+                //============== SCROLLVIEW ================
+                mainScrollView = $("#mainScrollView").dxScrollView({
+                    showScrollbar: "always",
+                    height: function () { return window.innerHeight - scrollHeight; },
+                    width: '100%'
+                }).dxScrollView("instance");
+                $(window).resize(function () {
+                    checkIsMultiPanel(mainToolbar); // Update toolbar if needed
+                    repaintScrollView(mainScrollView);
+                });
+
+                //============== TOOLBARS ================
+                mainToolbar = $("#mainToolbar").dxToolbar({
+                    items: (new ToolbarFactory()).addItems(mainToolbarItems)
+                }).dxToolbar("instance");
+                listToolbar = $("#listToolbar").dxToolbar({
+                    items: (new ToolbarFactory()).addItems(listToolbarItems)
+                }).dxToolbar("instance");
+
+                //============== LIST ================
+                treeView = $("#treeView").dxTreeView({
+                    searchEnabled: true,
+                    searchExpr: listSearchItems,
+                    selectByClick: false,
+                    expandEvent: 'click',
+                    onItemCollapsed: itemCollapsedExpanded,
+                    onItemExpanded: itemCollapsedExpanded
+                }).dxTreeView("instance");
+
+
+                loadSetupOptions(loadListOptions);
+            }, alertError);
+        });
+
+        //============== LOAD OPTIONS ================
+        function loadListOptions() {
+            MobileCRM.Application.checkUserRoles(['Inspector'], function (roleCount) {
+                if (roleCount === 1) {  // Has Inspector Role
+                    loadToolbarOptions();
+                    loadListItemOptions();
+                }
+                else {
+                    loading.close();
+                    var msg = MobileCRM.Localization.get("Alert.MissingInspectorRole");
+                    MobileCRM.UI.MessageBox.sayText(msg, function () {
+                        var title = MobileCRM.Localization.get("Title.MissingInspectorRole");
+                        updateToolbarItem(mainToolbar, ToolbarItemType.title, "html", "<b>" + title + "</b>");
+
+                        MobileCRM.UI.EntityForm.requestObject(function (entityForm) {
+                            if (entityForm.detailViews[0]) {
+                                entityForm.selectTab(entityForm.detailViews[0].name);
+                                entityForm.setTabVisibility(tabName, false);
+                            }
+                        }, function (err) { });
+                    }, alertError);
+                }
+            }, function (err) {
+                MobileCRM.bridge.alert("Check User Roles Error: " + err);
+            });
+        }
+        function loadToolbarOptions() {
+            var title = MobileCRM.Localization.get("Title.InspectionTemplates");
+            updateToolbarItem(mainToolbar, ToolbarItemType.title, "html", "<b>" + title + "</b>");
+
+            loadSortItemsLocalization(listSortItems).then(function (sortDataSource) {
+                updateToolbarItem(listToolbar, ToolbarItemType.selectSort, "options.dataSource", sortDataSource);
+                updateToolbarItem(listToolbar, ToolbarItemType.selectSort, "options.value", sortSelector);
+            });
+            updateToolbarItem(listToolbar, ToolbarItemType.btnExpandCollapse, "location", 'after');
+
+            checkIsMultiPanel(mainToolbar);
+        }
+        function loadListItemOptions() {
+            fetchTreeViewData();
+        }
+
+        //============== LOAD DATA ================
+        function fetchTreeViewData() {
+            var itemsDeferred = [
+                fetchFolderData(),
+                fetchInspectionData()
+            ];
+
+            $.when.apply($, itemsDeferred).then(function () {
+                loadTreeViewData();
+            }, alertError);
+        }
+
+        function fetchFolderData() {
+            var deferred = $.Deferred();
+            var entity = new MobileCRM.FetchXml.Entity(SCHEMA.resco_questionnairefolder.name);
+            $(folderAttributes).each(function (index, attribute) {
+                entity.addAttribute(attribute);
+            });
+            entity.orderBy(SCHEMA.resco_questionnairefolder.Properties.resco_name, sortDesc);
+
+            var fetch = new MobileCRM.FetchXml.Fetch(entity);
+            fetch.execute("JSON", function (res) {
+                folderData = res;
+                return deferred.resolve();
+            }, function (err) {
+                return deferred.reject("Fetch Folder Data Error: " + err);
+            });
+            return deferred.promise();
+        }
+
+        function fetchInspectionData() {
+            var deferred = $.Deferred();
+            var entity = new MobileCRM.FetchXml.Entity(entityName);
+            $(entityAttributes).each(function (index, attribute) {
+                entity.addAttribute(attribute);
+            });
+            entity.orderBy(sortSelector, sortDesc);
+
+            entity.addFilter().where(SCHEMA.resco_questionnaire.Properties.resco_istemplate, 'eq', 1);
+
+            var fetch = new MobileCRM.FetchXml.Fetch(entity);
+            fetch.execute("JSON", function (res) {
+                inspectionData = res;
+                return deferred.resolve();
+            }, function (err) {
+                return deferred.reject("Fetch Inspection Data Error: " + err);
+            });
+            return deferred.promise();
+        }
+
+        function loadTreeViewData() {
+            try {
+                treeViewItems = [];
+                var childFolders = [];
+                var childInspections = [];
+
+                // Load Base Folders and Inspections
+                $(folderData).each(function (i, folder) {
+                    var treeItemFolder = {
+                        id: folder.resco_questionnairefolderid,
+                        resco_name: folder.resco_name,
+                        parentid: folder.resco_parentid ? folder.resco_parentid.id : null,
+                        template: folderTemplate
+                    };
+
+                    if (folder.resco_parentid) {
+                        childFolders.push(treeItemFolder);
+                    }
+                    else {
+                        treeViewItems.push(treeItemFolder);
+                    }
+                });
+
+                $(inspectionData).each(function (i, inspection) {
+                    var treeItemInspection = {
+                        id: inspection.resco_questionnaireid,
+                        resco_name: inspection.resco_name,
+                        parentid: inspection.resco_folderid ? inspection.resco_folderid.id : null,
+                        template: inspectionTemplate
+                    };
+
+                    if (inspection.resco_folderid) {
+                        childInspections.push(treeItemInspection);
+                    }
+                    else {
+                        treeViewItems.push(treeItemInspection);
+                    }
+                });
+
+                // Load Child Folders and Inspections
+                addChildItemsToParent(childFolders, treeViewItems);
+                addChildItemsToParent(childInspections, treeViewItems);
+
+                treeView.option('items', treeViewItems);
+                if (!isCollapsed) {
+                    treeView.expandAll();
+                }
+                loading.close();
+            }
+            catch (e) { alertError("Load Tree View Data Error: " + e); }
+        }
+
+        function addChildItemsToParent(childItems, parentItems) {
+            var deferred = $.Deferred();
+            try {
+                var itemsWithoutParent = [];
+
+                $(childItems).each(function (_, child) {
+                    var parentFound = false;
+                    $(parentItems).each(function (_, parent) {
+                        if (parent.id === child.parentid) {
+                            if (parent.items) {
+                                parent.items.push(child);
+                            }
+                            else {
+                                parent.items = [child];
+                            }
+
+                            parentFound = true;
+                            return false;
+                        }
+                    });
+
+                    if (!parentFound) {
+                        itemsWithoutParent.push(child);
+                    }
+                });
+
+                if (itemsWithoutParent.length === 0) {
+                    return deferred.resolve();
+                }
+                else {
+                    var nextRoundParents = [];
+                    $(parentItems).each(function (_, parent) {
+                        $(parent.items).each(function (_, nextRoundItem) {
+                            nextRoundParents.push(nextRoundItem);
+                        });
+                    });
+
+                    addChildItemsToParent(itemsWithoutParent, nextRoundParents);
+                }
+            }
+            catch (e) {
+                alertError("Add Child Items to Parent Error: " + e);
+            }
+
+            return deferred.promise();
+        }
+
+        //============== TOOLBAR FUNCTIONS ================
+        function btnSortClicked() {
+            sortSelected();
+        }
+        function sortSelected() {
+            if (folderData && inspectionData) {
+                folderData.sort(sortBySelector);
+                inspectionData.sort(sortBySelector);
+                loadTreeViewData();
+            }
+        }
+
+        function sortBySelector(a, b) {
+            var nameA = a[sortSelector].toUpperCase();
+            var nameB = b[sortSelector].toUpperCase();
+
+            if (nameA === nameB) {
+                return 0;
+            }
+            else if (nameA > nameB) {
+                return sortDesc ? -1 : 1;
+            }
+            else {
+                return sortDesc ? 1 : -1;
+            }
+        }
+
+        function btnExpandCollapseClicked(currentlyCollapsed) {
+            if (currentlyCollapsed) {
+                isCollapsed = false;
+                treeView.expandAll();
+            }
+            else {
+                isCollapsed = true;
+                treeView.collapseAll();
+            }
+        }
+
+        //============== LIST ITEM FUNCTIONS ================
+        function itemCollapsedExpanded(e) {
+            e.component.repaint();
+        }
+
+        function openInspectionForm(data) {
+            if (!data) {
+                alertError("Open Inspection Form Error: Missing Inspection Details");
+            }
+            MobileCRM.Questionnaire.showForm(data.id, alertError);
+        }
+    </script>
+</body>
+</html>

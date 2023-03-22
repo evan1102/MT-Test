@@ -1,0 +1,398 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <!-- Activate IE9 document mode, if available -->
+    <meta charset="utf-8" http-equiv="X-UA-Compatible" content="IE=edge" />
+    <!-- Defined iOS viewport -->
+    <meta name="viewport" content="initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=false">
+    <!-- Disable iOS Phone No Detection -->
+    <meta name="format-detection" content="telephone=no" />
+    <!-- DevExtreme dependencies -->
+    <script type="text/javascript" src="../../scripts/jquery.min.js"></script>
+    <!-- DevExtreme themes -->
+    <link rel="stylesheet" type="text/css" href="../../css/dx.light.css" />
+    <!-- A DevExtreme library -->
+    <script type="text/javascript" src="../../scripts/dx.all.js"></script>
+    <!-- Offline HTML JavaScript Bridge-->
+    <script type="text/javascript" src="../../scripts/JSBridge.js"></script>
+    <script type="text/javascript" src="../../scripts/k2aMethods.js"></script>
+    <script type="text/javascript" src="../../enum/Schema.js"></script>
+    <script type="text/javascript" src="../../enum/setupoption.js"></script>
+    <!-- Offline HTML Template Factory-->
+    <script type="text/javascript" src="../../templates/listItem-factory.js"></script>
+    <script type="text/javascript" src="../../templates/toolbar-factory.js"></script>
+    <!-- Offline HTML Styling -->
+    <link rel="stylesheet" type="text/css" href="../../css/k2a.css" />
+    <title>Entity List</title>
+</head>
+<body>
+    <div id="toast"></div>
+    <div class="fixedPosition">
+        <div id="mainToolbar"></div><br>
+        <div id="listToolbar"></div>
+        <div id="mainScrollView">
+            <div id='mainList'></div>
+        </div>
+        <div id="actionSheet"></div>
+        <div id="filterPopup"></div>
+    </div>
+
+    <script>
+        //============== INITIAL SETTINGS ================
+        var entityName = SCHEMA.invoice.name;
+        var sortDesc = false, sortSelector = SCHEMA.invoice.Properties.gpinvoicenumber;
+        const ViewLabel = {
+            all: "All Invoices",
+            processed: "Processed Invoices",
+            unprocessed: "Unprocessed Invoices"
+        };
+        const PaymentFormMode = {
+            new: '0',
+            detail: '1',
+            edit: '2',
+            summary: '3'
+        };
+        var selectedView = ViewLabel.all, scrollHeight = 110;
+        //============== OFFLINE DATA ================
+        var entityListData;
+        //============== SELECTED DATA ================
+        var selected = {};
+        //============== FETCH DATA ================
+        var requiredSetupOptions = [SETUPOPTION.UseFieldPayments];
+        var entityAttributes = [
+            SCHEMA.invoice.Properties.id,
+            SCHEMA.invoice.Properties.gpinvoicenumber,
+            SCHEMA.invoice.Properties.customername,
+            SCHEMA.invoice.Properties.locationname,
+            SCHEMA.invoice.Properties.servicecallid,
+            SCHEMA.invoice.Properties.gpservicecallid,
+            SCHEMA.invoice.Properties.appointmentid,
+            SCHEMA.invoice.Properties.transactiondate,
+            SCHEMA.invoice.Properties.amount,
+            SCHEMA.invoice.Properties.paymentid,
+            SCHEMA.invoice.Properties.ispaymentprocessed
+        ];
+        var paymentAttributes = [
+            SCHEMA.payment.Properties.cashamount,
+            SCHEMA.payment.Properties.checkamount,
+            SCHEMA.payment.Properties.creditcardamount
+        ];
+        var listSortItems = [
+            SCHEMA.invoice.Properties.gpinvoicenumber
+        ];
+        var listSearchItems = [
+            SCHEMA.invoice.Properties.gpinvoicenumber,
+            SCHEMA.invoice.Properties.customername,
+            SCHEMA.invoice.Properties.locationname,
+            SCHEMA.invoice.Properties.gpservicecallid,
+            SCHEMA.invoice.Properties.appointmentid,
+            SCHEMA.invoice.Properties.transactiondate,
+            SCHEMA.invoice.Properties.amount,
+            'payment_cashamount',
+            'payment_checkamount',
+            'payment_creditcardamount'
+        ];
+        var listFilterItems = [
+            { dataField: SCHEMA.invoice.Properties.gpinvoicenumber, dataType: FilterDataType.string },
+            { dataField: SCHEMA.invoice.Properties.customername, dataType: FilterDataType.string },
+            { dataField: SCHEMA.invoice.Properties.locationname, dataType: FilterDataType.string },
+            { dataField: SCHEMA.invoice.Properties.gpservicecallid, dataType: FilterDataType.string },
+            { dataField: SCHEMA.invoice.Properties.transactiondate, dataType: FilterDataType.date },
+            { dataField: SCHEMA.invoice.Properties.amount, dataType: FilterDataType.number }
+        ];
+        var listItemTemplate = function (data, _, element) {
+            var labels = {};
+            labels.customerLocation = MobileCRM.Localization.get(entityName + ".customer_location");
+            labels.serviceCall = MobileCRM.Localization.get(entityName + "." + SCHEMA.invoice.Properties.gpservicecallid);
+            labels.invoiceAmount = MobileCRM.Localization.get(entityName + ".invoice_amount");
+            labels.cash = MobileCRM.Localization.get(entityName + ".payment_cash");
+            labels.check = MobileCRM.Localization.get(entityName + ".payment_check");
+            labels.cc = MobileCRM.Localization.get(entityName + ".payment_creditcard");
+
+            element.append(
+                $("<span>").append(data.gpinvoicenumber).css("font-size", "large"),
+                $("<span>").append(formatDate(data.transactiondate)).css("float", "right"),
+                $("<br>"),
+                $("<div>").append(labels.customerLocation.toUpperCase() + ": ").addClass('listItemLabel'),
+                $("<div>").append(data.customername, "<br>", data.locationname),
+                $("<span>").append(labels.serviceCall.toUpperCase() + ": ").addClass('listItemLabel'),
+                $("<span>").append(data.gpservicecallid),
+                $("<br>"),
+                $("<div>").append(
+                    $("<span>").append(labels.invoiceAmount + ": ").addClass('listItemLabel'),
+                    $("<span>").append("$ " + (data.amount ? parseFloat(data.amount).toFixed(2) : "0.00"))
+                ).css('margin-left', '30px')
+            );
+
+            if (selectedView === ViewLabel.processed) {
+                element.append(
+                    $("<span>").append(
+                        $("<span>").append(labels.cash + ": ").addClass('listItemLabel'),
+                        $("<span>").append("$ " + (data.payment_cashamount ? parseFloat(data.payment_cashamount).toFixed(2) : "0.00"))
+                    ).css({ 'margin-left': '15px' }),
+                    $("<span>").append(
+                        $("<span>").append("  " + labels.check + ": ").addClass('listItemLabel'),
+                        $("<span>").append("$ " + (data.payment_checkamount ? parseFloat(data.payment_checkamount).toFixed(2) : "0.00"))
+                    ).css({ 'margin-left': '15px' }),
+                    $("<span>").append(
+                        $("<span>").append("  " + labels.cc + ": ").addClass('listItemLabel'),
+                        $("<span>").append("$ " + (data.payment_creditcardamount ? parseFloat(data.payment_creditcardamount).toFixed(2) : "0.00"))
+                    ).css({ 'margin-left': '15px' })
+                );
+            }
+        };
+        //============== TOOLBAR ITEMS ================
+        var mainToolbarItems = [
+            ToolbarItemType.selectView, ToolbarItemType.btnSummary
+        ];
+        var listToolbarItems = [
+            ToolbarItemType.btnSort, ToolbarItemType.selectSort, ToolbarItemType.btnFilter
+        ];
+        //============== LIST ACTION ITEMS ================
+        var actionItems = [
+            { text: "Payment", onClick: editPayment }
+        ];
+
+        $(function () {
+            //============== LOCALIZATION ================
+            MobileCRM.Localization.initialize(function (localization) {
+
+                //============== ANDROID CHECK ================
+                MobileCRM.Platform.preventBackButton(btnBackClicked);
+
+                //============== LOADPANEL ================
+                loading = MobileCRM.UI.Form.showPleaseWait(MobileCRM.Localization.get("Msg.Loading"));
+
+                //============== SCROLLVIEW ================
+                mainScrollView = $("#mainScrollView").dxScrollView({
+                    showScrollbar: "always",
+                    height: function () { return window.innerHeight - scrollHeight; },
+                    width: '100%'
+                }).dxScrollView("instance");
+                $(window).resize(function () {
+                    repaintScrollView(mainScrollView);
+                    updateToolbarItem(mainToolbar, ToolbarItemType.selectView, 'options', {
+                        width: $(window).width() * 0.75,
+                        value: selectedView
+                    });
+                });
+
+                //============== TOOLBARS ================
+                mainToolbar = $("#mainToolbar").dxToolbar({
+                    items: (new ToolbarFactory()).addItems(mainToolbarItems)
+                }).dxToolbar("instance");
+                listToolbar = $("#listToolbar").dxToolbar({
+                    items: (new ToolbarFactory()).addItems(listToolbarItems)
+                }).dxToolbar("instance");
+
+                //============== LIST ================
+                mainList = (new ListFactory()).createItem("#mainList", entityName, [
+                    { name: 'searchExpr', value: listSearchItems },
+                    { name: 'itemTemplate', value: listItemTemplate }
+                ]);
+
+                //============== ACTION SHEETS ================
+                actionSheet = (new ActionSheetFactory()).createItem(actionItems, "#actionSheet");
+
+                //============== EVENT HANDLERS ================
+                MobileCRM.bridge.raiseGlobalEvent("CloseAllForms");
+                MobileCRM.bridge.onGlobalEvent("EntityFormClosed", function (closedForm) {
+                    if (closedForm.entity &&
+                        (closedForm.entity.entityName === entityName || closedForm.entity.entityName === SCHEMA.payment.name))
+                        fetchListEntityData();
+                }, true);
+                MobileCRM.Configuration.requestObject(function (config) {
+                    MobileCRM.bridge.onGlobalEvent("SyncFinished", fetchListEntityData, !config.settings.requireSyncLogin);
+                }, MobileCRM.bridge.alert);
+
+                loadSetupOptions(loadListOptions);
+            }, alertError);
+        });
+
+        //============== LOAD OPTIONS ================
+        function loadListOptions() {
+            loadSelectedView(entityName).then(function (view) {
+                sortDesc = view && view.desc ? JSON.parse(view.desc) : sortDesc;
+                selectedView = view && view.select ? view.select : selectedView;
+
+                loadToolbarOptions();
+                loadListItemOptions();
+            }, alertError);
+        }
+        function loadToolbarOptions() {
+            if (typeof listFilterItems !== 'undefined' && listFilterItems.length > 0)
+                (new FilterFactory()).createFilterPopup(mainList, listToolbar);
+
+            updateToolbarItem(mainToolbar, ToolbarItemType.selectView, "options", {
+                displayExpr: 'display',
+                valueExpr: 'value',
+                items: [
+                    { display: MobileCRM.Localization.getComponentLabel(entityName, "View", ViewLabel.all), value: ViewLabel.all },
+                    { display: MobileCRM.Localization.getComponentLabel(entityName, "View", ViewLabel.processed), value: ViewLabel.processed },
+                    { display: MobileCRM.Localization.getComponentLabel(entityName, "View", ViewLabel.unprocessed), value: ViewLabel.unprocessed }
+                ],
+                width: $(window).width() * 0.75,
+                value: selectedView
+            });
+
+            updateToolbarItem(mainToolbar, ToolbarItemType.btnSummary, "visible", setupOptions.UseFieldPayments && selectedView === ViewLabel.processed);
+
+            loadSortItemsLocalization(listSortItems).then(function (sortDataSource) {
+                updateToolbarItem(listToolbar, ToolbarItemType.selectSort, "options.dataSource", sortDataSource);
+                updateToolbarItem(listToolbar, ToolbarItemType.selectSort, "options.value", sortSelector);
+            });
+            updateToolbarItem(listToolbar, ToolbarItemType.btnSort, "options.icon", sortDesc ? 'arrowdown' : 'arrowup');
+        }
+        function loadListItemOptions() {
+            fetchListEntityData();
+        }
+
+        //============== LOAD DATA ================
+        function fetchListEntityData() {
+            var entity = new MobileCRM.FetchXml.Entity(entityName);
+            $(entityAttributes).each(function (index, attribute) {
+                entity.addAttribute(attribute);
+            });
+            entity.orderBy(sortSelector, sortDesc);
+
+            var paymentLink = entity.addLink(
+                SCHEMA.payment.name,
+                SCHEMA.payment.Properties.id,
+                SCHEMA.invoice.Properties.paymentid,
+                'outer');
+            paymentLink.alias = SCHEMA.payment.name;
+            $(paymentAttributes).each(function (index, attribute) {
+                paymentLink.addAttribute(attribute);
+            });
+
+            var fetch = new MobileCRM.FetchXml.Fetch(entity);
+            fetch.execute("JSON", function (res) {
+                $(res).each(function (_, invoice) {
+                    // Formats needed for filter
+                    invoice.transactiondate = new Date(invoice.transactiondate);
+                    invoice.ispaymentprocessed = JSON.parse(invoice.ispaymentprocessed.toLowerCase());
+
+                    // Linked format needed for search (can't have ".")
+                    $(paymentAttributes).each(function (_, attr) {
+                        if (invoice[paymentLink.alias + "." + attr]) {
+                            invoice[paymentLink.alias + "_" + attr] = invoice[paymentLink.alias + "." + attr];
+                        }
+                    });
+                });
+
+                entityListData = res;
+                loadViewFilteredData();
+            }, alertError);
+        }
+
+        function loadViewFilteredData() {
+            var filteredData = new DevExpress.data.DataSource({
+                store: entityListData,
+                paginate: false
+            });
+
+            switch (selectedView) {
+                case ViewLabel.processed:
+                    filteredData.filter([SCHEMA.invoice.Properties.ispaymentprocessed, '=', true]);
+                    break;
+                case ViewLabel.unprocessed:
+                    filteredData.filter([SCHEMA.invoice.Properties.ispaymentprocessed, '=', false]);
+                    break;
+            }
+
+            filteredData.load().done(function (data) {
+                loadListData(mainList, data);
+                loading.close();
+            });
+        }
+
+        //============== TOOLBAR FUNCTIONS ================
+        function btnSortClicked() {
+            updateSelectedView(entityName, { desc: sortDesc, select: selectedView })
+                .then(loadViewFilteredData, MobileCRM.bridge.alert);
+        }
+        function sortSelected() {
+            btnSortClicked();
+        }
+
+        function viewSelected(e) {
+            if (selectedView != e.selectedItem.value) {
+                selectedView = e.selectedItem.value;
+
+                updateSelectedView(entityName, { desc: sortDesc, select: selectedView })
+                    .then(function () {
+                        if (setupOptions.UseFieldPayments) {
+                            mainToolbar.option("items[1].visible", selectedView === ViewLabel.processed);
+                        }
+                        loadViewFilteredData()
+                    }, MobileCRM.bridge.alert);
+            }
+        }
+
+        function btnSummaryClicked() {
+            MobileCRM.UI.FormManager.showEditDialog(SCHEMA.payment.name, null, null,
+                { "iFrameOptions": { PaymentFormMode: PaymentFormMode.summary } });
+        }
+
+        //============== LIST ITEM FUNCTIONS ================
+        function listItemClicked() {
+            if (setupOptions.UseFieldPayments && selected[entityName] && parseFloat(selected[entityName].amount) !== 0) {
+                actionSheet.option({
+                    title: MobileCRM.Localization.get(entityName) + ": " + selected[entityName].gpinvoicenumber,
+                    visible: true
+                });
+            }
+        }
+
+        //============== LIST EXECUTIONS ================
+        function editPayment() {
+            if (selected[entityName].appointmentid) {
+                checkAppointmentCompletion(selected[entityName].appointmentid.id)
+                    .then(function () {
+                        if (selected[entityName].paymentid) {
+                            MobileCRM.UI.FormManager.showEditDialog(SCHEMA.payment.name, selected[entityName].paymentid.id, null,
+                                { "iFrameOptions": { PaymentFormMode: PaymentFormMode.detail } }
+                            );
+                        }
+                        else {
+                            var target = new MobileCRM.Reference(entityName, selected[entityName].id);
+                            var relationship = new MobileCRM.Relationship(SCHEMA.payment.Properties.invoiceid, target);
+                            MobileCRM.UI.FormManager.showNewDialog(SCHEMA.payment.name, relationship, {
+                                "@initialize": {
+                                    gpinvoicenumber: selected[entityName].gpinvoicenumber,
+                                    transactiondate: new Date(),
+                                    servicecallid: selected[entityName].servicecallid,
+                                    appointmentid: selected[entityName].appointmentid
+                                },
+                                "iFrameOptions": { PaymentFormMode: PaymentFormMode.detail }
+                            });
+                        }
+                    }, MobileCRM.bridge.alert);
+            }
+        }
+        function checkAppointmentCompletion(appointmentid) {
+            var deferred = $.Deferred();
+            if (!appointmentid)
+                return deferred.reject("Unable to check Appointment Status: Missing appointment details");
+
+            MobileCRM.DynamicEntity.loadById(SCHEMA.appointment.name, appointmentid, function (appointment) {
+                if (appointment.properties.appointmentstatusid.primaryName === "COMPLETE") {
+                    return deferred.resolve();
+                }
+                else {
+                    return deferred.reject("Appointment must be complete before accepting payment.");
+                }
+            }, function (err) {
+                if (err.indexOf('not found') > -1) {
+                    // Appointment is not on the device because it is completed
+                    return deferred.resolve();
+                }
+                else {
+                    return deferred.reject("Load Appointment Error:\n" + err);
+                }
+            });
+            return deferred.promise();
+        }
+    </script>
+</body>
+</html>

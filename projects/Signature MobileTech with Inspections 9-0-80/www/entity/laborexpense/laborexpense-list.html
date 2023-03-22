@@ -1,0 +1,1286 @@
+﻿<!DOCTYPE html>
+<html>
+
+<head>
+    <!-- Activate IE9 document mode, if available -->
+    <meta charset="utf-8" http-equiv="X-UA-Compatible" content="IE=edge" />
+    <!-- Defined iOS viewport -->
+    <meta name="viewport" content="initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=false">
+    <!-- Disable iOS Phone No Detection -->
+    <meta name="format-detection" content="telephone=no" />
+    <!-- DevExtreme dependencies -->
+    <script type="text/javascript" src="../../scripts/jquery.min.js"></script>
+    <!-- DevExtreme themes -->
+    <link rel="stylesheet" type="text/css" href="../../css/dx.light.css" />
+    <!-- A DevExtreme library -->
+    <script type="text/javascript" src="../../scripts/dx.all.js"></script>
+    <!-- Offline HTML JavaScript Bridge-->
+    <script type="text/javascript" src="../../scripts/JSBridge.js"></script>
+    <script type="text/javascript" src="../../scripts/k2aMethods.js"></script>
+    <script type="text/javascript" src="../../enum/Schema.js"></script>
+    <script type="text/javascript" src="../../enum/setupoption.js"></script>
+    <!-- Offline HTML Template Factory-->
+    <script type="text/javascript" src="../../templates/listItem-factory.js"></script>
+    <script type="text/javascript" src="../../templates/toolbar-factory.js"></script>
+    <!-- Offline HTML Styling -->
+    <link rel="stylesheet" type="text/css" href="../../css/k2a.css" />
+    <title>Entity List</title>
+</head>
+
+<body>
+    <div id="toast"></div>
+    <div class="fixedPosition">
+        <div id="mainToolbar"></div><br>
+        <div id="listToolbar"></div>
+        <div id="mainScrollView">
+            <div id='mainList'></div>
+        </div>
+        <div id="actionSheet"></div>
+        <div id="failedActionSheet"></div>
+        <div id="travelActionSheet"></div>
+        <div id="filterPopup"></div>
+        <div id="employeePopup"></div>
+        <div id="transferPopup"></div>
+    </div>
+
+    <script>
+        //============== INITIAL SETTINGS ================
+        var entityName = SCHEMA.laborexpense.name, gpTechnicianID, gPEmployeeId;
+        var isLookupList = false, lookupID = null, lookupAttribute = SCHEMA.laborexpense.Properties.appointmentid, apptType;
+        var sortDesc = false, sortSelector = SCHEMA.laborexpense.Properties.transactiondate;
+        var failedIcon = "\u26D4 ", rejectedIcon = "\u26A0 ";
+        var autoOpenNewForm = true, isInitialLoad = true, scrollHeight = 110;
+        const ViewLabel = {
+            allTimesheetEntries: "All Timesheet Entries",
+            currentWeek: "Current Week",
+            previousWeek: "Previous Week",
+        };
+        var selectedView = ViewLabel.currentWeek;
+        const MenuItem = {
+            addUnbilledEntry: "TimeSheet.Add",
+            runReport: "TimeSheet.Report",
+            runReportForAll: "TimeSheet.ReportAll",
+            runReportForEmployee: "TimeSheet.Select",
+            submitForApproval: "TimeSheet.Approval"
+        };
+        //============== OFFLINE/ONLINE DATA ================
+        var entityListData, prevEntityListCount = 0;
+        //============== SELECTED DATA ================
+        var selected = { entityName: null, viewIndex: null };
+        //============== FETCH DATA ================
+        var requiredSetupOptions = [
+            SETUPOPTION.DefaultCostCodeTravelTimeLog,
+            SETUPOPTION.DefaultWeekday,
+            SETUPOPTION.RequireTravelForCompletion,
+            SETUPOPTION.ShowTechnicianTotalLaborHours,
+            SETUPOPTION.UseExpense,
+            SETUPOPTION.UseLabor,
+            SETUPOPTION.UseManagerApproval,
+            SETUPOPTION.UseTechnicianHelper,
+            SETUPOPTION.UseTimeLog,
+            SETUPOPTION.UseTravel,
+            SETUPOPTION.UseTravelTimeLog,
+            SETUPOPTION.UseWorkCrewJobCost,
+            SETUPOPTION.UseWorkCrewService
+        ];
+        var entityAttributes = [
+            SCHEMA.laborexpense.Properties.id,
+            SCHEMA.laborexpense.Properties.name,
+            SCHEMA.laborexpense.Properties.transactiondate,
+            SCHEMA.laborexpense.Properties.employeeid,
+            SCHEMA.laborexpense.Properties.costtype,
+            SCHEMA.laborexpense.Properties.hoursunits,
+            SCHEMA.laborexpense.Properties.cost,
+            SCHEMA.laborexpense.Properties.quantity,
+            SCHEMA.laborexpense.Properties.paycodeid,
+            SCHEMA.laborexpense.Properties.appointmentid,
+            SCHEMA.laborexpense.Properties.gptimein,
+            SCHEMA.laborexpense.Properties.transactiontype,
+            SCHEMA.laborexpense.Properties.transactionstatus,
+            SCHEMA.laborexpense.Properties.isprocessed,
+            SCHEMA.laborexpense.Properties.gpcomptrxno,
+            SCHEMA.laborexpense.Properties.managercomment,
+            SCHEMA.laborexpense.Properties.createdon
+        ];
+        var listSortItems = [
+            SCHEMA.laborexpense.Properties.transactiondate
+        ];
+        var listSearchItems = [
+            SCHEMA.laborexpense.Properties.name,
+            SCHEMA.laborexpense.Properties.transactiondate,
+            SCHEMA.laborexpense.Properties.employeeid,
+            SCHEMA.laborexpense.Properties.costtype,
+            SCHEMA.laborexpense.Properties.hoursunits,
+            SCHEMA.laborexpense.Properties.cost,
+            SCHEMA.laborexpense.Properties.quantity,
+            SCHEMA.laborexpense.Properties.paycodeid,
+            SCHEMA.laborexpense.Properties.gpcomptrxno,
+            SCHEMA.laborexpense.Properties.managercomment,
+            'customer_name'
+        ];
+        var listFilterItems = [
+            { dataField: SCHEMA.laborexpense.Properties.transactiondate, dataType: FilterDataType.date },
+            { dataField: SCHEMA.laborexpense.Properties.name, dataType: FilterDataType.string },
+            { dataField: SCHEMA.laborexpense.Properties.employeeid, dataType: FilterDataType.string },
+            { dataField: SCHEMA.laborexpense.Properties.paycodeid, dataType: FilterDataType.string },
+            { dataField: 'customer_name', dataType: FilterDataType.string }
+        ];
+        var listItemTemplate = function (data, _, element) {
+            MobileCRM.Configuration.requestObject(function (config) {
+                var isProcessed = JSON.parse(data.isprocessed);
+                var isFailed = !isProcessed && data.createdon < config.settings.lastSyncDate;
+                var isRejected = parseInt(data.transactionstatus) === 3;
+                var indicatorIcon = isRejected ? rejectedIcon : (isFailed ? failedIcon : '');
+                var labels = {};
+                labels.hrs = MobileCRM.Localization.get(entityName + ".hours_abbreviation");
+                labels.failedToProcess = MobileCRM.Localization.get(entityName + ".msg_failed");
+                labels.new = MobileCRM.Localization.get(entityName + ".new");
+
+                element.append(
+                    $("<span>").append(indicatorIcon + data.name).css("font-size", "large"),
+                    $("<span>").append(formatDate(data.transactiondate)).css("float", "right"),
+                    $("<br>"),
+                    $("<span>").append(data.employeeid.primaryName)
+                );
+
+                if (parseInt(data.costtype) === 1) { // Labor
+                    var hoursunits = formatFloat(data.hoursunits, 2);
+                    element.append(
+                        $("<span>").append(hoursunits ? hoursunits + " " + labels.hrs : "").css("float", "right"),
+                        $("<br>"),
+                        $("<span>").append(data.paycodeid.primaryName)
+                    );
+                }
+                else {  // Expense & Travel
+                    var cost = formatFloatHideZeros(data.cost, 2);
+                    element.append(
+                        $("<span>").append(formatFloatHideZeros(data.quantity, 2)).css("float", "right"),
+                        $("<br>"),
+                        $("<span>").append(data.paycodeid.primaryName),
+                        $("<span>").append(cost ? "$ " + cost : "").css("float", "right")
+                    );
+                }
+
+                if (formatString(data.customer_name))
+                    element.append(
+                        $("<br>"),
+                        $("<span>").append(formatString(data.customer_name))
+                    );
+
+                if (isFailed)
+                    element.append($("<br>"), $("<i>").append(labels.failedToProcess));
+
+                if (setupOptions.UseManagerApproval) {
+                    data.status = "";
+                    switch (parseInt(data.transactionstatus)) {
+                        case 1: data.status = "Pending"; break;
+                        case 2: data.status = "Approved"; break;
+                        case 3: data.status = "Rejected"; break;
+                        default: data.status = "Hold";
+                    }
+                    element.append(
+                        $("<br>"),
+                        $("<i>").append(!isProcessed && !isFailed ? labels.new + " - " : "")
+                    );
+                    if (isRejected)
+                        element.append(
+                            $("<b>").append(data.gpcomptrxno),
+                            $("<i>").append(" - " + data.status + (data.managercomment ? ": " + formatString(data.managercomment) : ""))
+                        );
+                    else
+                        element.append(
+                            $("<i>").append(data.status)
+                        );
+                }
+            }, MobileCRM.bridge.alert);
+        };
+        //============== TOOLBAR ITEMS ================
+        var mainToolbarItems = [ToolbarItemType.selectView, ToolbarItemType.btnMenu];
+        var lookupToolbarItems = [ToolbarItemType.title, ToolbarItemType.btnNew];
+        var listToolbarItems = [
+            ToolbarItemType.btnSort, ToolbarItemType.selectSort, ToolbarItemType.btnFilter
+        ];
+        //============== LIST ACTION ITEMS ================
+        var actionItems = [
+            { text: "More", onClick: editEntity },
+            { text: "Delete", onClick: deleteEntity }
+        ];
+        var failedActionItems = [
+            { text: "Resubmit", onClick: resubmitEntity },
+            { text: "More", onClick: editEntity }
+        ];
+        var travelActionItems = [
+            { text: "More", onClick: editEntity },
+            { text: "Delete", onClick: deleteEntity },
+            { text: "Transfer", onClick: transferEntity }
+        ];
+
+        $(function () {
+            //============== LOCALIZATION ================
+            MobileCRM.Localization.initialize(function (localization) {
+
+                //============== ANDROID CHECK ================
+                MobileCRM.Platform.preventBackButton(btnBackClicked);
+
+                //============== LOADPANEL ================
+                loading = MobileCRM.UI.Form.showPleaseWait(MobileCRM.Localization.get("Msg.Loading"));
+
+                //============== SCROLLVIEW ================
+                mainScrollView = $("#mainScrollView").dxScrollView({
+                    showScrollbar: "always",
+                    height: function () { return window.innerHeight - scrollHeight; },
+                    width: '100%'
+                }).dxScrollView("instance");
+                $(window).resize(function () {
+                    repaintScrollView(mainScrollView);
+                    if (!isLookupList)
+                        updateToolbarItem(mainToolbar, ToolbarItemType.selectView, 'options', {
+                            width: $(window).width() * 0.75,
+                            value: selectedView
+                        });
+                });
+
+                //============== TOOLBARS ================
+                mainToolbar = $("#mainToolbar").dxToolbar({}).dxToolbar("instance");
+                listToolbar = $("#listToolbar").dxToolbar({
+                    items: (new ToolbarFactory()).addItems(listToolbarItems)
+                }).dxToolbar("instance");
+                employeeToolbar = $("<div>").dxToolbar({
+                    items: [{
+                        location: 'before', locateInMenu: 'never', widget: 'dxButton',
+                        options: { icon: 'back', stylingMode: 'text', onClick: function () { employeePopup.hide(); } }
+                    },
+                    { location: 'center', locateInMenu: 'never', text: MobileCRM.Localization.get('laborexpense.Title.Employee') }]
+                }).dxToolbar("instance");
+
+                //============== LIST ================
+                mainList = (new ListFactory()).createItem("#mainList", entityName, [
+                    { name: 'searchExpr', value: listSearchItems },
+                    { name: 'itemTemplate', value: listItemTemplate }
+                ]);
+                employeeList = $("<div>").dxList({
+                    itemTemplate: function (data, _, element) {
+                        element.append(
+                            $("<span>").append(data.gpemployeeid).css("font-size", "large"),
+                            $("<span>").append(data.gptechnicianid).css("float", "right"),
+                            $("<br>"),
+                            $("<div>").append(data.employeename)
+                        );
+                    },
+                    pageLoadMode: 'scrollBottom',
+                    searchEnabled: true,
+                    searchExpr: [
+                        SCHEMA.employee.Properties.gpemployeeid,
+                        SCHEMA.employee.Properties.gptechnicianid,
+                        SCHEMA.employee.Properties.employeename
+                    ],
+                    searchMode: 'contains'
+                }).dxList("instance");
+
+                //============== ACTION SHEETS ================
+                actionSheet = (new ActionSheetFactory()).createItem(actionItems, "#actionSheet");
+                failedActionSheet = (new ActionSheetFactory()).createItem(failedActionItems, "#failedActionSheet");
+                travelActionSheet = (new ActionSheetFactory()).createItem(travelActionItems, "#travelActionSheet");
+
+                //============== FORM ================
+                transferForm = $("<div id='transferForm' />").dxForm({
+                    colCountByScreen: { lg: 2, md: 2, sm: 2, xs: 2 },
+                    items: [{
+                        colSpan: 2,
+                        dataField: "type",
+                        editorType: "dxSelectBox",
+                        editorOptions: { dataSource: ["Unbilled", "Appointment"], value: "Unbilled", onValueChanged: transferTypeChanged },
+                        label: { location: 'top', text: 'Transfer To' },
+                        isRequired: true
+                    }, {
+                        colSpan: 2,
+                        dataField: SCHEMA.appointment.name,
+                        editorType: "dxSelectBox",
+                        editorOptions: {
+                            disabled: true,
+                            valueExpr: SCHEMA.appointment.Properties.id,
+                            displayExpr: SCHEMA.appointment.Properties.name,
+                            itemTemplate: function (data, _, element) {
+                                element.append(
+                                    $("<div>").append(
+                                        $("<b>").append(data.name), $("<br>"),
+                                        $("<i>").append(data.location),
+                                        $("<div>").append(data.description)
+                                    ).css("white-space", "normal")
+                                );
+                            },
+                            searchEnabled: true,
+                            searchExpr: [SCHEMA.appointment.Properties.name, SCHEMA.location.name, SCHEMA.appointment.Properties.description],
+                            showClearButton: true
+                        },
+                        label: { location: 'top' }
+                    }, {
+                        itemType: 'button',
+                        horizontalAlignment: 'right',
+                        colSpan: 1,
+                        buttonOptions: {
+                            text: 'Continue',
+                            type: 'success',
+                            useSubmitBehavior: false,
+                            onClick: continueWithTransfer
+                        }
+                    }, {
+                        itemType: 'button',
+                        horizontalAlignment: 'center',
+                        colSpan: 1,
+                        buttonOptions: {
+                            text: 'Cancel',
+                            type: 'danger',
+                            useSubmitBehavior: false,
+                            onClick: function () { transferPopup.hide(); }
+                        }
+                    }]
+                }).dxForm("instance");
+
+                //============== POPUPS ================
+                employeePopup = $("#employeePopup").dxPopup({
+                    closeOnBackButton: true,
+                    shading: true,
+                    shadingColor: "rgba(0,0,0,0.2)",
+                    titleTemplate: function () { return employeeToolbar.element(); },
+                    contentTemplate: function (container) {
+                        var scrollView = $("<div id='scrollView'></div>");
+                        scrollView.append(employeeList.element());
+                        scrollView.dxScrollView({
+                            height: '100%',
+                            width: '100%'
+                        });
+                        container.append(scrollView);
+                        return container;
+                    },
+                }).dxPopup("instance");
+                transferPopup = $("#transferPopup").dxPopup({
+                    shading: true,
+                    shadingColor: "rgba(0,0,0,0.2)",
+                    showTitle: false,
+                    position: 'center',
+                    height: '200px',
+                    width: '90vw',
+                    contentTemplate: function (container) {
+                        container.append(
+                            transferForm.element().css("margin", "10px")
+                        );
+                        return container;
+                    }
+                }).dxPopup("instance");
+
+                //============== EVENT HANDLERS ================
+                MobileCRM.bridge.onGlobalEvent("EntityFormClosed", function (closedForm) {
+                    if (closedForm.entity && closedForm.entity.entityName === entityName) {
+                        isInitialLoad = false;
+                        prevEntityListCount = entityListData.length;
+                        MobileCRM.DynamicEntity.loadById(entityName, closedForm.entity.id, fetchListEntityData, function (err) {
+                            if (err.toLowerCase() === "entity not found") {
+                                deleteCorrespondingAttachments(closedForm.entity.id).then(fetchListEntityData, alertError);
+                            }
+                        });
+                    }
+                }, true);
+                MobileCRM.Configuration.requestObject(function (config) {
+                    MobileCRM.bridge.onGlobalEvent("SyncFinished", fetchListEntityData, !config.settings.requireSyncLogin);
+                }, MobileCRM.bridge.alert);
+
+                loadSetupOptions(loadListOptions);
+            }, alertError);
+        });
+
+        //============== LOAD OPTIONS ================
+        function loadListOptions() {
+            try {
+                MobileCRM.UI.EntityForm.requestObject(function (entityForm) {
+                    isLookupList = true;
+                    lookupID = entityForm.entity.id;
+                    apptType = parseInt(entityForm.entity.properties.gpappointmenttype);
+                    selected.viewIndex = entityForm.form.selectedViewIndex;
+
+                    if (setupOptions.UseLabor || setupOptions.UseExpense || setupOptions.UseTravel) {
+                        loadToolbarOptions();
+                        loadListItemOptions();
+                    }
+                    else // Tab is not visible on entity form, do not need to load
+                        loading.close();
+                }, function (err) {
+                    MobileCRM.bridge.raiseGlobalEvent("CloseAllForms");
+                    loadToolbarOptions();
+                    loadListItemOptions();
+                });
+            }
+            catch (e) {
+                alertError(e);
+            }
+        }
+        function loadToolbarOptions() {
+            if (isLookupList) {
+                mainToolbar.option("items", (new ToolbarFactory()).addItems(lookupToolbarItems));
+                if (!setupOptions.ShowTechnicianTotalLaborHours) {
+                    updateToolbarItem(mainToolbar, ToolbarItemType.title, "html",
+                        "<b>" + MobileCRM.Localization.get(entityName) + "</b>");
+                }
+            }
+            else {
+                mainToolbar.option("items", (new ToolbarFactory()).addItems(mainToolbarItems));
+                updateToolbarItem(mainToolbar, ToolbarItemType.selectView, "options", {
+                    items: [
+                        { value: ViewLabel.allTimesheetEntries, display: MobileCRM.Localization.getComponentLabel(entityName, "View", ViewLabel.allTimesheetEntries) },
+                        { value: ViewLabel.currentWeek, display: MobileCRM.Localization.getComponentLabel(entityName, "View", ViewLabel.currentWeek) },
+                        { value: ViewLabel.previousWeek, display: MobileCRM.Localization.getComponentLabel(entityName, "View", ViewLabel.previousWeek) }],
+                    displayExpr: 'display',
+                    valueExpr: 'value',
+                    width: $(window).width() * 0.75,
+                    value: selectedView
+                });
+            }
+
+            if (typeof listFilterItems !== 'undefined' && listFilterItems.length > 0)
+                (new FilterFactory()).createFilterPopup(mainList, listToolbar);
+
+            loadSortItemsLocalization(listSortItems).then(function (sortDataSource) {
+                updateToolbarItem(listToolbar, ToolbarItemType.selectSort, "options.dataSource", sortDataSource);
+                updateToolbarItem(listToolbar, ToolbarItemType.selectSort, "options.value", sortSelector);
+            });
+        }
+        function loadListItemOptions() {
+            getTechnicianID(function (techID) {
+                gpTechnicianID = techID;
+                getEmployeeID(function (empID) {
+                    gPEmployeeId = empID;
+                    if (isLookupList)
+                        fetchListEntityData();
+                    else
+                        getWorkWeekDates(fetchListEntityData);
+                });
+            });
+        }
+
+        //============== LOAD DATA ================
+        function fetchListEntityData() {
+            var entity = new MobileCRM.FetchXml.Entity(entityName);
+            $(entityAttributes).each(function (index, attribute) {
+                entity.addAttribute(attribute);
+            });
+            entity.orderBy(sortSelector, sortDesc);
+
+            entity.filter = new MobileCRM.FetchXml.Filter();
+            if (isLookupList)    // Filter: Appointment Lookup List
+                entity.filter.where(lookupAttribute, 'eq', lookupID);
+            else               // Filter: Current or Previous Week
+                entity.filter.where(SCHEMA.laborexpense.Properties.transactiondate, 'ge', workWeekDates.prevWeekStart);
+
+            // Link: Employee
+            var empLink = entity.addLink(
+                SCHEMA.employee.name,
+                SCHEMA.employee.Properties.id,
+                SCHEMA.laborexpense.Properties.employeeid,
+                "outer");
+            empLink.addAttribute(SCHEMA.employee.Properties.gpemployeeid);
+            empLink.alias = SCHEMA.employee.name;
+
+            // Link: Appointment
+            var apptLink = entity.addLink(
+                SCHEMA.appointment.name,
+                SCHEMA.appointment.Properties.id,
+                SCHEMA.laborexpense.Properties.appointmentid,
+                "outer");
+
+            // Link: Customername via Service Call Appointment
+            var callLink = apptLink.addLink(
+                SCHEMA.servicecall.name,
+                SCHEMA.servicecall.Properties.id,
+                SCHEMA.appointment.Properties.servicecallid,
+                "outer");
+            var customerCallLink = callLink.addLink(
+                SCHEMA.customer.name,
+                SCHEMA.customer.Properties.id,
+                SCHEMA.servicecall.Properties.customerid,
+                "outer");
+            customerCallLink.addAttribute(SCHEMA.customer.Properties.customername);
+            customerCallLink.alias = 'custCall';
+
+            // Link: Customername via Job Appointment
+            var jobLink = apptLink.addLink(
+                SCHEMA.job.name,
+                SCHEMA.job.Properties.id,
+                SCHEMA.appointment.Properties.jobid,
+                "outer");
+            var customerJobLink = jobLink.addLink(
+                SCHEMA.customer.name,
+                SCHEMA.customer.Properties.id,
+                SCHEMA.job.Properties.customerid,
+                "outer");
+            customerJobLink.addAttribute(SCHEMA.customer.Properties.customername);
+            customerJobLink.alias = 'custJob';
+
+            var fetch = new MobileCRM.FetchXml.Fetch(entity);
+            fetch.execute("DynamicEntities", function (res) {
+                // Note: for filter to work with date attributes have to fetch DynamicEntities
+                // To work with res as JSON then set each value to properties
+                $(res).each(function (i, value) {
+                    res[i] = value.properties;
+                    res[i].gpemployeeid = value.properties[empLink.alias + "." + SCHEMA.employee.Properties.gpemployeeid];
+
+                    if (res[i][customerCallLink.alias + '.' + SCHEMA.customer.Properties.customername])
+                        res[i].customer_name = res[i][customerCallLink.alias + '.' + SCHEMA.customer.Properties.customername];
+                    if (res[i][customerJobLink.alias + '.' + SCHEMA.customer.Properties.customername])
+                        res[i].customer_name = res[i][customerJobLink.alias + '.' + SCHEMA.customer.Properties.customername];
+                });
+
+                entityListData = res;
+                loadEntityData();
+            }, alertError);
+        }
+        function loadEntityData() {
+            if (isLookupList) {
+                loadListData(mainList, entityListData);
+                if (setupOptions.ShowTechnicianTotalLaborHours)
+                    calculateLookupHours(entityListData);
+                if (entityListData.length === 0 && autoOpenNewForm && isInitialLoad && parseInt(selected.viewIndex) > 0) {
+                    btnNewClicked();
+                    isInitialLoad = false;
+                }
+                else if (setupOptions.UseTravelTimeLog && setupOptions.RequireTravelForCompletion && !isInitialLoad
+                    && prevEntityListCount > 0 && entityListData.length === 0 && apptType !== 2) {
+                    // Travel has been transferred, so need to close appointment completion form
+                    MobileCRM.bridge.closeForm();
+                }
+            }
+            else {
+                loadDateFilteredData();
+                if (setupOptions.ShowTechnicianTotalLaborHours)
+                    calculateWorkWeekHours();
+            }
+        }
+        function loadDateFilteredData() {
+            if (typeof workWeekDates === 'undefined') {
+                loadListData(mainList, entityListData);
+                loading.close();
+                return;
+            }
+
+            var dateFilter = null;
+            if (selectedView === ViewLabel.currentWeek)
+                dateFilter = [SCHEMA.laborexpense.Properties.transactiondate, '>=', workWeekDates.currWeekStart];
+            else if (selectedView === ViewLabel.previousWeek)
+                dateFilter = [SCHEMA.laborexpense.Properties.transactiondate, '<', workWeekDates.currWeekStart];
+
+            var filteredData = new DevExpress.data.DataSource({
+                store: entityListData,
+                paginate: false
+            });
+            if (dateFilter)
+                filteredData.filter(dateFilter);
+
+            filteredData.load().done(function (data) {
+                loadListData(mainList, data);
+                loading.close();
+            });
+        }
+        function calculateLookupHours(listData) {
+            var filteredData = new DevExpress.data.DataSource({
+                store: listData,
+                filter: [
+                    [SCHEMA.employee.Properties.gpemployeeid, '=', gPEmployeeId],
+                    "and",
+                    [SCHEMA.laborexpense.Properties.costtype, '=', 1]
+                ],
+                paginate: false
+            });
+
+            filteredData.load().done(function (data) {
+                var totalHours = 0;
+                data.forEach(function (item) {
+                    totalHours += parseFloat(item.hoursunits);
+                });
+
+                var title = MobileCRM.Localization.get("laborexpense.Title.TotalHours").format(totalHours.toFixed(2));
+                updateToolbarItem(mainToolbar, ToolbarItemType.title, "html", "<b>" + title + "</b>");
+            });
+        }
+        function calculateWorkWeekHours() {
+            if (!gPEmployeeId) return;
+
+            // Current Week Hours
+            var currentWeekData = new DevExpress.data.DataSource({
+                store: entityListData,
+                filter: [
+                    [SCHEMA.employee.Properties.gpemployeeid, '=', gPEmployeeId],
+                    "and",
+                    [SCHEMA.laborexpense.Properties.costtype, '=', 1],
+                    "and",
+                    [SCHEMA.laborexpense.Properties.transactiondate, '>=', workWeekDates.currWeekStart]
+                ],
+                paginate: false
+            });
+            var currentWeekHours = 0;
+            currentWeekData.load().done(function (data) {
+                data.forEach(function (item) {
+                    currentWeekHours += parseFloat(item.hoursunits);
+                });
+            });
+
+            var currentWeekTitle = MobileCRM.Localization.getComponentLabel(entityName, "View", ViewLabel.currentWeek) + " " +
+                MobileCRM.Localization.get("laborexpense.Title.Hours").format(currentWeekHours.toFixed(2));
+
+            updateToolbarItem(mainToolbar, ToolbarItemType.selectView, "options.items[1].display", currentWeekTitle);
+
+            // Previous Week Hours
+            var previousWeekData = new DevExpress.data.DataSource({
+                store: entityListData,
+                filter: [
+                    [SCHEMA.employee.Properties.gpemployeeid, '=', gPEmployeeId],
+                    "and",
+                    [SCHEMA.laborexpense.Properties.costtype, '=', 1],
+                    "and",
+                    [SCHEMA.laborexpense.Properties.transactiondate, '<', workWeekDates.currWeekStart]
+                ],
+                paginate: false
+            });
+            var previousWeekHours = 0;
+            previousWeekData.load().done(function (data) {
+                data.forEach(function (item) {
+                    previousWeekHours += parseFloat(item.hoursunits);
+                });
+            });
+
+            var previousWeekTitle = MobileCRM.Localization.getComponentLabel(entityName, "View", ViewLabel.previousWeek) + " " +
+                MobileCRM.Localization.get("laborexpense.Title.Hours").format(previousWeekHours.toFixed(2));
+
+            updateToolbarItem(mainToolbar, ToolbarItemType.selectView, "options.items[2].display", previousWeekTitle);
+        }
+
+        //============== TOOLBAR FUNCTIONS ================
+        function btnSortClicked() {
+            if (isLookupList)
+                loadListData(mainList, entityListData);
+            else
+                loadDateFilteredData();
+        }
+        function sortSelected() {
+            if (isLookupList)
+                loadListData(mainList, entityListData);
+            else
+                loadDateFilteredData();
+        }
+        function btnMenuClicked() {
+            var menuPopup = new MobileCRM.UI.MessageBox(MobileCRM.Localization.get("TimeSheet.SelectAction"));
+            menuPopup.multiLine = true;
+            menuPopup.items = [MobileCRM.Localization.get(MenuItem.addUnbilledEntry)];
+            if (setupOptions.UseTechnicianHelper || setupOptions.UseWorkCrewJobCost || setupOptions.UseWorkCrewService)
+                menuPopup.items.push(
+                    MobileCRM.Localization.get(MenuItem.runReportForAll),
+                    MobileCRM.Localization.get(MenuItem.runReportForEmployee)
+                );
+            else
+                menuPopup.items.push(MobileCRM.Localization.get(MenuItem.runReport));
+
+            if (selectedView !== ViewLabel.allTimesheetEntries && setupOptions.UseManagerApproval)
+                menuPopup.items.push(MobileCRM.Localization.get(MenuItem.submitForApproval));
+
+            menuPopup.items.push(MobileCRM.Localization.get("Action.Cancel"));
+            menuPopup.show(menuItemSelected);
+        }
+        function menuItemSelected(item) {
+            switch (item) {
+                case MobileCRM.Localization.get(MenuItem.addUnbilledEntry):
+                    addUnbilledEntry();
+                    break;
+                case MobileCRM.Localization.get(MenuItem.runReport):
+                case MobileCRM.Localization.get(MenuItem.runReportForAll):
+                case MobileCRM.Localization.get(MenuItem.runReportForEmployee):
+                    runReport(item);
+                    break;
+                case MobileCRM.Localization.get(MenuItem.submitForApproval):
+                    submitForApproval();
+                    break;
+            }
+            return;
+        }
+        function viewSelected(e) {
+            if (selectedView != e.selectedItem.value) {
+                selectedView = e.selectedItem.value;
+                loadDateFilteredData();
+            }
+        }
+        function btnNewClicked() {
+            var target = new MobileCRM.Reference(SCHEMA.appointment.name, lookupID);
+            var relationship = new MobileCRM.Relationship(SCHEMA.laborexpense.Properties.appointmentid, target);
+            var defaultCostType = setupOptions.UseLabor ? 1 : (setupOptions.UseExpense ? 2 : setupOptions.UseTravel ? 3 : null);
+
+            MobileCRM.UI.FormManager.showNewDialog(entityName, relationship, {
+                "@initialize": {
+                    transactiontype: apptType === 1 ? "SERVICE" : (apptType === 3 ? "JOB COST" : "UNBILLED"),
+                    costtype: defaultCostType, transactionstatus: 1, transactiondate: new Date()
+                }
+            });
+        }
+
+        //============== LIST ITEM FUNCTIONS ================
+        function listItemClicked() {
+            MobileCRM.Configuration.requestObject(function (config) {
+                var isProcessed = JSON.parse(selected.laborexpense.isprocessed);
+                var isFailed = !isProcessed && (selected.laborexpense.createdon < config.settings.lastSyncDate);
+
+                if (isFailed) {
+                    actionSheet.option({
+                        title: selected.laborexpense.name,
+                        dataSource: failedActionItems,
+                        visible: true
+                    });
+                }
+                else if (isLookupList && setupOptions.UseLabor && setupOptions.UseTimeLog && setupOptions.UseTravelTimeLog) {
+                    // Check for Transfer Travel TimeLog
+                    var status = parseInt(selected.laborexpense.transactionstatus);
+                    if (setupOptions.UseManagerApproval && status !== 1 && status != 3) {   // Not Pending or Rejected
+                        showActionSheet(isProcessed);
+                    }
+                    else {
+                        checkIsTravelTimeLog().then(function (isTravelTimeLog) {
+                            if (isTravelTimeLog) {
+                                var dynamicActionSheet = [travelActionItems[0]];    // 0. More
+                                if (!isProcessed) { // 1. Delete
+                                    dynamicActionSheet.push(travelActionItems[1])
+                                }
+                                // 2. Transfer, 3. Cancel
+                                dynamicActionSheet.push(travelActionItems[2], travelActionItems[3]);
+
+                                actionSheet.option({
+                                    title: selected.laborexpense.name,
+                                    dataSource: dynamicActionSheet,
+                                    visible: true
+                                });
+                            }
+                            else {
+                                showActionSheet(isProcessed);
+                            }
+                        }, alertError);
+                    }
+                }
+                else {
+                    showActionSheet(isProcessed);
+                }
+            }, MobileCRM.bridge.alert);
+        }
+        function showActionSheet(isProcessed) {
+            if (isProcessed) {
+                editEntity();
+            }
+            else {
+                actionSheet.option({
+                    title: selected.laborexpense.name,
+                    dataSource: actionItems,
+                    visible: true
+                });
+            }
+        }
+
+        function checkIsTravelTimeLog() {
+            var deferred = $.Deferred();
+            if (!selected.laborexpense || !selected.laborexpense.id) {
+                return deferred.reject("Check is Travel TimeLog Error: Missing Time Entry details");
+            }
+
+            try {
+                fetchCorrespondingTimelogID().then(function (timelogID) {
+                    if (!timelogID) {
+                        return deferred.resolve(false);
+                    }
+                    else {
+                        MobileCRM.DynamicEntity.loadById(SCHEMA.timelog.name, timelogID, function (timelog) {
+                            return deferred.resolve(timelog.properties.name.indexOf("Travel") > -1);
+                        }, function (err) {
+                            return deferred.reject("Load By Id Error (timelog): " + err);
+                        });
+                    }
+
+                }, function (err) {
+                    return deferred.reject("Fetch Corresponding TimeLog ID Error: " + err);
+                });
+            }
+            catch (e) {
+                return deferred.reject("Check is Travel TimeLog Error: " + e);
+            }
+            return deferred.promise();
+        }
+
+        //============== LIST EXECUTIONS ================
+        function editEntity() {
+            MobileCRM.UI.FormManager.showEditDialog(entityName, selected[entityName].id);
+        }
+        function deleteEntity() {
+            var confirmPopup = new MobileCRM.UI.MessageBox(MobileCRM.Localization.get("Alert.ConfirmDelete"));
+            confirmPopup.multiLine = true;
+            confirmPopup.items = [MobileCRM.Localization.get("enum.Yes"), MobileCRM.Localization.get("enum.No")];
+            confirmPopup.show(function (button) {
+                if (button === MobileCRM.Localization.get("enum.Yes")) {
+                    MobileCRM.DynamicEntity.deleteById(entityName, selected[entityName].id, function () {
+                        isInitialLoad = false;
+                        deleteCorrespondingAttachments(selected.laborexpense.id).then(function () {
+                            // If has corresponding timelog
+                            if (selected[entityName].gptimein !== undefined && new Date(selected[entityName].gptimein).getFullYear() > 1900) {
+                                deleteCorrespondingTimelog().then(function () {
+                                    if (selected[entityName].transactiontype === "UNBILLED") {
+                                        checkResetApptStatus();
+                                    }
+                                    else {
+                                        prevEntityListCount = entityListData.length;
+                                        fetchListEntityData();
+                                    }
+                                }, MobileCRM.bridge.alert);
+                            }
+                            else if (selected[entityName].transactiontype === "UNBILLED") {
+                                checkResetApptStatus();
+                            }
+                            else {
+                                fetchListEntityData();
+                            }
+                        }, alertError);
+                    }, alertError);
+                }
+                else
+                    return;
+            });
+        }
+        function deleteCorrespondingTimelog() {
+            var deferred = $.Deferred();
+
+            fetchCorrespondingTimelogID().then(function (timelogID) {
+                if (timelogID)
+                    MobileCRM.DynamicEntity.deleteById(SCHEMA.timelog.name, timelogID, function () {
+                        return deferred.resolve();
+                    }, function (err) { return deferred.reject(err); });
+                else
+                    return deferred.resolve();
+            }, function (err) { return deferred.reject(err); });
+            return deferred.promise();
+        }
+        function fetchCorrespondingTimelogID() {
+            var deferred = $.Deferred();
+
+            var entity = new MobileCRM.FetchXml.Entity(SCHEMA.timelog.name);
+            entity.addAttribute(SCHEMA.timelog.Properties.id);
+            entity.addFilter().where(SCHEMA.timelog.Properties.laborexpenseid, 'eq', selected[entityName].id);
+
+            var fetch = new MobileCRM.FetchXml.Fetch(entity);
+            fetch.execute("JSON", function (res) {
+                return deferred.resolve(res[0] ? res[0].id : null);
+            }, function (err) { return deferred.reject(err); })
+            return deferred.promise();
+        }
+
+        function resubmitEntity() {
+            MobileCRM.Application.synchronize(false);
+            MobileCRM.bridge.closeForm();
+        }
+        function addUnbilledEntry() {
+            MobileCRM.UI.FormManager.showNewDialog(entityName, null, {
+                "@initialize": {
+                    costtype: 1, transactiontype: "UNBILLED", transactionstatus: 1, transactiondate: new Date()
+                }
+            });
+        }
+        function runReport(menuItem) {
+            var startDate = selectedView === ViewLabel.currentWeek ?
+                workWeekDates.currWeekStart : workWeekDates.prevWeekStart;
+            var endDate = selectedView === ViewLabel.previousWeek ?
+                workWeekDates.prevWeekEnd : workWeekDates.currWeekEnd;
+
+            var empList = gPEmployeeId;
+            if (menuItem === MobileCRM.Localization.get(MenuItem.runReportForAll))
+                fetchEmployeeListString(startDate, endDate, function (empList) {
+                    createReportRequests(startDate, endDate, empList);
+                });
+            else if (menuItem === MobileCRM.Localization.get(MenuItem.runReportForEmployee)) {
+                // Select Employee to Run Report
+                fetchEmployeeListData(startDate, endDate, function (empData) {
+                    employeePopup.show();
+                    employeeList.option({
+                        "dataSource": empData,
+                        "onItemClick": function (e) {
+                            employeePopup.hide();
+                            empList = e.itemData.gpemployeeid;
+                            createReportRequests(startDate, endDate, empList);
+                        }
+                    });
+                });
+            }
+            else   // Run Report for Current User
+                createReportRequests(startDate, endDate, empList);
+        }
+        function submitForApproval() {
+            var dateFilter = selectedView === ViewLabel.currentWeek ?
+                [SCHEMA.laborexpense.Properties.transactiondate, '>', workWeekDates.prevWeekEnd] :
+                [SCHEMA.laborexpense.Properties.transactiondate, '<=', workWeekDates.currWeekStart];
+            var viewData = new DevExpress.data.DataSource({
+                store: entityListData,
+                filter: dateFilter,
+                paginate: false
+            });
+
+            viewData.load().done(function (timesheetData) {
+                if (timesheetData.length > 0)
+                    checkForExistingApprovalRequest(
+                        selectedView === ViewLabel.currentWeek ?
+                            workWeekDates.currWeekEnd : workWeekDates.prevWeekEnd);
+                else
+                    showToast(MobileCRM.Localization.get("Alert.NoEntriesSubmit"), "error");
+            });
+        }
+
+        // ----- Tech Activity -----
+        function checkResetApptStatus() {
+            if (selected[entityName] && selected[entityName].appointmentid) {
+                checkForLaborExpense().then(function (totalLaborHours) {
+                    fetchAppointmentStatusID("OPEN").then(function (openStatusID) {
+                        MobileCRM.DynamicEntity.loadById(SCHEMA.appointment.name, selected[entityName].appointmentid.id, function (appt) {
+                            if (appt.properties.appointmentstatusid.primaryName === "COMPLETE") {
+                                if (setupOptions.UseLabor && totalLaborHours === 0) {
+                                    // Tech Activity needs to be reopened because there are no other laborexpense records
+                                    appt.properties.appointmentstatusid = new MobileCRM.DynamicEntity(SCHEMA.appointmentstatus.name, openStatusID);
+                                    appt.properties.actualhours = null;
+
+                                    appt.save(function (err) {
+                                        if (err)
+                                            MobileCRM.bridge.alert(err);
+                                        else {
+                                            MobileCRM.UI.MessageBox.sayText(MobileCRM.Localization.get("Alert.ApptStatusOpen"), fetchListEntityData);
+                                        }
+                                    });
+                                }
+                                else {
+                                    // Need to update the appointment labor hours
+                                    appt.properties.actualhours = totalLaborHours;
+
+                                    appt.save(function (err) {
+                                        if (err)
+                                            MobileCRM.bridge.alert(err);
+                                        else {
+                                            fetchListEntityData();
+                                        }
+                                    });
+                                }
+                            }
+                            else {
+                                fetchListEntityData();
+                            }
+                        }, MobileCRM.bridge.alert);
+                    }, MobileCRM.bridge.alert);
+                }, alertError);
+            }
+            else {
+                fetchListEntityData();
+            }
+        }
+        function checkForLaborExpense() {
+            var deferred = $.Deferred();
+            try {
+                if (!selected.laborexpense || !selected.laborexpense.appointmentid) {
+                    return deferred.reject("Check For Labor Expense Error: Missing Appointment Details");
+                }
+                var entity = new MobileCRM.FetchXml.Entity(SCHEMA.laborexpense.name);
+                entity.addAttribute(SCHEMA.laborexpense.Properties.hoursunits);
+                entity.addFilter().where(SCHEMA.laborexpense.Properties.appointmentid, 'eq', selected.laborexpense.appointmentid.id);
+
+                var fetch = new MobileCRM.FetchXml.Fetch(entity);
+                fetch.execute("JSON", function (res) {
+                    var totalHours = 0;
+                    $(res).each(function (i, entry) {
+                        totalHours += parseFloat(entry.hoursunits);
+                    });
+
+                    return deferred.resolve(totalHours);
+                }, function (err) { return deferred.reject(err); });
+            }
+            catch (e) {
+                return deferred.reject("Check For Labor Expense Error: " + e);
+            }
+            return deferred.promise();
+        }
+        function fetchAppointmentStatusID(statusName) {
+            var deferred = $.Deferred();
+
+            var entity = new MobileCRM.FetchXml.Entity(SCHEMA.appointmentstatus.name);
+            entity.addAttribute(SCHEMA.appointmentstatus.Properties.id);
+            entity.addFilter().where(SCHEMA.appointmentstatus.Properties.name, 'eq', statusName);
+
+            var fetch = new MobileCRM.FetchXml.Fetch(entity);
+            fetch.execute("JSON", function (res) {
+                if (res[0])
+                    return deferred.resolve(res[0].id);
+                else
+                    return deferred.reject(statusName + " Appointment Status Not Found");
+
+            }, function (err) { return deferred.reject(err); });
+            return deferred.promise();
+        }
+
+        // ----- Employee List -----
+        function fetchEmployeeListData(startDate, endDate, callback) {
+            var entity = new MobileCRM.FetchXml.Entity(SCHEMA.employee.name);
+            entity.addAttribute(SCHEMA.employee.Properties.gpemployeeid);
+            entity.addAttribute(SCHEMA.employee.Properties.gptechnicianid);
+            entity.addAttribute(SCHEMA.employee.Properties.employeename);
+            entity.orderBy(SCHEMA.employee.Properties.gpemployeeid);
+
+            var laborexpenseLink = entity.addLink(
+                SCHEMA.laborexpense.name,
+                SCHEMA.laborexpense.Properties.employeeid,
+                SCHEMA.employee.Properties.id,
+                "inner");
+            laborexpenseLink.filter = new MobileCRM.FetchXml.Filter();
+            laborexpenseLink.filter.between(SCHEMA.laborexpense.Properties.transactiondate, startDate, endDate);
+
+            var fetch = new MobileCRM.FetchXml.Fetch(entity);
+            fetch.execute("JSON", callback, MobileCRM.bridge.alert, null);
+        }
+        function fetchEmployeeListString(startDate, endDate, callback) {
+            var entity = new MobileCRM.FetchXml.Entity(SCHEMA.employee.name);
+            entity.addAttribute(SCHEMA.employee.Properties.gpemployeeid);
+
+            var laborexpenseLink = entity.addLink(
+                SCHEMA.laborexpense.name,
+                SCHEMA.laborexpense.Properties.employeeid,
+                SCHEMA.employee.Properties.id,
+                "inner");
+            laborexpenseLink.filter = new MobileCRM.FetchXml.Filter();
+            laborexpenseLink.filter.between(SCHEMA.laborexpense.Properties.transactiondate, startDate, endDate);
+
+            var fetch = new MobileCRM.FetchXml.Fetch(entity);
+            fetch.execute("JSON", function (res) {
+                var empList = "";
+                res.forEach(function (item) {
+                    empList = empList + item.gpemployeeid + "~";
+                });
+                if (empList.length > 0)
+                    empList = empList.substring(0, empList.length - 1);
+                callback(empList);
+            }, MobileCRM.bridge.alert, null);
+        }
+
+        // ----- Timesheet Report Request -----
+        function createReportRequests(startDate, endDate, empList) {
+            if (selectedView === ViewLabel.allTimesheetEntries)  // Load Previous Week Report
+                createTimesheetReportRequest(workWeekDates.prevWeekStart, workWeekDates.prevWeekEnd, empList, false);
+
+            createTimesheetReportRequest(startDate, endDate, empList, true);
+        }
+        function createTimesheetReportRequest(startDate, endDate, empList, runReport) {
+            var entity = new MobileCRM.DynamicEntity.createNew(SCHEMA.timesheetreportrequest.name);
+            entity.properties.transactionenddate = endDate;
+            entity.properties.transactiontype = "JOB COST,SERVICE,UNBILLED";
+            entity.properties.isattachment = false;
+            entity.properties.gptechnicianid = gpTechnicianID;
+            entity.properties.employeelist = empList;
+
+            if (runReport)
+                entity.save(error_runReport);
+            else
+                entity.save(alertError);
+        }
+        function error_runReport(err) {
+            if (err)
+                MobileCRM.bridge.alert(err);
+            else
+                MobileCRM.UI.FormManager.showEditDialog(SCHEMA.timesheetreportrequest.name, this.id, null, null);
+        }
+
+        // ----- Timesheet Approval Request -----
+        function checkForExistingApprovalRequest(endDate) {
+            var entity = new MobileCRM.FetchXml.Entity(SCHEMA.timesheetapprovalrequest.name);
+            entity.addAttribute(SCHEMA.timesheetapprovalrequest.Properties.id);
+
+            entity.addFilter().where(SCHEMA.timesheetapprovalrequest.Properties.transactionenddate, 'eq', endDate);
+            entity.addFilter().where(SCHEMA.timesheetapprovalrequest.Properties.gpemployeeid, 'eq', gPEmployeeId);
+            entity.filter.type = 'and';
+
+            var fetch = new MobileCRM.FetchXml.Fetch(entity);
+            fetch.execute("JSON", function (res) {
+                if (res.length > 0)
+                    MobileCRM.DynamicEntity.deleteById(SCHEMA.timesheetapprovalrequest.name, res[0].id, function () {
+                        createTimesheetApprovalRequest(endDate);
+                    }, MobileCRM.bridge.alert, null);
+                else
+                    createTimesheetApprovalRequest(endDate);
+            }, MobileCRM.bridge.alert, null);
+        }
+        function createTimesheetApprovalRequest(endDate) {
+            var entity = new MobileCRM.DynamicEntity.createNew(SCHEMA.timesheetapprovalrequest.name);
+            entity.properties.gpemployeeid = gPEmployeeId;
+            entity.properties.transactionenddate = endDate;
+
+            entity.save(function (err) {
+                if (err)
+                    alertError(err);
+                else
+                    showToast(MobileCRM.Localization.get("Alert.ApprovalRequestSubmit"), "success");
+            });
+        }
+
+        // ----- Travel TimeLog -----
+        function transferEntity() {
+            transferPopup.show();
+            transferForm.getEditor("type").option('value', "Unbilled");
+            transferForm.getEditor(SCHEMA.appointment.name).option('value', null);
+            loadDataSource_Appt(lookupID);
+        }
+        function loadDataSource_Appt(apptID) {
+            if (!apptID) {
+                alertError("Fetch Appointment For Transfer Error: Missing Appointment Details");
+                return;
+            }
+
+            var entity = new MobileCRM.FetchXml.Entity(SCHEMA.appointment.name);
+            entity.addAttribute(SCHEMA.appointment.Properties.id);
+            entity.addAttribute(SCHEMA.appointment.Properties.name);
+            entity.addAttribute(SCHEMA.appointment.Properties.locationid);
+            entity.addAttribute(SCHEMA.appointment.Properties.description);
+
+            entity.orderBy(SCHEMA.appointment.Properties.startdate, true);
+            entity.addFilter().where(SCHEMA.appointment.Properties.id, 'ne', apptID);
+            entity.addFilter().where(SCHEMA.appointment.Properties.gpappointmentid, 'ne', "PENDING");
+            entity.addFilter().where(SCHEMA.appointment.Properties.gpappointmentid, 'not-null');
+
+            // Link: Appointment Status
+            var apptStatusLink = entity.addLink(
+                SCHEMA.appointmentstatus.name,
+                SCHEMA.appointmentstatus.Properties.id,
+                SCHEMA.appointment.Properties.appointmentstatusid,
+                "inner");
+            apptStatusLink.addAttribute(SCHEMA.appointmentstatus.Properties.name);
+            apptStatusLink.alias = SCHEMA.appointmentstatus.name;
+            apptStatusLink.addFilter().notIn(SCHEMA.appointmentstatus.Properties.name, ['COMPLETE', 'RE-ASSIGN']);
+
+            var fetch = new MobileCRM.FetchXml.Fetch(entity);
+            fetch.execute("JSON", function (res) {
+                $(res).each(function (_, appt) {
+                    appt.location = appt.locationid ? appt.locationid.primaryName : "";
+                });
+                transferForm.getEditor(SCHEMA.appointment.name).option("dataSource", res);
+            }, alertError);
+        }
+
+        function transferTypeChanged(e) {
+            if (e.value && e.value.toLowerCase() === SCHEMA.appointment.name) {
+                transferForm.getEditor(SCHEMA.appointment.name).option("disabled", false);
+            }
+            else {
+                transferForm.getEditor(SCHEMA.appointment.name).option({ "disabled": true, "value": null });
+            }
+        }
+        function continueWithTransfer() {
+            transferForm.validate();
+
+            var type = transferForm.getEditor('type').option('value');
+            var apptID = transferForm.getEditor(SCHEMA.appointment.name).option('value');
+            var isDefaultCostCode_Travel = setupOptions.DefaultCostCodeTravelTimeLog &&
+                setupOptions.DefaultCostCodeTravelTimeLog.substring(0, 1) === "5";
+            if (!type) {
+                showToast("Missing Transfer To", 'error');
+                return;
+            }
+            else if (type === "Unbilled") {
+                var costType = setupOptions.DefaultCostCodeTravelTimeLog ?
+                    (isDefaultCostCode_Travel ? 3 : 1) : selected.laborexpense.costtype;
+                MobileCRM.UI.FormManager.showEditDialog(entityName, selected.laborexpense.id, null, {
+                    iFrameOptions: { transferTravel: selected.laborexpense.id },
+                    "@initialize": {
+                        name: "UNBILLED",
+                        transactiontype: "UNBILLED",
+                        transactionstatus: 0,
+                        gpappointmentid: '',
+                        gpjobnumber: '',
+                        gpequipmentid: '',
+                        appointmentid: new MobileCRM.Reference(SCHEMA.appointment.name, '00000000-0000-0000-0000-000000000000'),
+                        equipmentid: new MobileCRM.Reference(SCHEMA.equipment.name, '00000000-0000-0000-0000-000000000000'),
+                        costtype: costType,
+                        costcodeid: new MobileCRM.Reference(SCHEMA.costcode.name, '00000000-0000-0000-0000-000000000000'),
+                        jobcostcodeid: new MobileCRM.Reference(SCHEMA.jobcostcode.name, '00000000-0000-0000-0000-000000000000'),
+                        costcodealias: '',
+                        paycodeid: new MobileCRM.Reference(SCHEMA.paycode.name, '00000000-0000-0000-0000-000000000000')
+                    }
+                });
+                transferPopup.hide();
+            }
+            else {
+                if (!apptID) {
+                    showToast("Missing Appointment", 'error');
+                    return;
+                }
+
+                MobileCRM.DynamicEntity.loadById(SCHEMA.appointment.name, apptID, function (appt) {
+                    var targetApptType = parseInt(appt.properties.gpappointmenttype);
+                    var transactiontype = targetApptType === 1 ? "SERVICE" : (targetApptType === 3 ? "JOB COST" : "UNBILLED");
+                    var gpjobnumber = targetApptType === 1 ? appt.properties.gpservicecallid :
+                        (targetApptType === 3 ? appt.properties.gpjobnumber : appt.properties.gpactivityid);
+
+                    MobileCRM.DynamicEntity.loadById(entityName, selected.laborexpense.id, function (laborexpense) {
+                        fetchDefaultCostCode(targetApptType, laborexpense.properties.costcodeid).then(function (costCode) {
+                            var costType = targetApptType === 3 ? 1 : // LABOR Only for Job Appt
+                                (setupOptions.DefaultCostCodeTravelTimeLog ? (isDefaultCostCode_Travel ? 3 : 1) :
+                                    laborexpense.properties.costtype);
+
+                            MobileCRM.UI.FormManager.showEditDialog(entityName, selected.laborexpense.id, null, {
+                                iFrameOptions: { transferTravel: selected.laborexpense.id },
+                                "@initialize": {
+                                    transactiontype: transactiontype,
+                                    transactionstatus: 0,
+                                    gpjobnumber: gpjobnumber,
+                                    gpappointmentid: appt.properties.gpappointmentid,
+                                    appointmentid: new MobileCRM.Reference(SCHEMA.appointment.name, apptID),
+                                    equipmentid: new MobileCRM.Reference(SCHEMA.equipment.name, '00000000-0000-0000-0000-000000000000'),
+                                    costtype: costType,
+                                    costcodeid: costCode,
+                                    jobcostcodeid: new MobileCRM.Reference(SCHEMA.jobcostcode.name, '00000000-0000-0000-0000-000000000000'),
+                                    costcodealias: "",
+                                    paycodeid: new MobileCRM.Reference(SCHEMA.paycode.name, '00000000-0000-0000-0000-000000000000')
+                                }
+                            });
+                            transferPopup.hide();
+                        }, alertError);
+                    }, alertError);
+                }, alertError);
+            }
+        }
+
+        function fetchDefaultCostCode(targetApptType, costcodeid) {
+            var deferred = $.Deferred();
+            if (targetApptType !== 1) {
+                return deferred.resolve(new MobileCRM.Reference(SCHEMA.costcode.name, '00000000-0000-0000-0000-000000000000'));
+            }
+            if (!setupOptions.DefaultCostCodeTravelTimeLog) {
+                return deferred.resolve(costcodeid);
+            }
+
+            var splitArr = setupOptions.DefaultCostCodeTravelTimeLog.split(" - ");
+            var code = parseInt(splitArr[0]);
+            var name = splitArr[1];
+            if (!code || !name) {
+                return deferred.reject("Fetch Cost Code Error: " + (!code ? "Missing Code" : "Missing Name"));
+            }
+
+            var entity = new MobileCRM.FetchXml.Entity(SCHEMA.costcode.name);
+            entity.addAttributes();
+
+            entity.addFilter().where(SCHEMA.costcode.Properties.name, 'eq', name);
+            entity.addFilter().where(SCHEMA.costcode.Properties.code, 'eq', code);
+
+            var fetch = new MobileCRM.FetchXml.Fetch(entity);
+            fetch.execute("DynamicEntities", function (res) {
+                if (res.length === 1) {
+                    return deferred.resolve(res[0]);
+                }
+                else {
+                    return deferred.reject("Fetch Cost Code Error: Fetch returned " + res.length + " results");
+                }
+            }, function (err) {
+                return deferred.reject("Fetch Cost Code Error: " + err);
+            });
+            return deferred.promise();
+        }
+    </script>
+</body>
+
+</html>

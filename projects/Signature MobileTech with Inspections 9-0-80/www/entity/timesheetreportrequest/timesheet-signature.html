@@ -1,0 +1,173 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <!-- Activate IE9 document mode, if available -->
+    <meta charset="utf-8" http-equiv="X-UA-Compatible" content="IE=edge" />
+    <!-- Defined iOS viewport -->
+    <meta name="viewport" content="initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=false">
+    <!-- Disable iOS Phone No Detection -->
+    <meta name="format-detection" content="telephone=no" />
+    <!-- DevExtreme dependencies -->
+    <script type="text/javascript" src="../../scripts/jquery.min.js"></script>
+    <!-- DevExtreme themes -->
+    <link rel="stylesheet" type="text/css" href="../../css/dx.light.css" />
+    <!-- A DevExtreme library -->
+    <script type="text/javascript" src="../../scripts/dx.all.js"></script>
+    <!-- Offline HTML JavaScript Bridge-->
+    <script type="text/javascript" src="../../scripts/JSBridge.js"></script>
+    <script type="text/javascript" src="../../scripts/k2aMethods.js"></script>
+    <script type="text/javascript" src="../../enum/Schema.js"></script>
+    <script type="text/javascript" src="../../enum/setupoption.js"></script>
+    <!-- Offline HTML Template Factory-->
+    <script type="text/javascript" src="../../templates/toolbar-factory.js"></script>
+    <!-- Offline HTML Styling -->
+    <link rel="stylesheet" type="text/css" href="../../css/k2a.css" />
+    <!-- jSignature -->
+    <script type="text/javascript" src="../../scripts/flashcanvas.js"></script>
+    <script type="text/javascript" src="../../scripts/jSignature.min.js"></script>
+    <title>Timesheet Report Request Signature</title>
+</head>
+<body>
+    <div id="toast"></div>
+    <div class="fixedPosition">
+        <div id="formToolbar"></div><br>
+        <div id="signoffText"></div>
+        <div id="mainForm"></div><br>
+        <div style='background-color: lightgrey'>
+            <div id='signaturePad' style='border:dotted #5174FA'></div>
+        </div>
+    </div>
+
+    <script>
+        //============== INITIAL SETTINGS ================
+        var entityName = SCHEMA.timesheetreportrequest.name;
+        var requireSyncLogin = true;
+        //============== SELECTED DATA ================
+        var selected = { entityName: null };
+        //============== FETCH DATA ================
+        var requiredSetupOptions = [
+            SETUPOPTION.TimeSheetSignoffText,
+            SETUPOPTION.UseEventBasedSync
+        ];
+        //============== TOOLBAR ITEMS ================
+        var toolbarItems = [
+            ToolbarItemType.btnBack, ToolbarItemType.title, ToolbarItemType.btnClear, ToolbarItemType.btnSave
+        ];
+
+        $(function () {
+            //============== LOCALIZATION ================
+            MobileCRM.Localization.initialize(function (localization) {
+                //============== ANDROID BACK BUTTON ================
+                MobileCRM.Platform.preventBackButton(btnBackClicked);
+
+                //============== MAXIMIZE FORM ================
+                $(window).resize(function () {
+                    checkIfMaximized_Multipanel();
+                });
+
+                //============== TOOLBARS ================
+                formToolbar = $("#formToolbar").dxToolbar({
+                    items: (new ToolbarFactory()).addItems(toolbarItems)
+                }).dxToolbar("instance");
+
+                //============== TEXTAREA ================
+                signOffTextArea = $("#signoffText").dxTextArea({
+                    readOnly: true,
+                    stylingMode: 'filled',
+                    visible: false
+                }).dxTextArea("instance");
+
+                //============== SIGNATURE ================
+                $("#signaturePad").jSignature({ 'lineWidth': 4 });
+
+                loadSetupOptions(loadFormOptions);
+            }, alertError);
+        });
+
+        //============== LOAD OPTIONS ================
+        function loadFormOptions() {
+            if (setupOptions.TimeSheetSignoffText) {
+                signOffTextArea.option({
+                    value: setupOptions.TimeSheetSignoffText,
+                    visible: true
+                });
+            }
+
+            MobileCRM.UI.EntityForm.requestObject(function (entityForm) {
+                selected[entityName] = entityForm.entity.properties;
+                entityForm.isDirty = true;
+                entityForm.form.showTitle = false;
+
+                checkIfMaximized_Multipanel();
+                loadToolbarOptions();
+            }, MobileCRM.bridge.alert);
+
+            MobileCRM.Configuration.requestObject(function (config) {
+                requireSyncLogin = config.settings.requireSyncLogin;
+            }, MobileCRM.bridge.alert);
+        }
+        function loadToolbarOptions() {
+            updateToobarItemOptions(formToolbar, ToolbarItemType.btnClear, { "icon": 'revert' });
+
+            $("#toolbarTitle").text(MobileCRM.Localization.get(entityName));
+        }
+
+        function checkIfMaximized_Multipanel() {
+            MobileCRM.UI.Form.requestObject(function (form) {
+                MobileCRM.Platform.requestObject(function (platform) {
+                    if (platform.isMultiPanel && !form.isMaximized)
+                        maximizeForm();
+                }, MobileCRM.bridge.alert, null);
+            }, MobileCRM.bridge.alert, null);
+        }
+        function maximizeForm() {
+            MobileCRM.UI.Form.requestObject(function (form) {
+                form.isMaximized = true;
+            }, MobileCRM.bridge.alert, null);
+        }
+
+        //============== TOOLBAR FUNCTIONS ================
+        function btnClearClicked() {
+            $("#signaturePad").jSignature('reset');
+        }
+        function btnSaveClicked() {
+            if ($("#signaturePad").jSignature('getData', 'base30')[1].length <= 1)
+                showToast(MobileCRM.Localization.get("Alert.MissingSignature"), "error");
+            else
+                saveReportSignature();
+        }
+
+        //============== FORM EXECUTIONS ================
+        function saveReportSignature() {
+            MobileCRM.DynamicEntity.loadById(entityName, selected[entityName].id, function (report) {
+                report.properties.signature = $("#signaturePad").jSignature('getData', 'svgbase64')[1];
+
+                report.save(error_save);
+            }, MobileCRM.bridge.alert, null);
+        }
+        function error_save(err) {
+            if (err)
+                MobileCRM.bridge.alert(err);
+            else {
+                MobileCRM.UI.EntityForm.requestObject(function (entityForm) {
+                    entityForm.isDirty = false;
+                    syncOrCloseForm();
+                }, MobileCRM.bridge.alert);
+            }
+        }
+        function syncOrCloseForm() {
+            if (setupOptions.UseEventBasedSync) {
+                MobileCRM.Application.synchronize(false);
+                if (!requireSyncLogin)
+                    MobileCRM.bridge.closeForm();
+            }
+            else {
+                MobileCRM.UI.MessageBox.sayText(
+                    MobileCRM.Localization.get("Alert.TimeSheetReportGenerated"),
+                    MobileCRM.bridge.closeForm
+                );
+            }
+        }
+    </script>
+</body>
+</html>

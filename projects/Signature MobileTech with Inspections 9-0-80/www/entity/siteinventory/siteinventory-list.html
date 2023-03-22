@@ -1,0 +1,283 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <!-- Activate IE9 document mode, if available -->
+    <meta charset="utf-8" http-equiv="X-UA-Compatible" content="IE=edge" />
+    <!-- Defined iOS viewport -->
+    <meta name="viewport" content="initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=false">
+    <!-- Disable iOS Phone No Detection -->
+    <meta name="format-detection" content="telephone=no" />
+    <!-- DevExtreme dependencies -->
+    <script type="text/javascript" src="../../scripts/jquery.min.js"></script>
+    <!-- DevExtreme themes -->
+    <link rel="stylesheet" type="text/css" href="../../css/dx.light.css" />
+    <!-- A DevExtreme library -->
+    <script type="text/javascript" src="../../scripts/dx.all.js"></script>
+    <!-- Offline HTML JavaScript Bridge-->
+    <script type="text/javascript" src="../../scripts/JSBridge.js"></script>
+    <script type="text/javascript" src="../../scripts/k2aMethods.js"></script>
+    <script type="text/javascript" src="../../enum/Schema.js"></script>
+    <script type="text/javascript" src="../../enum/setupoption.js"></script>
+    <!-- Offline HTML Template Factory-->
+    <script type="text/javascript" src="../../templates/listItem-factory.js"></script>
+    <script type="text/javascript" src="../../templates/toolbar-factory.js"></script>
+    <!-- Offline HTML Styling -->
+    <link rel="stylesheet" type="text/css" href="../../css/k2a.css" />
+    <title>Entity List</title>
+</head>
+<body>
+    <div id="toast"></div>
+    <div class="fixedPosition">
+        <div id="listToolbar"></div>
+        <div id="mainScrollView">
+            <div id='mainList'></div>
+        </div>
+        <div id="actionSheet"></div>
+        <div id="filterPopup"></div>
+    </div>
+
+    <script>
+        //============== INITIAL SETTINGS ================
+        var entityName = SCHEMA.siteinventory.name, scrollHeight = 80;
+        var sortDesc = false, sortSelector = SCHEMA.siteinventory.Properties.itemnumber;
+        //============== OFFLINE DATA ================
+        var entityListData;
+        //============== SELECTED DATA ================
+        var selected = { entityName: null, lookupTarget: null };
+        //============== FETCH DATA ================
+        var requiredSetupOptions = [
+            SETUPOPTION.ShowInventoryCost,
+            SETUPOPTION.ShowInventoryPrice,
+            SETUPOPTION.ShowInventorySiteQtyAvailable,
+            SETUPOPTION.UseBarcoding
+        ];
+        var entityAttributes = [
+            SCHEMA.siteinventory.Properties.id,
+            SCHEMA.siteinventory.Properties.name,
+            SCHEMA.siteinventory.Properties.gpsiteid,
+            SCHEMA.siteinventory.Properties.itemnumber,
+            SCHEMA.siteinventory.Properties.description,
+            SCHEMA.siteinventory.Properties.gpserialnumber,
+            SCHEMA.siteinventory.Properties.unitofmeasureid,
+            SCHEMA.siteinventory.Properties.unitcost,
+            SCHEMA.siteinventory.Properties.listprice,
+            SCHEMA.siteinventory.Properties.quantityavailable
+        ];
+        var listSortItems = [
+            SCHEMA.siteinventory.Properties.itemnumber,
+            SCHEMA.siteinventory.Properties.description
+        ];
+        var listSearchItems = [
+            SCHEMA.siteinventory.Properties.gpsiteid,
+            SCHEMA.siteinventory.Properties.itemnumber,
+            SCHEMA.siteinventory.Properties.description,
+            SCHEMA.siteinventory.Properties.gpserialnumber,
+            SCHEMA.siteinventory.Properties.unitofmeasureid,
+            SCHEMA.siteinventory.Properties.unitcost,
+            SCHEMA.siteinventory.Properties.listprice,
+            SCHEMA.siteinventory.Properties.quantityavailable
+        ];
+        var listFilterItems = [
+            { dataField: SCHEMA.siteinventory.Properties.gpsiteid, dataType: FilterDataType.string },
+            { dataField: SCHEMA.siteinventory.Properties.itemnumber, dataType: FilterDataType.string },
+            { dataField: SCHEMA.siteinventory.Properties.description, dataType: FilterDataType.string }
+        ];
+        var listItemTemplate = function (data, _, element) {
+            var labels = {};
+            labels.cost = MobileCRM.Localization.get(entityName + "." + SCHEMA.siteinventory.Properties.unitcost);
+            labels.site = MobileCRM.Localization.get(entityName + "." + SCHEMA.siteinventory.Properties.gpsiteid);
+            labels.unit = MobileCRM.Localization.get(entityName + "." + SCHEMA.siteinventory.Properties.unitofmeasureid);
+            labels.price = MobileCRM.Localization.get(entityName + "." + SCHEMA.siteinventory.Properties.listprice);
+            labels.qtyAvailable = MobileCRM.Localization.get(entityName + "." + SCHEMA.siteinventory.Properties.quantityavailable);
+
+            element.append(
+                $("<div>").append(data.itemnumber).css("font-size", "large"),
+                $("<span>").append(data.description)
+            );
+
+            if (setupOptions.ShowInventoryCost)
+                element.append(
+                    $("<span>").append(
+                        $("<span>").append(labels.cost.toUpperCase() + ": ").addClass('listItemLabel'),
+                        $("<span>").append(formatFloat(data.unitcost, 2).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ","))
+                    ).css("float", "right")
+                );
+
+            element.append(
+                $("<br>"),
+                $("<span>").append(
+                    $("<span>").append(labels.site.toUpperCase() + ": ").addClass('listItemLabel'), data.gpsiteid
+                ),
+                $("<span>").append(
+                    $("<span>").append(labels.unit.toUpperCase() + ": ").addClass('listItemLabel'),
+                    (data.unitofmeasureid ? data.unitofmeasureid.primaryName : "")
+                ).css("margin-left", "20%")
+            );
+
+            if (setupOptions.ShowInventoryPrice)
+                element.append(
+                    $("<span>").append(
+                        $("<span>").append(labels.price.toUpperCase() + ": ").addClass('listItemLabel'),
+                        $("<span>").append(formatFloat(data.listprice, 2).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ","))
+                    ).css("float", "right")
+                );
+
+            element.append(
+                $("<br>"),
+                $("<span>").append(data.gpserialnumber)
+            );
+
+            if (setupOptions.ShowInventorySiteQtyAvailable) {
+                element.append(
+                    $("<span>").append(
+                        $("<span>").append(labels.qtyAvailable.toUpperCase() + ": ").addClass('listItemLabel'),
+                        $("<span>").append(formatFloat(data.quantityavailable, 2).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ","))
+                    ).css("float", "right")
+                );
+            }
+        };
+        //============== TOOLBAR ITEMS ================
+        var listToolbarItems = [
+            ToolbarItemType.btnSort, ToolbarItemType.selectSort, ToolbarItemType.btnFilter
+        ];
+
+        $(function () {
+            //============== LOCALIZATION ================
+            MobileCRM.Localization.initialize(function (localization) {
+
+                //============== ANDROID CHECK ================
+                MobileCRM.Platform.preventBackButton(btnBackClicked);
+
+                //============== LOADPANEL ================
+                loading = MobileCRM.UI.Form.showPleaseWait(MobileCRM.Localization.get("Msg.Loading"));
+
+                //============== SCROLLVIEW ================
+                mainScrollView = $("#mainScrollView").dxScrollView({
+                    showScrollbar: "always",
+                    height: function () { return window.innerHeight - scrollHeight; },
+                    width: '100%'
+                }).dxScrollView("instance");
+                $(window).resize(function () {
+                    repaintScrollView(mainScrollView);
+                });
+
+                //============== TOOLBARS ================
+                listToolbar = $("#listToolbar").dxToolbar({
+                    items: (new ToolbarFactory()).addItems(listToolbarItems)
+                }).dxToolbar("instance");
+
+                //============== LIST ================
+                mainList = (new ListFactory()).createItem("#mainList", entityName, [
+                    { name: 'searchExpr', value: listSearchItems },
+                    { name: 'itemTemplate', value: listItemTemplate }
+                ]);
+
+                loadSetupOptions(loadListOptions);
+            }, alertError);
+        });
+
+        //============== LOAD OPTIONS ================
+        function loadListOptions() {
+            MobileCRM.UI.IFrameForm.requestObject(function (iframe) {
+                if (iframe.options)
+                    selected.lookupTarget = iframe.options.lookupTarget;
+
+                loadToolbarOptions();
+                loadListItemOptions();
+            }, MobileCRM.bridge.alert);
+        }
+        function loadToolbarOptions() {
+            if (typeof listFilterItems !== 'undefined' && listFilterItems.length > 0)
+                (new FilterFactory()).createFilterPopup(mainList, listToolbar);
+
+            loadSortItemsLocalization(listSortItems).then(function (sortDataSource) {
+                updateToolbarItem(listToolbar, ToolbarItemType.selectSort, "options.dataSource", sortDataSource);
+                updateToolbarItem(listToolbar, ToolbarItemType.selectSort, "options.value", sortSelector);
+            });
+        }
+        function loadListItemOptions() {
+            if (setupOptions.UseBarcoding)
+                addBarcodeSearch();
+
+            fetchListEntityData();
+        }
+
+        //============== LOAD DATA ================
+        function fetchListEntityData() {
+            var entity = new MobileCRM.FetchXml.Entity(entityName);
+            $(entityAttributes).each(function (index, attribute) {
+                entity.addAttribute(attribute);
+            });
+            entity.orderBy(sortSelector, sortDesc);
+
+            if (selected.lookupTarget.entityName === SCHEMA.purchaseorderdetail.name)
+                //(2) Discontinued is OK for Consumed Inventory but not for PO
+                entity.addFilter().where(SCHEMA.siteinventory.Properties.itemtype, 'ne', 2);
+
+            var fetch = new MobileCRM.FetchXml.Fetch(entity);
+            fetch.count = 1000;
+            fetchAllPages(fetch, "JSON").then(function (res) {
+                entityListData = res;
+                mainList.option("dataSource", new DevExpress.data.DataSource({
+                    store: {
+                        type: "array",
+                        key: "id",
+                        data: entityListData
+                    },
+                    pageSize: 10,
+                    sort: [SCHEMA.siteinventory.Properties.gpsiteid, { selector: sortSelector, desc: sortDesc }]
+                }));
+                loading.close();
+            }, alertError);
+        }
+
+        //============== TOOLBAR FUNCTIONS ================
+        function btnSortClicked() {
+            var dataSource = mainList.getDataSource();
+            var currentFilter = [];
+            if (dataSource)
+                currentFilter = dataSource.filter();
+            mainList.option("dataSource", new DevExpress.data.DataSource({
+                store: {
+                    type: "array",
+                    key: "id",
+                    data: entityListData
+                },
+                sort: [SCHEMA.siteinventory.Properties.gpsiteid, { selector: sortSelector, desc: sortDesc }],
+                filter: currentFilter
+            }));
+        }
+        function sortSelected() {
+            btnSortClicked();
+        }
+
+        //============== LIST ITEM FUNCTIONS ================
+        function listItemClicked() {
+            MobileCRM.bridge.raiseGlobalEvent("AddSiteInventory", {
+                lookupTarget: selected.lookupTarget,
+                siteinventory: selected[entityName]
+            });
+            MobileCRM.bridge.closeForm();
+        }
+
+        function barcodeScanned(barcode) {
+            mainList.option('searchValue', barcode);
+
+            var filteredData = new DevExpress.data.DataSource({
+                store: entityListData,
+                filter: [SCHEMA.siteinventory.Properties.itemnumber, '=', barcode],
+                paginate: false
+            });
+
+            filteredData.load().done(function (data) {
+                if (data.length === 0)
+                    showToast(MobileCRM.Localization.get("Alert.NoBarcodeResults").format(barcode), "error");
+                else if (data.length === 1) {
+                    selected[entityName] = data[0];
+                    listItemClicked();
+                }
+            });
+        }
+    </script>
+</body>
+</html>

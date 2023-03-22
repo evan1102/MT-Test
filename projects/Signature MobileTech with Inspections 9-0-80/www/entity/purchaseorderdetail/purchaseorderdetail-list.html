@@ -1,0 +1,465 @@
+﻿<!DOCTYPE html>
+<html>
+
+<head>
+    <!-- Activate IE9 document mode, if available -->
+    <meta charset="utf-8" http-equiv="X-UA-Compatible" content="IE=edge" />
+    <!-- Defined iOS viewport -->
+    <meta name="viewport" content="initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=false">
+    <!-- Disable iOS Phone No Detection -->
+    <meta name="format-detection" content="telephone=no" />
+    <!-- DevExtreme dependencies -->
+    <script type="text/javascript" src="../../scripts/jquery.min.js"></script>
+    <!-- DevExtreme themes -->
+    <link rel="stylesheet" type="text/css" href="../../css/dx.light.css" />
+    <!-- A DevExtreme library -->
+    <script type="text/javascript" src="../../scripts/dx.all.js"></script>
+    <!-- Offline HTML JavaScript Bridge-->
+    <script type="text/javascript" src="../../scripts/JSBridge.js"></script>
+    <script type="text/javascript" src="../../scripts/k2aMethods.js"></script>
+    <script type="text/javascript" src="../../enum/Schema.js"></script>
+    <script type="text/javascript" src="../../enum/setupoption.js"></script>
+    <!-- Offline HTML Template Factory-->
+    <script type="text/javascript" src="../../templates/listItem-factory.js"></script>
+    <script type="text/javascript" src="../../templates/toolbar-factory.js"></script>
+    <!-- Offline HTML Styling -->
+    <link rel="stylesheet" type="text/css" href="../../css/k2a.css" />
+    <title>Entity List</title>
+</head>
+
+<body>
+    <div id="toast"></div>
+    <div class="fixedPosition">
+        <div id="mainToolbar"></div><br>
+        <div id="listToolbar"></div>
+        <div id="mainScrollView">
+            <div id='mainList'></div>
+        </div>
+        <div id="actionSheet"></div>
+        <div id="filterPopup"></div>
+    </div>
+
+    <script>
+        //============== INITIAL SETTINGS ================
+        var entityName = SCHEMA.purchaseorderdetail.name, scrollHeight = 110;
+        var sortDesc = false, sortSelector = SCHEMA.purchaseorderdetail.Properties.gppurchaseordernumber;
+        var autoOpenNewForm = true, isInitialLoad = true, openedFromHomePage = false;
+        //============== OFFLINE DATA ================
+        var entityListData;
+        //============== SELECTED DATA ================
+        var selected = { entityName: null, appointment: null, viewIndex: null };
+        //============== FETCH DATA ================
+        var requiredSetupOptions = [
+            SETUPOPTION.UsePurchaseOrderJobCost,
+            SETUPOPTION.UsePurchaseOrderService
+        ];
+        var entityAttributes = [
+            SCHEMA.purchaseorderdetail.Properties.id,
+            SCHEMA.purchaseorderdetail.Properties.name,
+            SCHEMA.purchaseorderdetail.Properties.gppurchaseordernumber,
+            SCHEMA.purchaseorderdetail.Properties.purchaseorderid,
+            SCHEMA.purchaseorderdetail.Properties.gplinenumber,
+            SCHEMA.purchaseorderdetail.Properties.itemnumber,
+            SCHEMA.purchaseorderdetail.Properties.itemdescription,
+            SCHEMA.purchaseorderdetail.Properties.siteid,
+            SCHEMA.purchaseorderdetail.Properties.quantity,
+            SCHEMA.purchaseorderdetail.Properties.unitofmeasureid,
+            SCHEMA.purchaseorderdetail.Properties.transactiondate,
+            SCHEMA.purchaseorderdetail.Properties.isprocessed,
+            SCHEMA.purchaseorderdetail.Properties.appointmentid,
+            SCHEMA.purchaseorderdetail.Properties.servicecallid,
+            SCHEMA.purchaseorderdetail.Properties.jobid
+        ];
+        var listSortItems = [
+            SCHEMA.purchaseorderdetail.Properties.gppurchaseordernumber
+        ];
+        var listSearchItems = [
+            SCHEMA.purchaseorderdetail.Properties.name,
+            SCHEMA.purchaseorderdetail.Properties.itemnumber,
+            SCHEMA.purchaseorderdetail.Properties.itemdescription,
+            SCHEMA.purchaseorderdetail.Properties.siteid,
+            SCHEMA.purchaseorderdetail.Properties.quantity,
+            SCHEMA.purchaseorderdetail.Properties.unitofmeasureid,
+            SCHEMA.purchaseorderdetail.Properties.transactiondate,
+            SCHEMA.purchaseorderdetail.Properties.appointmentid,
+            SCHEMA.purchaseorderdetail.Properties.servicecallid,
+            SCHEMA.purchaseorderdetail.Properties.jobid,
+            'po_gpvendorname',
+            'po_gpjobnumber'
+        ];
+        var listFilterItems = [
+            { dataField: SCHEMA.purchaseorderdetail.Properties.name, dataType: FilterDataType.string },
+            { dataField: 'po_gpvendorname', dataType: FilterDataType.string },
+            { dataField: SCHEMA.purchaseorderdetail.Properties.itemnumber, dataType: FilterDataType.string },
+            { dataField: SCHEMA.purchaseorderdetail.Properties.siteid, dataType: FilterDataType.string },
+            { dataField: SCHEMA.purchaseorderdetail.Properties.itemdescription, dataType: FilterDataType.string },
+            { dataField: SCHEMA.purchaseorderdetail.Properties.transactiondate, dataType: FilterDataType.date }
+        ];
+        var listItemTemplate = function (data, _, element) {
+            var labels = {};
+            labels.site = MobileCRM.Localization.get(entityName + "." + SCHEMA.purchaseorderdetail.Properties.siteid);
+            labels.qty = MobileCRM.Localization.get(entityName + ".qty");
+            labels.unit = MobileCRM.Localization.get(entityName + ".unit");
+            labels.appt = MobileCRM.Localization.get(entityName + "." + SCHEMA.purchaseorderdetail.Properties.appointmentid);
+            labels.call = MobileCRM.Localization.get(entityName + "." + SCHEMA.purchaseorderdetail.Properties.servicecallid);
+            labels.job = MobileCRM.Localization.get(entityName + "." + SCHEMA.purchaseorderdetail.Properties.jobid);
+            labels.gpjobnumber = MobileCRM.Localization.get(SCHEMA.purchaseorder.name + "." + SCHEMA.purchaseorder.Properties.gpjobnumber);
+
+            element.append(
+                $("<span>").append(data.name).css("font-size", "large"),
+                $("<span>").append(data.po_gpvendorname).css("float", "right"),
+                $("<div>").attr(SCHEMA.purchaseorderdetail.Properties.id, data.id)
+            );
+            $("#" + data.id).dxBox({
+                direction: "row",
+                width: "100%",
+                items: [
+                    { ratio: 2, html: "<div id='left_" + data.id + "' >" },
+                    { ratio: 1, html: "<div id='right_" + data.id + "' >" }
+                ]
+            });
+
+            $("#left_" + data.id).append(
+                $("<div>").append(data.itemnumber),
+                $("<div>").append(data.itemdescription)
+                    .css({ "display": "block", "overflow": "auto", "white-space": "pre-wrap" })
+            );
+
+            if (openedFromHomePage) {
+                if (data.appointmentid) {
+                    $("#left_" + data.id).append(
+                        $("<br>"),
+                        $("<div>").append(
+                            $("<span>").append(labels.appt.toUpperCase() + ": ").addClass('listItemLabel'),
+                            $("<span>").append(data.appointmentid.primaryName)
+                        )
+                    );
+                }
+                else if (data.servicecallid) {
+                    $("#left_" + data.id).append(
+                        $("<br>"),
+                        $("<div>").append(
+                            $("<span>").append(labels.call.toUpperCase() + ": ").addClass('listItemLabel'),
+                            $("<span>").append(data.servicecallid.primaryName)
+                        )
+                    );
+                }
+                else if (data.jobid) {
+                    $("#left_" + data.id).append(
+                        $("<br>"),
+                        $("<div>").append(
+                            $("<span>").append(labels.job.toUpperCase() + ": ").addClass('listItemLabel'),
+                            $("<span>").append(data.jobid.primaryName)
+                        )
+                    );
+                }
+                else if (data.po_gpjobnumber) {
+                    $("#left_" + data.id).append(
+                        $("<br>"),
+                        $("<div>").append(
+                            $("<span>").append(labels.gpjobnumber.toUpperCase() + ": ").addClass('listItemLabel'),
+                            $("<span>").append(data.po_gpjobnumber)
+                        )
+                    );
+                }
+            }
+
+            $("#right_" + data.id).append(
+                $("<span>").append(labels.site.toUpperCase() + ": ").addClass('listItemLabel'), data.siteid, "<br>",
+                $("<span>").append(labels.qty.toUpperCase() + ": ").addClass('listItemLabel'), formatFloat(data.quantity, 2), "<br>"
+            ).css("text-align", "right");
+
+            if (data.unitofmeasureid)
+                $("#right_" + data.id).append(
+                    $("<span>").append(labels.unit.toUpperCase() + ": ").addClass('listItemLabel'), data.unitofmeasureid.primaryName, "<br>"
+                );
+
+            $("#right_" + data.id).append(formatDate(data.transactiondate));
+        };
+        //============== TOOLBAR ITEMS ================
+        var mainToolbarItems = [
+            ToolbarItemType.title, ToolbarItemType.btnNew
+        ];
+        var listToolbarItems = [
+            ToolbarItemType.btnSort, ToolbarItemType.selectSort, ToolbarItemType.btnFilter
+        ];
+        //============== LIST ACTION ITEMS ================
+        var actionItems = [
+            { text: "More", onClick: editEntity },
+            { text: "New Line", onClick: newLine },
+            { text: "Delete", onClick: deleteEntity }
+        ];
+
+        $(function () {
+            //============== LOCALIZATION ================
+            MobileCRM.Localization.initialize(function (localization) {
+
+                //============== SCROLLVIEW ================
+                mainScrollView = $("#mainScrollView").dxScrollView({
+                    showScrollbar: "always",
+                    height: function () { return window.innerHeight - scrollHeight; },
+                    width: '100%'
+                }).dxScrollView("instance");
+                $(window).resize(function () {
+                    repaintScrollView(mainScrollView);
+                });
+
+                //============== TOOLBARS ================
+                mainToolbar = $("#mainToolbar").dxToolbar({
+                    items: (new ToolbarFactory()).addItems(mainToolbarItems)
+                }).dxToolbar("instance");
+                listToolbar = $("#listToolbar").dxToolbar({
+                    items: (new ToolbarFactory()).addItems(listToolbarItems)
+                }).dxToolbar("instance");
+
+                //============== LIST ================
+                mainList = (new ListFactory()).createItem("#mainList", entityName, [
+                    { name: 'searchExpr', value: listSearchItems },
+                    { name: 'itemTemplate', value: listItemTemplate }
+                ]);
+
+                //============== ACTION SHEETS ================
+                actionSheet = (new ActionSheetFactory()).createItem(actionItems, "#actionSheet");
+
+                //============== EVENT HANDLERS ================
+                MobileCRM.bridge.onGlobalEvent("EntityFormClosed", function (closedForm) {
+                    if (closedForm.entity && closedForm.entity.entityName === entityName)
+                        fetchListEntityData();
+                }, true);
+                MobileCRM.Configuration.requestObject(function (config) {
+                    MobileCRM.bridge.onGlobalEvent("SyncFinished", fetchListEntityData, !config.settings.requireSyncLogin);
+                }, MobileCRM.bridge.alert);
+
+                loadSetupOptions(loadListOptions);
+            }, alertError);
+        });
+
+        //============== LOAD OPTIONS ================
+        function loadListOptions() {
+            MobileCRM.UI.EntityForm.requestObject(function (entityForm) {
+                if (entityForm.entity.entityName !== SCHEMA.appointment.name)
+                    return;
+
+                selected.appointment = entityForm.entity.properties;
+                selected.viewIndex = entityForm.form.selectedViewIndex;
+
+                if (parseInt(selected.appointment.gpappointmenttype) === 1 && !setupOptions.UsePurchaseOrderService) {
+                    return; // Tab is not visible so do not need to load
+                }
+                if (parseInt(selected.appointment.gpappointmenttype) === 3 && !setupOptions.UsePurchaseOrderJobCost) {
+                    return; // Tab is not visible so do not need to load
+                }
+
+                loadToolbarOptions();
+                loadListItemOptions();
+            }, function (err) {
+                // Opened from Home Page
+                try {
+                    openedFromHomePage = true;
+                    if (!setupOptions.UsePurchaseOrderService && !setupOptions.UsePurchaseOrderJobCost) {
+                        var msg = MobileCRM.Localization.get("Alert.NoPOAccess");
+                        MobileCRM.UI.MessageBox.sayText(msg, MobileCRM.bridge.closeForm);
+                    }
+                    else {
+                        loadToolbarOptions();
+                        loadListItemOptions();
+                    }
+                }
+                catch (e) {
+                    alertError(e);
+                }
+            });
+        }
+        function loadToolbarOptions() {
+            if (typeof listFilterItems !== 'undefined' && listFilterItems.length > 0)
+                (new FilterFactory()).createFilterPopup(mainList, listToolbar);
+
+            $("#toolbarTitle").text(MobileCRM.Localization.get("DetailView." + entityName));
+
+            loadSortItemsLocalization(listSortItems).then(function (sortDataSource) {
+                updateToolbarItem(listToolbar, ToolbarItemType.selectSort, "options.dataSource", sortDataSource);
+                updateToolbarItem(listToolbar, ToolbarItemType.selectSort, "options.value", sortSelector);
+            });
+        }
+        function loadListItemOptions() {
+            fetchListEntityData();
+        }
+
+        //============== LOAD DATA ================
+        function fetchListEntityData() {
+            var entity = new MobileCRM.FetchXml.Entity(entityName);
+            $(entityAttributes).each(function (index, attribute) {
+                entity.addAttribute(attribute);
+            });
+            entity.orderBy(sortSelector, sortDesc);
+            entity.orderBy(SCHEMA.purchaseorderdetail.Properties.gplinenumber, false);
+
+            if (!openedFromHomePage && selected.appointment) {
+                entity.addFilter().where(SCHEMA.purchaseorderdetail.Properties.appointmentid, 'eq', selected.appointment.id);
+                entity.filter.type = 'or';
+
+                if (selected.appointment.gpappointmenttype === 1 && selected.appointment.servicecallid) {
+                    entity.addFilter().where(SCHEMA.purchaseorderdetail.Properties.servicecallid, 'eq', selected.appointment.servicecallid.id);
+                }
+
+                if (selected.appointment.gpappointmenttype === 3 && selected.appointment.jobid) {
+                    entity.addFilter().where(SCHEMA.purchaseorderdetail.Properties.jobid, 'eq', selected.appointment.jobid.id);
+                }
+            }
+
+            var poLink = entity.addLink(
+                SCHEMA.purchaseorder.name,
+                SCHEMA.purchaseorder.Properties.id,
+                SCHEMA.purchaseorderdetail.Properties.purchaseorderid,
+                'inner');
+            poLink.addAttribute(SCHEMA.purchaseorder.Properties.gpvendorname);
+            poLink.addAttribute(SCHEMA.purchaseorder.Properties.gpjobnumber);
+            poLink.alias = 'po';
+
+            var fetch = new MobileCRM.FetchXml.Fetch(entity);
+            fetch.execute("JSON", function (res) {
+                $(res).each(function (i, _) {
+                    // For filter to work with dates need to be Date (JSON returns as string)
+                    res[i].transactiondate = new Date(res[i].transactiondate);
+
+                    // For list search to work can not have "." in attribute name
+                    if (res[i][poLink.alias + '.' + SCHEMA.purchaseorder.Properties.gpvendorname]) {
+                        res[i].po_gpvendorname = res[i][poLink.alias + '.' + SCHEMA.purchaseorder.Properties.gpvendorname];
+                    }
+                    if (res[i][poLink.alias + '.' + SCHEMA.purchaseorder.Properties.gpjobnumber]) {
+                        res[i].po_gpjobnumber = res[i][poLink.alias + '.' + SCHEMA.purchaseorder.Properties.gpjobnumber];
+                    }
+                });
+
+                loadListData(mainList, res);
+                entityListData = res;
+
+                if (entityListData.length === 0 && autoOpenNewForm && isInitialLoad && parseInt(selected.viewIndex) > 0) {
+                    btnNewClicked();
+                    isInitialLoad = false;
+                }
+            }, alertError);
+        }
+
+        function fetchDetailsOnPO(poID) {
+            var deferred = $.Deferred();
+            if (!poID)
+                return deferred.reject("Unable to fetch purchase order details");
+
+            var entity = new MobileCRM.FetchXml.Entity(entityName);
+            entity.addAttribute(SCHEMA.purchaseorderdetail.Properties.id);
+            entity.addFilter().where(SCHEMA.purchaseorderdetail.Properties.purchaseorderid, 'eq', poID);
+
+            var fetch = new MobileCRM.FetchXml.Fetch(entity);
+            fetch.execute("JSON", function (res) {
+                return deferred.resolve(res);
+            }, function (err) { return deferred.reject(err); });
+            return deferred.promise();
+        }
+        function fetchProcessedDetailsOnPO(poID) {
+            var deferred = $.Deferred();
+            if (!poID)
+                return deferred.reject("Unable to fetch purchase order details");
+
+            var entity = new MobileCRM.FetchXml.Entity(entityName);
+            entity.addAttribute(SCHEMA.purchaseorderdetail.Properties.id);
+
+            entity.addFilter().where(SCHEMA.purchaseorderdetail.Properties.purchaseorderid, 'eq', poID);
+            entity.addFilter().where(SCHEMA.purchaseorderdetail.Properties.isprocessed, 'eq', true);
+            entity.filter.type = 'and';
+
+            var fetch = new MobileCRM.FetchXml.Fetch(entity);
+            fetch.execute("JSON", function (res) {
+                return deferred.resolve(res);
+            }, function (err) { return deferred.reject(err); });
+            return deferred.promise();
+        }
+
+        //============== TOOLBAR FUNCTIONS ================
+        function btnSortClicked() {
+            loadListData(mainList, entityListData);
+        }
+        function sortSelected() {
+            btnSortClicked();
+        }
+        function btnNewClicked() {
+            if (selected.appointment) {
+                var target = new MobileCRM.Reference(SCHEMA.appointment.name, selected.appointment.id);
+                var relationship = new MobileCRM.Relationship(SCHEMA.purchaseorderdetail.Properties.appointmentid, target);
+                MobileCRM.UI.FormManager.showNewDialog(entityName, relationship, null);
+            }
+            else {
+                MobileCRM.UI.FormManager.showNewDialog(entityName, null, null);
+            }
+        }
+
+        //============== LIST ITEM FUNCTIONS ================
+        function listItemClicked() {
+            actionSheet.option({
+                title: selected[entityName].name + ": " + selected[entityName].itemnumber,
+                visible: true
+            });
+        }
+
+        //============== LIST EXECUTIONS ================
+        function editEntity() {
+            MobileCRM.UI.FormManager.showEditDialog(entityName, selected[entityName].id);
+        }
+        function newLine() {
+            if (selected[entityName].purchaseorderid)
+                fetchProcessedDetailsOnPO(selected[entityName].purchaseorderid.id).then(function (processedDetails) {
+                    if (processedDetails.length > 0)
+                        sayLocalization("Alert.CannotModifyPO");
+                    else
+                        MobileCRM.Configuration.requestObject(function (config) {
+                            if (config.isBackgroundSync)
+                                sayLocalization("Alert.CantSaveWhileSync");
+                            else {
+                                var target = new MobileCRM.Reference(SCHEMA.appointment.name, selected.purchaseorderdetail.appointmentid.id);
+                                var relationship = new MobileCRM.Relationship(SCHEMA.purchaseorderdetail.Properties.appointmentid, target);
+                                MobileCRM.UI.FormManager.showNewDialog(entityName, relationship, {
+                                    "@initialize": {
+                                        'gppurchaseordernumber': selected[entityName].gppurchaseordernumber
+                                    },
+                                    iFrameOptions: { isNewLine: true }
+                                });
+                            }
+                        }, MobileCRM.bridge.alert);
+                }, MobileCRM.bridge.alert);
+            else
+                MobileCRM.bridge.alert("Unable to load Purchase Order ID");
+        }
+        function deleteEntity() {
+            MobileCRM.Localization.initialize(function (localization) {
+                if (JSON.parse(selected[entityName].isprocessed.toLowerCase()))
+                    sayLocalization("Alert.CannotDeleteSyncPO");
+                else {
+                    var confirmPopup = new MobileCRM.UI.MessageBox(
+                        MobileCRM.Localization.get("Alert.ConfirmPODelete")
+                    );
+                    confirmPopup.items = [MobileCRM.Localization.get("enum.Yes"), MobileCRM.Localization.get("enum.No")];
+                    confirmPopup.multiLine = true;
+                    confirmPopup.show(function (btn) {
+                        if (btn === MobileCRM.Localization.get("enum.Yes"))
+                            MobileCRM.DynamicEntity.deleteById(entityName, selected[entityName].id, function () {
+                                // Refresh List
+                                fetchListEntityData();
+
+                                // Delete corresponding PO if it doesn't have any other PO Details
+                                if (selected[entityName].purchaseorderid)
+                                    fetchDetailsOnPO(selected[entityName].purchaseorderid.id).then(function (detailsOnPO) {
+                                        if (detailsOnPO.length === 0)
+                                            MobileCRM.DynamicEntity.deleteById(SCHEMA.purchaseorder.name, selected[entityName].purchaseorderid.id,
+                                                function () { }, MobileCRM.bridge.alert);
+                                    }, MobileCRM.bridge.alert);
+                            }, MobileCRM.bridge.alert);
+
+                        return;
+                    });
+                }
+            }, MobileCRM.bridge.alert);
+        }
+    </script>
+</body>
+
+</html>

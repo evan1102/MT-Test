@@ -1,0 +1,51 @@
+﻿<EntityForm xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:dummy="0" flexi="0" fleximode="1" fullscreen="0" resize="0" version="2">
+	<IsContactForm>false</IsContactForm>
+	<EntityName>meterreading</EntityName>
+	<CamelCase>meterreading</CamelCase>
+	<WorkflowLoad>&lt;?xml version="1.0" ?&gt;&lt;Workflow e="true" isvalid="true" syntaxVersion="11" version="0"&gt;&lt;function e="false"&gt;&lt;var&gt;Tabs.formCommands.IsVisible&lt;/var&gt;&lt;func&gt;Assign&lt;/func&gt;&lt;arg&gt;Boolean:False&lt;/arg&gt;&lt;/function&gt;&lt;function e="false"&gt;&lt;var&gt;Form.equipmentmeter16.PlaceholderText&lt;/var&gt;&lt;func&gt;Concat&lt;/func&gt;&lt;arg&gt;String:Enter &lt;/arg&gt;&lt;arg&gt;var:Form.equipmentmeter16.Label&lt;/arg&gt;&lt;/function&gt;&lt;function e="false"&gt;&lt;var&gt;Form.equipmentmeter17.PlaceholderText&lt;/var&gt;&lt;func&gt;Concat&lt;/func&gt;&lt;arg&gt;String:Enter &lt;/arg&gt;&lt;arg&gt;var:Form.equipmentmeter17.Label&lt;/arg&gt;&lt;/function&gt;&lt;function e="false"&gt;&lt;var&gt;Form.equipmentmeter18.PlaceholderText&lt;/var&gt;&lt;func&gt;Concat&lt;/func&gt;&lt;arg&gt;String:Enter &lt;/arg&gt;&lt;arg&gt;var:Form.equipmentmeter18.Label&lt;/arg&gt;&lt;/function&gt;&lt;function e="false"&gt;&lt;var&gt;Form.equipmentmeter19.PlaceholderText&lt;/var&gt;&lt;func&gt;Concat&lt;/func&gt;&lt;arg&gt;String:Enter &lt;/arg&gt;&lt;arg&gt;var:Form.equipmentmeter19.Label&lt;/arg&gt;&lt;/function&gt;&lt;function e="false"&gt;&lt;var&gt;Form.equipmentmeter20.PlaceholderText&lt;/var&gt;&lt;func&gt;Concat&lt;/func&gt;&lt;arg&gt;String:Enter &lt;/arg&gt;&lt;arg&gt;var:Form.equipmentmeter20.Label&lt;/arg&gt;&lt;/function&gt;&lt;/Workflow&gt;</WorkflowLoad>
+	<WorkflowCommandExecute>&lt;?xml version="1.0" ?&gt;&lt;Workflow e="true" isvalid="true" syntaxVersion="11" version="0"&gt;&lt;branch e="true" info="" &gt;&lt;if e="true"&gt;&lt;conditions e="true" op="And"&gt;&lt;condition e="false"&gt;&lt;var&gt;Command.Name&lt;/var&gt;&lt;op&gt;Equal&lt;/op&gt;&lt;arg&gt;String:Save&lt;/arg&gt;&lt;/condition&gt;&lt;condition e="false"&gt;&lt;var&gt;Entity.IsNew&lt;/var&gt;&lt;op&gt;Equal&lt;/op&gt;&lt;arg&gt;Boolean:True&lt;/arg&gt;&lt;/condition&gt;&lt;/conditions&gt;&lt;action&gt;&lt;function e="false"&gt;&lt;var&gt;Command.IsEnabled&lt;/var&gt;&lt;func&gt;Assign&lt;/func&gt;&lt;arg&gt;Boolean:False&lt;/arg&gt;&lt;/function&gt;&lt;/action&gt;&lt;/if&gt;&lt;/branch&gt;&lt;/Workflow&gt;</WorkflowCommandExecute>
+	<SharedVariables>&lt;SharedVariables&gt;&lt;Variables&gt;&lt;/Variables&gt;&lt;/SharedVariables&gt;</SharedVariables>
+	<PrimaryCommands>!defcmd</PrimaryCommands>
+	<SharedVariableNames/>
+	<ClassBinding/>
+	<EnabledWorkflows>OnLoadEnabled OnChangeEnabled OnSaveEnabled OnExecuteCommand OnCanExecuteCommand</EnabledWorkflows>
+	<SerializedChildrenV2>
+		<FormTab xsi:type="DetailTab" flexiHeader="0" NameModified="0" IconModified="0" EntityIconName="MobileCrm\Images.MonoTouch\Tabs\meterreading@2x.png" IsIconNameReadOnly="0">
+			<Name>meterreading</Name>
+			<SerializedChildren>
+				<DetailItem SchemaName="equipmentid"/>
+				<DetailItem SchemaName="gpmeterreadingdate"/>
+				<DetailItem SchemaName="equipmentmeter1"/>
+				<DetailItem SchemaName="equipmentmeter2"/>
+				<DetailItem SchemaName="equipmentmeter3"/>
+				<DetailItem SchemaName="equipmentmeter4"/>
+				<DetailItem SchemaName="equipmentmeter5"/>
+				<DetailItem SchemaName="equipmentmeter6"/>
+				<DetailItem SchemaName="equipmentmeter7"/>
+				<DetailItem SchemaName="equipmentmeter8"/>
+				<DetailItem SchemaName="equipmentmeter9"/>
+				<DetailItem SchemaName="equipmentmeter10"/>
+				<DetailItem SchemaName="equipmentmeter11"/>
+				<DetailItem SchemaName="equipmentmeter12"/>
+				<DetailItem SchemaName="equipmentmeter13"/>
+				<DetailItem SchemaName="equipmentmeter14"/>
+				<DetailItem SchemaName="equipmentmeter15"/>
+				<DetailItem SchemaName="equipmentmeter21"/>
+				<DetailItem SchemaName="equipmentmeter22"/>
+				<DetailItem SchemaName="equipmentmeter23"/>
+				<DetailItem SchemaName="equipmentmeter24"/>
+				<DetailItem SchemaName="equipmentmeter25"/>
+				<DetailItem SchemaName="equipmentmeter16"/>
+				<DetailItem SchemaName="equipmentmeter17"/>
+				<DetailItem SchemaName="equipmentmeter18"/>
+				<DetailItem SchemaName="equipmentmeter19"/>
+				<DetailItem SchemaName="equipmentmeter20"/>
+			</SerializedChildren>
+		</FormTab>
+		<FormTab xsi:type="IFrameTab" NameModified="0" IconModified="0" EntityIconName="MobileCrm\Images.MonoTouch\Tabs\General@2x.png" IsIconNameReadOnly="0">
+			<Name>formCommands</Name>
+			<Url>file://entity/meterreading/meterreading-form.html</Url>
+			<DelayLoad>false</DelayLoad>
+		</FormTab>
+	</SerializedChildrenV2>
+</EntityForm>

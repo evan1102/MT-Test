@@ -1,0 +1,100 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<EntityList xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" UseSyncFilter="true">
+  <Attributes>
+    <EntityName>purchaseorderreceipt</EntityName>
+    <CamelCase>purchaseorderreceipt</CamelCase>
+    <VisualStudioProjectId>00000000-0000-0000-0000-000000000000</VisualStudioProjectId>
+    <ClassBinding />
+  </Attributes>
+  <ComponentId>00000000-0000-0000-0000-000000000000</ComponentId>
+  <Name>Default</Name>
+  <Kind>AssociatedList</Kind>
+  <IsDefault>true</IsDefault>
+  <Fetch version="1.0">
+    <entity name="purchaseorderreceipt">
+      <filter type="and">
+        <filter type="or">
+          <condition attribute="gpjobnumber" operator="eq" value="{{gpservicecallid}}" />
+          <condition attribute="gpjobnumber" operator="eq" value="{{gpjobnumber}}" />
+        </filter>
+      </filter>
+    </entity>
+  </Fetch>
+  <Search>
+    <attribute schema="gpjobnumber" method="Contains" />
+    <attribute schema="gppurchaseordernumber" method="Contains" />
+    <attribute schema="vendordocumentnumber" method="Contains" />
+    <attribute schema="vendorid" method="Contains" reference="true" />
+  </Search>
+  <OrderBy>gpjobnumber</OrderBy>
+  <SerializedBindings>
+    <string>freightamount</string>
+    <string>gpjobnumber</string>
+    <string>gpproductindicator</string>
+    <string>gppurchaseordernumber</string>
+    <string>id</string>
+    <string>isprocessed</string>
+    <string>miscellaneousamount</string>
+    <string>transactiondate</string>
+    <string>vendordocumentnumber</string>
+    <string>vendorid</string>
+  </SerializedBindings>
+  <SerializedTemplates>
+    <RowTemplate>
+      <DesignWidth>240</DesignWidth>
+      <DesignHeight>40</DesignHeight>
+      <Name>Default</Name>
+      <Width>240</Width>
+      <Height>50</Height>
+      <SerializedBackground>0</SerializedBackground>
+      <SerializedSelectedBackground>0</SerializedSelectedBackground>
+      <SerializedChildren>
+        <CellTemplate SchemaName="gppurchaseordernumber">
+          <IsConstant>false</IsConstant>
+          <StyleName>primary</StyleName>
+          <Bounds>4,2,146,21</Bounds>
+          <CellKind>0</CellKind>
+          <Anchor>13</Anchor>
+        </CellTemplate>
+        <CellTemplate SchemaName="vendorid">
+          <IsConstant>false</IsConstant>
+          <StyleName>r_primary</StyleName>
+          <Bounds>150,2,87,21</Bounds>
+          <CellKind>0</CellKind>
+          <Anchor>9</Anchor>
+        </CellTemplate>
+        <CellTemplate SchemaName="gpjobnumber">
+          <IsConstant>false</IsConstant>
+          <StyleName>gray</StyleName>
+          <Bounds>4,24,146,11</Bounds>
+          <CellKind>0</CellKind>
+          <Anchor>13</Anchor>
+        </CellTemplate>
+        <CellTemplate SchemaName="transactiondate">
+          <IsConstant>false</IsConstant>
+          <StyleName>r_gray_date_only</StyleName>
+          <Bounds>150,24,87,11</Bounds>
+          <CellKind>0</CellKind>
+          <Anchor>9</Anchor>
+        </CellTemplate>
+        <CellTemplate SchemaName="vendordocumentnumber">
+          <IsConstant>false</IsConstant>
+          <StyleName>gray</StyleName>
+          <Bounds>4,36,199,13</Bounds>
+          <CellKind>0</CellKind>
+          <Anchor>13</Anchor>
+        </CellTemplate>
+        <CellTemplate SchemaName="isprocessed">
+          <IsConstant>false</IsConstant>
+          <StyleName>r_primary</StyleName>
+          <Bounds>204,36,33,13</Bounds>
+          <CellKind>0</CellKind>
+          <Anchor>9</Anchor>
+        </CellTemplate>
+      </SerializedChildren>
+    </RowTemplate>
+  </SerializedTemplates>
+  <CustomProperties />
+  <SerializedChildren />
+  <Height>0</Height>
+</EntityList>

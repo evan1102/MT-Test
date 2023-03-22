@@ -1,0 +1,61 @@
+﻿<EntityList UseSyncFilter="true">
+  <Attributes>
+    <EntityName>location</EntityName>
+    <CamelCase>location</CamelCase>
+    <VisualStudioProjectId>00000000-0000-0000-0000-000000000000</VisualStudioProjectId>
+    <ClassBinding/>
+  </Attributes>
+  <Name>All Location Lookup</Name>
+  <Kind>LookupList</Kind>
+  <AutoWideWidth>0</AutoWideWidth>
+  <OrderBy>customerid;name</OrderBy>
+  <SerializedBindings>
+    <string>customerid</string>
+    <string>id</string>
+    <string>locationname</string>
+    <string>name</string>
+  </SerializedBindings>
+  <MaxColumns>0</MaxColumns>
+  <Fetch version="1.0">
+    <entity name="location">
+      <filter type="and">
+        <condition attribute="customerid" operator="not-null"/>
+      </filter>
+    </entity>
+  </Fetch>
+  <Search>
+    <attribute schema="customerid" method="Contains" reference="true"/>
+    <attribute schema="locationname" method="Contains"/>
+    <attribute schema="name" method="Contains"/>
+  </Search>
+  <SerializedTemplates>
+    <RowTemplate>
+      <DesignWidth>240</DesignWidth>
+      <DesignHeight>40</DesignHeight>
+      <Name>Default</Name>
+      <Width>240</Width>
+      <Height>40</Height>
+      <SerializedChildren>
+        <CellTemplate SchemaName="name">
+          <StyleName>primary</StyleName>
+          <Bounds>2,2,236,24</Bounds>
+          <CellKind>0</CellKind>
+          <Anchor>13</Anchor>
+        </CellTemplate>
+        <CellTemplate SchemaName="customerid">
+          <StyleName>gray</StyleName>
+          <Bounds>2,26,118,12</Bounds>
+          <CellKind>0</CellKind>
+          <Anchor>5</Anchor>
+        </CellTemplate>
+        <CellTemplate SchemaName="locationname">
+          <StyleName>gray</StyleName>
+          <Bounds>120,26,118,12</Bounds>
+          <CellKind>0</CellKind>
+          <Anchor>13</Anchor>
+        </CellTemplate>
+      </SerializedChildren>
+    </RowTemplate>
+  </SerializedTemplates>
+  <CustomProperties/>
+</EntityList>

@@ -1,0 +1,223 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<EntityList xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <Attributes>
+    <EntityName>laborexpense</EntityName>
+    <CamelCase>laborexpense</CamelCase>
+    <VisualStudioProjectId>00000000-0000-0000-0000-000000000000</VisualStudioProjectId>
+    <ClassBinding />
+  </Attributes>
+  <ComponentId>00000000-0000-0000-0000-000000000000</ComponentId>
+  <Name>Previous Week</Name>
+  <Kind>List</Kind>
+  <IsDefault>false</IsDefault>
+  <Fetch version="1.0">
+    <entity name="laborexpense">
+      <filter type="and">
+        <condition attribute="ownerid" operator="eq-userid" />
+      </filter>
+    </entity>
+  </Fetch>
+  <Search>
+    <attribute schema="description" method="Contains" />
+    <attribute schema="gpjobnumber" method="Contains" />
+    <attribute schema="name" method="Contains" />
+    <attribute schema="ownerid" method="Contains" reference="true" />
+    <attribute schema="paycodeid" method="Contains" reference="true" />
+  </Search>
+  <OrderBy>transactiondate</OrderBy>
+  <SerializedBindings>
+    <string>cost</string>
+    <string>description</string>
+    <string>gpjobnumber</string>
+    <string>hoursunits</string>
+    <string>id</string>
+    <string>name</string>
+    <string>ownerid</string>
+    <string>paycodeid</string>
+    <string>quantity</string>
+    <string>transactiondate</string>
+    <string>appointmentid.appointment.gpservicecallid</string>
+    <string>appointmentid.appointment.jobid.job.name</string>
+    <string>appointmentid.appointment.jobid.job.customerid.customer.customername</string>
+    <string>appointmentid.appointment.jobid.job.customerid.customer.name</string>
+    <string>appointmentid.appointment.jobid.job.locationid.location.address1</string>
+    <string>appointmentid.appointment.jobid.job.locationid.location.address2</string>
+    <string>appointmentid.appointment.jobid.job.locationid.location.city</string>
+    <string>appointmentid.appointment.jobid.job.locationid.location.locationname</string>
+    <string>appointmentid.appointment.jobid.job.locationid.location.name</string>
+    <string>appointmentid.appointment.jobid.job.locationid.location.state</string>
+    <string>appointmentid.appointment.jobid.job.locationid.location.zip</string>
+    <string>appointmentid.appointment.jobid.job.locationid.location.customerid.customer.customername</string>
+    <string>appointmentid.appointment.jobid.job.locationid.location.customerid.customer.name</string>
+    <string>appointmentid.appointment.servicecallid.servicecall.gplocationnumber</string>
+    <string>appointmentid.appointment.servicecallid.servicecall.customerid.customer.customername</string>
+    <string>appointmentid.appointment.servicecallid.servicecall.customerid.customer.name</string>
+    <string>appointmentid.appointment.servicecallid.servicecall.locationid.location.address1</string>
+    <string>appointmentid.appointment.servicecallid.servicecall.locationid.location.address2</string>
+    <string>appointmentid.appointment.servicecallid.servicecall.locationid.location.city</string>
+    <string>appointmentid.appointment.servicecallid.servicecall.locationid.location.gpcustomernumber</string>
+    <string>appointmentid.appointment.servicecallid.servicecall.locationid.location.gplocationnumber</string>
+    <string>appointmentid.appointment.servicecallid.servicecall.locationid.location.locationname</string>
+    <string>appointmentid.appointment.servicecallid.servicecall.locationid.location.name</string>
+    <string>appointmentid.appointment.servicecallid.servicecall.locationid.location.state</string>
+    <string>appointmentid.appointment.servicecallid.servicecall.locationid.location.zip</string>
+    <string>employeeid.employee.createdby</string>
+    <string>employeeid.employee.createdon</string>
+    <string>employeeid.employee.departmentid</string>
+    <string>employeeid.employee.epacertification</string>
+    <string>employeeid.employee.gpemployeeid</string>
+    <string>employeeid.employee.gptechnicianid</string>
+    <string>employeeid.employee.id</string>
+    <string>employeeid.employee.modifiedby</string>
+    <string>employeeid.employee.modifiedon</string>
+    <string>employeeid.employee.name</string>
+    <string>employeeid.employee.positionid</string>
+    <string>employeeid.employee.employeename</string>
+  </SerializedBindings>
+  <SerializedTemplates>
+    <RowTemplate>
+      <DesignWidth>240</DesignWidth>
+      <DesignHeight>40</DesignHeight>
+      <Name>LaborRow</Name>
+      <Width>240</Width>
+      <Height>66</Height>
+      <SerializedBackground>0</SerializedBackground>
+      <SerializedSelectedBackground>0</SerializedSelectedBackground>
+      <SerializedChildren>
+        <CellTemplate SchemaName="transactiondate">
+          <IsConstant>false</IsConstant>
+          <StyleName>r_gray_date_only</StyleName>
+          <Bounds>158,4,80,14</Bounds>
+          <CellKind>0</CellKind>
+          <Anchor>13</Anchor>
+        </CellTemplate>
+        <CellTemplate SchemaName="hoursunits">
+          <IsConstant>false</IsConstant>
+          <StyleName>r_gray_currency</StyleName>
+          <Bounds>170,22,68,14</Bounds>
+          <CellKind>0</CellKind>
+          <Anchor>13</Anchor>
+        </CellTemplate>
+        <CellTemplate SchemaName="employeeid.employee.name">
+          <IsConstant>false</IsConstant>
+          <StyleName>gray9</StyleName>
+          <Bounds>2,22,168,14</Bounds>
+          <CellKind>0</CellKind>
+          <Anchor>13</Anchor>
+        </CellTemplate>
+        <CellTemplate SchemaName="paycodeid">
+          <IsConstant>false</IsConstant>
+          <StyleName>gray9</StyleName>
+          <Bounds>2,36,168,14</Bounds>
+          <CellKind>0</CellKind>
+          <Anchor>13</Anchor>
+        </CellTemplate>
+        <CellTemplate SchemaName="quantity">
+          <IsConstant>false</IsConstant>
+          <StyleName>r_gray_currency</StyleName>
+          <Bounds>170,36,68,14</Bounds>
+          <CellKind>0</CellKind>
+          <Anchor>13</Anchor>
+        </CellTemplate>
+        <CellTemplate SchemaName="cost">
+          <IsConstant>false</IsConstant>
+          <StyleName>r_gray_currency</StyleName>
+          <Bounds>170,50,68,14</Bounds>
+          <CellKind>0</CellKind>
+          <Anchor>13</Anchor>
+        </CellTemplate>
+        <CellTemplate SchemaName="name">
+          <IsConstant>false</IsConstant>
+          <StyleName>primary</StyleName>
+          <Bounds>2,2,155,20</Bounds>
+          <CellKind>0</CellKind>
+          <Anchor>13</Anchor>
+        </CellTemplate>
+        <CellTemplate SchemaName="appointmentid.appointment.servicecallid.servicecall.customerid.customer.customername">
+          <IsConstant>false</IsConstant>
+          <StyleName>gray9</StyleName>
+          <Bounds>2,50,168,14</Bounds>
+          <CellKind>0</CellKind>
+          <Anchor>13</Anchor>
+        </CellTemplate>
+        <CellTemplate SchemaName="appointmentid.appointment.jobid.job.customerid.customer.customername">
+          <IsConstant>false</IsConstant>
+          <StyleName>gray9</StyleName>
+          <Bounds>2,50,168,14</Bounds>
+          <CellKind>0</CellKind>
+          <Anchor>13</Anchor>
+        </CellTemplate>
+      </SerializedChildren>
+    </RowTemplate>
+    <RowTemplate>
+      <DesignWidth>240</DesignWidth>
+      <DesignHeight>40</DesignHeight>
+      <Name>NonLaborRow</Name>
+      <Width>240</Width>
+      <Height>68</Height>
+      <SerializedBackground>0</SerializedBackground>
+      <SerializedSelectedBackground>0</SerializedSelectedBackground>
+      <SerializedChildren>
+        <CellTemplate SchemaName="transactiondate">
+          <IsConstant>false</IsConstant>
+          <StyleName>r_gray_date_only</StyleName>
+          <Bounds>158,4,80,14</Bounds>
+          <CellKind>0</CellKind>
+          <Anchor>13</Anchor>
+        </CellTemplate>
+        <CellTemplate SchemaName="employeeid.employee.name">
+          <IsConstant>false</IsConstant>
+          <StyleName>gray9</StyleName>
+          <Bounds>2,22,168,16</Bounds>
+          <CellKind>0</CellKind>
+          <Anchor>13</Anchor>
+        </CellTemplate>
+        <CellTemplate SchemaName="paycodeid">
+          <IsConstant>false</IsConstant>
+          <StyleName>gray9</StyleName>
+          <Bounds>2,38,168,14</Bounds>
+          <CellKind>0</CellKind>
+          <Anchor>13</Anchor>
+        </CellTemplate>
+        <CellTemplate SchemaName="quantity">
+          <IsConstant>false</IsConstant>
+          <StyleName>r_gray_currency</StyleName>
+          <Bounds>170,38,68,14</Bounds>
+          <CellKind>0</CellKind>
+          <Anchor>13</Anchor>
+        </CellTemplate>
+        <CellTemplate SchemaName="cost">
+          <IsConstant>false</IsConstant>
+          <StyleName>r_gray_currency</StyleName>
+          <Bounds>170,52,68,14</Bounds>
+          <CellKind>0</CellKind>
+          <Anchor>9</Anchor>
+        </CellTemplate>
+        <CellTemplate SchemaName="name">
+          <IsConstant>false</IsConstant>
+          <StyleName>primary</StyleName>
+          <Bounds>2,2,155,20</Bounds>
+          <CellKind>0</CellKind>
+          <Anchor>13</Anchor>
+        </CellTemplate>
+        <CellTemplate SchemaName="appointmentid.appointment.servicecallid.servicecall.customerid.customer.customername">
+          <IsConstant>false</IsConstant>
+          <StyleName>gray9</StyleName>
+          <Bounds>2,52,168,14</Bounds>
+          <CellKind>0</CellKind>
+          <Anchor>13</Anchor>
+        </CellTemplate>
+        <CellTemplate SchemaName="appointmentid.appointment.jobid.job.customerid.customer.customername">
+          <IsConstant>false</IsConstant>
+          <StyleName>gray9</StyleName>
+          <Bounds>2,52,168,14</Bounds>
+          <CellKind>0</CellKind>
+          <Anchor>13</Anchor>
+        </CellTemplate>
+      </SerializedChildren>
+    </RowTemplate>
+  </SerializedTemplates>
+  <CustomProperties />
+  <SerializedChildren />
+  <Height>0</Height>
+</EntityList>

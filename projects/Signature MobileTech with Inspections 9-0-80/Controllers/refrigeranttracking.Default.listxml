@@ -1,0 +1,182 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<EntityList xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <Attributes>
+    <EntityName>refrigeranttracking</EntityName>
+    <CamelCase>refrigeranttracking</CamelCase>
+    <VisualStudioProjectId>00000000-0000-0000-0000-000000000000</VisualStudioProjectId>
+    <ClassBinding />
+  </Attributes>
+  <ComponentId>00000000-0000-0000-0000-000000000000</ComponentId>
+  <Name>Default</Name>
+  <Kind>List</Kind>
+  <IsDefault>false</IsDefault>
+  <Fetch version="1.0">
+    <entity name="refrigeranttracking">
+      <link-entity name="servicecall" from="id" to="servicecallid">
+        <link-entity name="appointment" from="servicecallid" to="id">
+          <filter type="and">
+            <condition attribute="appointmentstatusid" operator="ne" value="2c23de58-1bd4-42e6-85ac-a06fc4e31945" uitype="appointmentstatus" uiname="COMPLETE" />
+          </filter>
+        </link-entity>
+      </link-entity>
+    </entity>
+  </Fetch>
+  <Search>
+    <attribute schema="cylindernumber" method="Contains" />
+    <attribute schema="employeeid" method="Contains" reference="true" />
+    <attribute schema="name" method="Contains" />
+  </Search>
+  <OrderBy>name</OrderBy>
+  <SerializedBindings>
+    <string>currentleakrate</string>
+    <string>cylindernumber</string>
+    <string>servicedatetime</string>
+    <string>employeeid</string>
+    <string>id</string>
+    <string>epaleakratemaxpercent</string>
+    <string>name</string>
+    <string>netadded</string>
+    <string>added</string>
+    <string>optimalcharge</string>
+    <string>recharged</string>
+    <string>refrigerantequipmenttypeid.refrigerantequipmenttype.name</string>
+  </SerializedBindings>
+  <SerializedTemplates>
+    <RowTemplate>
+      <DesignWidth>240</DesignWidth>
+      <DesignHeight>40</DesignHeight>
+      <Name>Default</Name>
+      <Width>240</Width>
+      <Height>86</Height>
+      <SerializedBackground>0</SerializedBackground>
+      <SerializedSelectedBackground>0</SerializedSelectedBackground>
+      <SerializedChildren>
+        <CellTemplate SchemaName="name">
+          <IsConstant>false</IsConstant>
+          <StyleName>primary</StyleName>
+          <Bounds>2,2,162,22</Bounds>
+          <CellKind>0</CellKind>
+          <Anchor>13</Anchor>
+        </CellTemplate>
+        <CellTemplate SchemaName="servicedatetime">
+          <IsConstant>false</IsConstant>
+          <StyleName>r_gray</StyleName>
+          <Bounds>134,24,104,12</Bounds>
+          <CellKind>0</CellKind>
+          <Anchor>13</Anchor>
+        </CellTemplate>
+        <CellTemplate SchemaName="employeeid">
+          <IsConstant>false</IsConstant>
+          <StyleName>gray</StyleName>
+          <Bounds>2,24,132,12</Bounds>
+          <CellKind>0</CellKind>
+          <Anchor>13</Anchor>
+        </CellTemplate>
+        <CellTemplate SchemaName="cylindernumber">
+          <IsConstant>false</IsConstant>
+          <StyleName>r_primary</StyleName>
+          <Bounds>164,2,74,22</Bounds>
+          <CellKind>0</CellKind>
+          <Anchor>13</Anchor>
+        </CellTemplate>
+        <CellTemplate SchemaName="currentleakrate">
+          <IsConstant>false</IsConstant>
+          <StyleName>gray</StyleName>
+          <Bounds>72,72,62,12</Bounds>
+          <CellKind>0</CellKind>
+          <Anchor>5</Anchor>
+        </CellTemplate>
+        <CellTemplate SchemaName="Leak Rate:">
+          <IsConstant>true</IsConstant>
+          <StyleName>gray</StyleName>
+          <Bounds>2,72,70,12</Bounds>
+          <CellKind>0</CellKind>
+          <Anchor>5</Anchor>
+        </CellTemplate>
+        <CellTemplate SchemaName="epaleakratemaxpercent">
+          <IsConstant>false</IsConstant>
+          <StyleName>gray</StyleName>
+          <Bounds>72,60,62,12</Bounds>
+          <CellKind>0</CellKind>
+          <Anchor>5</Anchor>
+        </CellTemplate>
+        <CellTemplate SchemaName="Max Leak Rate:">
+          <IsConstant>true</IsConstant>
+          <StyleName>gray</StyleName>
+          <Bounds>2,60,70,12</Bounds>
+          <CellKind>0</CellKind>
+          <Anchor>5</Anchor>
+        </CellTemplate>
+        <CellTemplate SchemaName="refrigerantequipmenttypeid.refrigerantequipmenttype.name">
+          <IsConstant>false</IsConstant>
+          <StyleName>gray</StyleName>
+          <Bounds>2,36,236,12</Bounds>
+          <CellKind>0</CellKind>
+          <Anchor>5</Anchor>
+        </CellTemplate>
+        <CellTemplate SchemaName="maxExceeded">
+          <IsConstant>false</IsConstant>
+          <StyleName>r_gray</StyleName>
+          <Bounds>198,72,40,12</Bounds>
+          <CellKind>0</CellKind>
+          <Anchor>9</Anchor>
+        </CellTemplate>
+        <CellTemplate SchemaName="Max Exceeded:">
+          <IsConstant>true</IsConstant>
+          <StyleName>r_gray</StyleName>
+          <Bounds>134,72,64,12</Bounds>
+          <CellKind>0</CellKind>
+          <Anchor>9</Anchor>
+        </CellTemplate>
+        <CellTemplate SchemaName="New Added:">
+          <IsConstant>true</IsConstant>
+          <StyleName>r_gray</StyleName>
+          <Bounds>134,60,64,12</Bounds>
+          <CellKind>0</CellKind>
+          <Anchor>9</Anchor>
+        </CellTemplate>
+        <CellTemplate SchemaName="added">
+          <IsConstant>false</IsConstant>
+          <StyleName>r_gray</StyleName>
+          <Bounds>198,60,40,12</Bounds>
+          <CellKind>0</CellKind>
+          <Anchor>9</Anchor>
+        </CellTemplate>
+        <CellTemplate SchemaName="Optimal Charge:">
+          <IsConstant>true</IsConstant>
+          <StyleName>gray</StyleName>
+          <Bounds>2,48,70,12</Bounds>
+          <CellKind>0</CellKind>
+          <Anchor>5</Anchor>
+        </CellTemplate>
+        <CellTemplate SchemaName="optimalcharge">
+          <IsConstant>false</IsConstant>
+          <StyleName>gray</StyleName>
+          <Bounds>72,48,62,12</Bounds>
+          <CellKind>0</CellKind>
+          <Anchor>5</Anchor>
+        </CellTemplate>
+        <CellTemplate SchemaName="Recharged:">
+          <IsConstant>true</IsConstant>
+          <StyleName>r_gray</StyleName>
+          <Bounds>134,48,64,12</Bounds>
+          <CellKind>0</CellKind>
+          <Anchor>9</Anchor>
+        </CellTemplate>
+        <CellTemplate SchemaName="recharged">
+          <IsConstant>false</IsConstant>
+          <StyleName>r_gray</StyleName>
+          <Bounds>198,48,40,12</Bounds>
+          <CellKind>0</CellKind>
+          <Anchor>9</Anchor>
+        </CellTemplate>
+      </SerializedChildren>
+    </RowTemplate>
+  </SerializedTemplates>
+  <TemplateSelectorRule>&lt;?xml version="1.0" encoding="utf-16"?&gt;&lt;Workflow e="true" isvalid="true" syntaxVersion="7" version="0"&gt;&lt;definition e="false"&gt;&lt;var&gt;maxExceeded&lt;/var&gt;&lt;arg&gt;Boolean:False&lt;/arg&gt;&lt;func&gt;Assign&lt;/func&gt;&lt;type&gt;Boolean&lt;/type&gt;&lt;/definition&gt;&lt;branch info="Is Leak Rate Max Exceeded?" e="true"&gt;&lt;if e="true"&gt;&lt;conditions e="true" op="And"&gt;&lt;condition e="false"&gt;&lt;var&gt;Entity.currentleakrate&lt;/var&gt;&lt;arg&gt;var:Entity.epaleakratemaxpercent&lt;/arg&gt;&lt;op&gt;GreaterThan&lt;/op&gt;&lt;/condition&gt;&lt;/conditions&gt;&lt;action e="true"&gt;&lt;function e="false"&gt;&lt;var&gt;maxExceeded&lt;/var&gt;&lt;arg&gt;Boolean:True&lt;/arg&gt;&lt;func&gt;Assign&lt;/func&gt;&lt;/function&gt;&lt;/action&gt;&lt;/if&gt;&lt;if e="true"&gt;&lt;conditions e="false" op="And" /&gt;&lt;action e="true"&gt;&lt;function e="false"&gt;&lt;var&gt;maxExceeded&lt;/var&gt;&lt;arg&gt;Boolean:False&lt;/arg&gt;&lt;func&gt;Assign&lt;/func&gt;&lt;/function&gt;&lt;/action&gt;&lt;/if&gt;&lt;/branch&gt;&lt;/Workflow&gt;</TemplateSelectorRule>
+  <CustomProperties>
+    <SerializedClassBinding name="maxExceeded" label="maxExceeded" type="Boolean" />
+  </CustomProperties>
+  <SerializedChildren />
+  <Height>0</Height>
+</EntityList>

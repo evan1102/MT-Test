@@ -1,0 +1,386 @@
+﻿<!DOCTYPE html>
+<html>
+
+<head>
+    <!-- Activate IE9 document mode, if available -->
+    <meta charset="utf-8" http-equiv="X-UA-Compatible" content="IE=edge" />
+    <!-- Defined iOS viewport -->
+    <meta name="viewport" content="initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=false">
+    <!-- Disable iOS Phone No Detection -->
+    <meta name="format-detection" content="telephone=no" />
+    <!-- DevExtreme dependencies -->
+    <script type="text/javascript" src="../../scripts/jquery.min.js"></script>
+    <!-- Offline HTML JavaScript Bridge-->
+    <script type="text/javascript" src="../../scripts/JSBridge.js"></script>
+    <script type="text/javascript" src="../../scripts/k2aMethods.js"></script>
+    <script type="text/javascript" src="../../enum/Schema.js"></script>
+    <script type="text/javascript" src="../../enum/setupoption.js"></script>
+    <title>Entity Form</title>
+</head>
+
+<body>
+    <script>
+        //============== INITIAL SETTINGS ================
+        var isNew = true, entityName = SCHEMA.annotation.name;
+        var xoiURL = 'xoi-vision://';
+        //============== SELECTED DATA ================
+        var selected = {};
+        //============== FETCH DATA ================
+        var requiredSetupOptions = [
+            SETUPOPTION.DefaultNewNotesAsInternal,
+            SETUPOPTION.CustomerNotesReadOnly,
+            SETUPOPTION.LocationNotesReadOnly,
+            SETUPOPTION.ContractNotesReadOnly,
+            SETUPOPTION.ServiceCallNotesReadOnly,
+            SETUPOPTION.EquipmentNotesReadOnly,
+            SETUPOPTION.AppointmentNotesReadOnly
+        ];
+
+        $(function () {
+            //============== LOCALIZATION ================
+            MobileCRM.Localization.initialize(function (localization) {
+
+                //============== ANDROID CHECK ================
+                MobileCRM.Platform.preventBackButton(btnBackClicked);
+
+                //============== LOADPANEL ================
+                loading = MobileCRM.UI.Form.showPleaseWait(MobileCRM.Localization.get("Msg.Loading"));
+
+                //============== EVENT HANDLERS ================
+                MobileCRM.UI.EntityForm.onSave(onSave, true, null);
+                MobileCRM.UI.EntityForm.onChange(function (entityForm) { entityForm.entity.properties.modifieddate = new Date(); }, true, null);
+
+                loadSetupOptions(loadFormOptions);
+            }, alertError);
+        });
+
+        //============== LOAD OPTIONS ================
+        function loadFormOptions() {
+            MobileCRM.UI.EntityForm.requestObject(function (entityForm) {
+                isNew = entityForm.entity.isNew;
+                var createCustomerTextItem = false;
+                var createLocationAndCustomerTextItem = false;
+                var properties = entityForm.entity.properties;
+
+                var detailView = entityForm.getDetailView("General");
+                if (entityForm.entity.isNew) {
+                    detailView.getItemByName(SCHEMA.annotation.Properties.isinternal).value = setupOptions.DefaultNewNotesAsInternal;
+                }
+
+                detailView.getItemByName(SCHEMA.annotation.Properties.objectid).isEnabled = false;
+                if ((!(properties.gpnotetype === 'C' || properties.gpnotetype === 'L')) || properties.gpjobnumber !== undefined) {
+                    // Change Order, Appointment, Contract, Equipment, Job, Job Cost Code
+                    detailView.getItemByName(SCHEMA.annotation.Properties.objectid).isVisible = true;
+                }
+                else {  // Customer, Location
+                    detailView.getItemByName(SCHEMA.annotation.Properties.objectid).isVisible = false;
+                }
+                detailView.getItemByName(SCHEMA.annotation.Properties.subject).isEnabled = entityForm.entity.isNew;
+                detailView.getItemByName(SCHEMA.annotation.Properties.subject).label = MobileCRM.Localization.get("annotation.subject");
+                detailView.getItemByName(SCHEMA.annotation.Properties.subject).maxLength = 500;
+                detailView.getItemByName(SCHEMA.annotation.Properties.modifieduser).isEnabled = false;
+                detailView.getItemByName(SCHEMA.annotation.Properties.modifieduser).errorMessage = '';
+                detailView.getItemByName(SCHEMA.annotation.Properties.modifieddate).isEnabled = false;
+                detailView.getItemByName(SCHEMA.annotation.Properties.gpjobnumber).isVisible = properties.gpnotetype === 'C' && properties.gpjobnumber !== undefined;
+                detailView.getItemByName(SCHEMA.annotation.Properties.gpjobnumber).isEnabled = false;
+                detailView.getItemByName(SCHEMA.annotation.Properties.gpjobnumber).errorMessage = '';
+                detailView.getItemByName(SCHEMA.annotation.Properties.notehistory).isVisible = false;
+                detailView.getItemByName(SCHEMA.annotation.Properties.notetext).maxLength = 32000;
+
+                switch (properties.gpnotetype) {
+                    case "C":   // Customer & Change Order
+                        if (properties.gpjobnumber === undefined) { // Customer
+                            if (entityForm.entity.isNew) {
+                                detailView.getItemByName(SCHEMA.annotation.Properties.notetext).isEnabled = true;
+                                detailView.getItemByName(SCHEMA.annotation.Properties.isinternal).isEnabled = true;
+                            }
+                            else {
+                                detailView.getItemByName(SCHEMA.annotation.Properties.notetext).isEnabled = !setupOptions.CustomerNotesReadOnly;
+                                detailView.getItemByName(SCHEMA.annotation.Properties.isinternal).isEnabled = !setupOptions.CustomerNotesReadOnly;
+                                detailView.isEnabled = !setupOptions.CustomerNotesReadOnly;
+                            }
+                            createCustomerTextItem = true;
+                        }
+                        else {  // Change Order
+                            detailView.getItemByName(SCHEMA.annotation.Properties.gpjobnumber).label = "Job Number";
+                            detailView.getItemByName(SCHEMA.annotation.Properties.objectid).label = MobileCRM.Localization.get("changeorder.gpchangeordernumber");
+                            detailView.getItemByName(SCHEMA.annotation.Properties.notetext).isEnabled = true;
+                            detailView.getItemByName(SCHEMA.annotation.Properties.isinternal).isEnabled = true;
+                        }
+                        break;
+                    case "A":   // Appointment - Service & Job
+                        if (entityForm.entity.isNew) {
+                            detailView.getItemByName(SCHEMA.annotation.Properties.notetext).isEnabled = true;
+                            detailView.getItemByName(SCHEMA.annotation.Properties.isinternal).isEnabled = true;
+                        }
+                        else {
+                            var isXOiDeepLinking = properties.notetext && properties.notetext.indexOf(xoiURL) === 0;
+                            var isJobAppointmentNote = properties.gpjobnumber !== undefined;
+                            var isReadOnly = setupOptions.AppointmentNotesReadOnly || isXOiDeepLinking || isJobAppointmentNote;
+                            detailView.getItemByName(SCHEMA.annotation.Properties.notetext).isEnabled = !isReadOnly;
+                            detailView.getItemByName(SCHEMA.annotation.Properties.isinternal).isEnabled = !isReadOnly;
+                            detailView.isEnabled = !isReadOnly;
+                        }
+                        detailView.getItemByName(SCHEMA.annotation.Properties.objectid).label = MobileCRM.Localization.get("appointment");
+                        createLocationAndCustomerTextItem = true;
+                        break;
+                    case "M":   // Contract & Job
+                        if (entityForm.entity.isNew) {
+                            detailView.getItemByName(SCHEMA.annotation.Properties.notetext).isEnabled = true;
+                            detailView.getItemByName(SCHEMA.annotation.Properties.isinternal).isEnabled = true;
+                        }
+                        else {
+                            if (properties.objectid.entityName === SCHEMA.contract.name) {
+                                detailView.getItemByName(SCHEMA.annotation.Properties.notetext).isEnabled = !setupOptions.ContractNotesReadOnly;
+                                detailView.getItemByName(SCHEMA.annotation.Properties.isinternal).isEnabled = !setupOptions.ContractNotesReadOnly;
+                                detailView.isEnabled = !setupOptions.ContractNotesReadOnly;
+                            }
+                            else {
+                                detailView.getItemByName(SCHEMA.annotation.Properties.notetext).isEnabled = false;
+                                detailView.getItemByName(SCHEMA.annotation.Properties.isinternal).isEnabled = false;
+                                detailView.isEnabled = false;
+                            }
+                        }
+                        detailView.getItemByName(SCHEMA.annotation.Properties.objectid).label = MobileCRM.Localization.get(properties.objectid.entityName);
+                        createLocationAndCustomerTextItem = true;
+                        break;
+                    case "E":   // Equipment
+                        if (entityForm.entity.isNew) {
+                            detailView.getItemByName(SCHEMA.annotation.Properties.notetext).isEnabled = true;
+                            detailView.getItemByName(SCHEMA.annotation.Properties.isinternal).isEnabled = true;
+                        }
+                        else {
+                            detailView.getItemByName(SCHEMA.annotation.Properties.notetext).isEnabled = !setupOptions.EquipmentNotesReadOnly;
+                            detailView.getItemByName(SCHEMA.annotation.Properties.isinternal).isEnabled = !setupOptions.EquipmentNotesReadOnly;
+                            detailView.isEnabled = !setupOptions.EquipmentNotesReadOnly;
+                        }
+                        detailView.getItemByName(SCHEMA.annotation.Properties.objectid).label = MobileCRM.Localization.get("equipment");
+                        createLocationAndCustomerTextItem = true;
+                        break;
+                    case "L":   // Location
+                        if (entityForm.entity.isNew) {
+                            detailView.getItemByName(SCHEMA.annotation.Properties.notetext).isEnabled = true;
+                            detailView.getItemByName(SCHEMA.annotation.Properties.isinternal).isEnabled = true;
+                        }
+                        else {
+                            detailView.getItemByName(SCHEMA.annotation.Properties.notetext).isEnabled = !setupOptions.LocationNotesReadOnly;
+                            detailView.getItemByName(SCHEMA.annotation.Properties.isinternal).isEnabled = !setupOptions.LocationNotesReadOnly;
+                            detailView.isEnabled = !setupOptions.LocationNotesReadOnly;
+                        }
+                        createLocationAndCustomerTextItem = true;
+                        break;
+                    case "S":   // Service Call
+                        if (entityForm.entity.isNew) {
+                            detailView.getItemByName(SCHEMA.annotation.Properties.notetext).isEnabled = true;
+                            detailView.getItemByName(SCHEMA.annotation.Properties.isinternal).isEnabled = true;
+                        }
+                        else {
+                            if (properties.subject === "Resolution") {
+                                detailView.getItemByName(SCHEMA.annotation.Properties.notehistory).isVisible = properties.notehistory !== undefined;
+                                detailView.getItemByName(SCHEMA.annotation.Properties.notetext).isVisible = properties.notetext !== undefined;
+                                detailView.isEnabled = false;
+                            }
+                            else {
+                                detailView.getItemByName(SCHEMA.annotation.Properties.notetext).isEnabled = !setupOptions.ServiceCallNotesReadOnly;
+                                detailView.getItemByName(SCHEMA.annotation.Properties.isinternal).isEnabled = !setupOptions.ServiceCallNotesReadOnly;
+                                detailView.isEnabled = !setupOptions.ServiceCallNotesReadOnly;
+                            }
+                        }
+                        detailView.getItemByName(SCHEMA.annotation.Properties.objectid).label = MobileCRM.Localization.get("servicecall");
+                        createLocationAndCustomerTextItem = true;
+                        break;
+                    case "T":   // Job Cost Code
+                        detailView.getItemByName(SCHEMA.annotation.Properties.objectid).label = MobileCRM.Localization.get(properties.objectid.entityName);
+                        detailView.getItemByName(SCHEMA.annotation.Properties.notetext).isEnabled = false;
+                        detailView.getItemByName(SCHEMA.annotation.Properties.isinternal).isEnabled = false;
+                        detailView.isEnabled = false;
+                        break;
+                }
+
+                changeObjectidItemToText(detailView.getItemByName('objectid'), detailView.getItemIndex('objectid'))
+                    .then(function () {
+                        if (createCustomerTextItem) {
+                            getCustomerEntity(properties.objectid.id).then(function (customerEntity) {
+                                var customer = customerEntity !== null ? customerEntity.properties.customername : "";
+                                createTextBoxItem(MobileCRM.Localization.get("annotation.customername"), 'gpcustomername', 2, customer, false)
+                                    .then(function () { loading.close(); }, alertError);
+                            });
+                        }
+                        else if (createLocationAndCustomerTextItem) {
+                            getLocationId(properties.objectid).then(function (locationID) {
+                                if (locationID) {
+                                    getLocationEntity(locationID).then(function (entity) {
+                                        var customer = entity !== null ? entity.customer.properties.customername : "";
+                                        var location = entity !== null ? entity.location.properties.locationname : "";
+
+                                        createTextBoxItem(MobileCRM.Localization.get("annotation.customername"), 'gpcustomername', 2, customer, false)
+                                            .then(function () {
+                                                createTextBoxItem(MobileCRM.Localization.get("annotation.locationname"), 'gplocationname', 3, location, false)
+                                                    .then(loading.close, alertError);
+                                            }, alertError);
+                                    });
+                                }
+                            });
+                        }
+                        else {
+                            loading.close();
+                        }
+                    }, alertError);
+            }, alertError, null);
+        }
+
+        function changeObjectidItemToText(objectidFormItem, itemIndex) {
+            // Change Objectid form item from link to text (only if it is currently visible)
+            var deferred = $.Deferred();
+            if (!objectidFormItem)
+                return deferred.reject("Change Link Item Error: Missing Form Item Details");
+
+            if (!objectidFormItem.isVisible) {
+                return deferred.resolve();
+            }
+            else {
+                objectidFormItem.isVisible = false;
+                createTextBoxItem(
+                    objectidFormItem.label,
+                    objectidFormItem.name + "text",
+                    itemIndex + 1,
+                    objectidFormItem.value ? objectidFormItem.value.primaryName : "Unknown",
+                    false
+                ).then(
+                    function () { return deferred.resolve(); },
+                    function (err) { return deferred.reject(err); }
+                );
+            }
+
+            return deferred.promise();
+        }
+        function createTextBoxItem(label, name, position, value, isEnabled) {
+            var deferred = $.Deferred();
+            MobileCRM.UI.EntityForm.requestObject(function (entityForm) {
+                var detailView = entityForm.getDetailView("General");
+                var textBoxItem = detailView.getItemByName(name);
+
+                if (!textBoxItem)
+                    textBoxItem = new MobileCRM.UI.DetailViewItems.TextBoxItem(name, label);
+
+                textBoxItem.value = value;
+                textBoxItem.isEnabled = isEnabled;
+                detailView.insertItem(textBoxItem, position);
+                return deferred.resolve();
+            }, function (err) { return deferred.reject(err); });
+            return deferred.promise();
+        }
+
+        //============== LOAD DATA ================
+        function getCustomerEntity(customerId) {
+            var deferred = $.Deferred();
+            MobileCRM.DynamicEntity.loadById(SCHEMA.customer.name,
+                customerId,
+                function (entity) {
+                    return deferred.resolve(entity);
+                },
+                function (error) {
+                    alertError(error);
+                    return deferred.resolve(null);
+                },
+                null);
+            return deferred.promise();
+        }
+
+        function getLocationEntity(locationId) {
+            var deferred = $.Deferred();
+            var locationEntity = { location: null, customer: null };
+            MobileCRM.DynamicEntity.loadById(SCHEMA.location.name,
+                locationId,
+                function (entity) {
+                    locationEntity.location = entity;
+                    getCustomerEntity(entity.properties.customerid.id).then(function (customerEntity) {
+                        locationEntity.customer = customerEntity;
+                        return deferred.resolve(locationEntity);
+                    })
+                },
+                function (error) {
+                    alertError(error);
+                    return deferred.resolve(null);
+                }, null)
+            return deferred.promise();
+        }
+
+        function getLocationId(object) {
+            var deferred = $.Deferred();
+            if (!object) {
+                alertError("Unable to get location ID: Missing object details");
+                return deferred.resolve(null);
+            }
+            if (object.entityName === SCHEMA.location.name) {
+                return deferred.resolve(object.id);
+            }
+
+            MobileCRM.DynamicEntity.loadById(object.entityName,
+                object.id,
+                function (locationEntity) {
+                    return deferred.resolve(locationEntity.properties.locationid.id);
+                },
+                function (error) {
+                    alertError(error);
+                    return deferred.resolve(null);
+                },
+                null);
+            return deferred.promise();
+        }
+
+        //============== FORM ITEM FUNCTIONS ================
+
+        //============== FORM EXECUTIONS ================
+        function onSave(entityForm) {
+            var saveHander = entityForm.suspendSave();
+            var subject = entityForm.entity.properties.subject;
+            if (subject.toLowerCase() === 'resolution') {
+                saveHander.resumeSave("You must enter 'Resolution' notes using the completion process.");
+                entityForm.entity.properties.subject = '';
+                var dv = entityForm.getDetailView("General");
+                if (dv) {
+                    dv.startEditItem(dv.getItemIndex(SCHEMA.annotation.Properties.subject));
+                }
+            }
+            else {
+                var noteId = isNew ? null : entityForm.entity.properties.id;
+                checkForDuplicateNote(subject, entityForm.entity.properties.objectid, noteId).then(function (hasDuplicateNote) {
+                    if (hasDuplicateNote) {
+                        saveHander.resumeSave(MobileCRM.Localization.get("Alert.DuplicateNote"));
+                    }
+                    else {
+                        if (isNew) {
+                            MobileCRM.bridge.raiseGlobalEvent("NoteCreated", {});
+                        }
+                        saveHander.resumeSave();
+                    }
+                }, function (err) {
+                    saveHander.resumeSave(err);
+                });
+            }
+        }
+
+        function checkForDuplicateNote(subject, objectid, noteId) {
+            var deferred = $.Deferred();
+            var entity = new MobileCRM.FetchXml.Entity(SCHEMA.annotation.name);
+            entity.addAttribute(SCHEMA.annotation.Properties.id);
+
+            entity.addFilter().where(SCHEMA.annotation.Properties.subject, 'eq', subject ? subject : "");
+            entity.addFilter().where(SCHEMA.annotation.Properties.objectid, 'eq', objectid ? objectid.id : null);
+            if (noteId) {
+                entity.addFilter().where(SCHEMA.annotation.Properties.id, 'ne', noteId);
+            }
+
+            var fetch = new MobileCRM.FetchXml.Fetch(entity);
+            fetch.execute("JSON", function (res) {
+                return deferred.resolve(res.length > 0);
+            }, function (err) {
+                return deferred.reject("Check For Duplicate Note Error: " + err);
+            });
+            return deferred.promise();
+        }
+    </script>
+</body>
+
+</html>

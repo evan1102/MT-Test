@@ -1,0 +1,711 @@
+﻿<!DOCTYPE html>
+<html>
+
+<head>
+    <!-- Activate IE9 document mode, if available -->
+    <meta charset="utf-8" http-equiv="X-UA-Compatible" content="IE=edge" />
+    <!-- Defined iOS viewport -->
+    <meta name="viewport" content="initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=false">
+    <!-- Disable iOS Phone No Detection -->
+    <meta name="format-detection" content="telephone=no" />
+    <!-- DevExtreme dependencies -->
+    <script type="text/javascript" src="../../scripts/jquery.min.js"></script>
+    <!-- DevExtreme themes -->
+    <link rel="stylesheet" type="text/css" href="../../css/dx.light.css" />
+    <!-- A DevExtreme library -->
+    <script type="text/javascript" src="../../scripts/dx.all.js"></script>
+    <!-- Offline HTML JavaScript Bridge-->
+    <script type="text/javascript" src="../../scripts/JSBridge.js"></script>
+    <script type="text/javascript" src="../../scripts/k2aMethods.js"></script>
+    <script type="text/javascript" src="../../enum/Schema.js"></script>
+    <script type="text/javascript" src="../../enum/setupoption.js"></script>
+    <!-- Offline HTML Template Factory-->
+    <script type="text/javascript" src="../../templates/listItem-factory.js"></script>
+    <script type="text/javascript" src="../../templates/toolbar-factory.js"></script>
+    <!-- Offline HTML Styling -->
+    <link rel="stylesheet" type="text/css" href="../../css/k2a.css" />
+    <title>Entity List</title>
+</head>
+
+<body>
+    <div id="toast"></div>
+    <div class="fixedPosition">
+        <div id="mainToolbar"></div><br>
+        <div id="listToolbar"></div>
+        <div id="mainScrollView">
+            <div id='mainList'></div>
+        </div>
+        <div id="actionSheet"></div>
+        <div id="filterPopup"></div>
+    </div>
+
+    <script>
+        //============== INITIAL SETTINGS ================
+        var callingObjectName = null, callingObject = null, servicecallid = null;
+        var entityName = SCHEMA.equipment.name;
+        var lookupAttribute = SCHEMA.equipment.Properties.objectid;
+        var sortDesc = false, sortSelector = SCHEMA.equipment.Properties.name;
+        const ViewLabel = {
+            all: "View All",
+            assigned: "View Assigned",
+            unassigned: "View Unassigned"
+        };
+        var selectedView = ViewLabel.all, scrollHeight = 110;
+        //============== OFFLINE DATA ================
+        var entityListData;
+        //============== SELECTED DATA ================
+        var selected = { entityName: null, barcode: null, locationid: null };
+        //============== FETCH DATA ================
+        var requiredSetupOptions = [
+            SETUPOPTION.AllowModifyNewEquipmentId,
+            SETUPOPTION.AllowModifyEquipmentRecord,
+            SETUPOPTION.UseRefrigerantTracking,
+            SETUPOPTION.UseSublocationValidation,
+            SETUPOPTION.DefaultTaskStatus,
+            SETUPOPTION.UseBarcoding
+        ];
+        var entityAttributes = [
+            SCHEMA.equipment.Properties.id,
+            SCHEMA.equipment.Properties.name,
+            SCHEMA.equipment.Properties.modelnumber,
+            SCHEMA.equipment.Properties.serialnumber,
+            SCHEMA.equipment.Properties.equipmenttypeid,
+            SCHEMA.equipment.Properties.manufacturerid,
+            SCHEMA.equipment.Properties.gpmasterequipmentnumber,
+            SCHEMA.equipment.Properties.barcode
+        ];
+        var listSortItems = [
+            SCHEMA.equipment.Properties.name,
+        ];
+        var listSearchItems = [
+            SCHEMA.equipment.Properties.name,
+            SCHEMA.equipment.Properties.modelnumber,
+            SCHEMA.equipment.Properties.serialnumber,
+            SCHEMA.equipment.Properties.equipmenttypeid,
+            SCHEMA.equipment.Properties.manufacturerid,
+            SCHEMA.equipment.Properties.gpmasterequipmentnumber,
+            SCHEMA.equipment.Properties.barcode
+        ];
+        var listFilterItems = [
+            { dataField: SCHEMA.equipment.Properties.name, dataType: FilterDataType.string },
+            { dataField: SCHEMA.equipment.Properties.modelnumber, dataType: FilterDataType.string },
+            { dataField: SCHEMA.equipment.Properties.serialnumber, dataType: FilterDataType.string },
+            { dataField: SCHEMA.equipment.Properties.equipmenttypeid, dataType: FilterDataType.string },
+            { dataField: SCHEMA.equipment.Properties.manufacturerid, dataType: FilterDataType.string },
+            { dataField: SCHEMA.equipment.Properties.gpmasterequipmentnumber, dataType: FilterDataType.string }
+        ];
+        var listItemTemplate = function (data, _, element) {
+            var equipmentType = data.equipmenttypeid === undefined ? '' : data.equipmenttypeid.primaryName;
+            var manufacturer = data.manufacturerid === undefined ? '' : data.manufacturerid.primaryName;
+            if (data.hasContract) {
+                element.append($("<div>").append(
+                    $("<i>").addClass('dx-icon dx-icon-bookmark').css('padding', '0px 6px 8px 0px'),
+                    $('<span>').append(data.name).css('font-size', 'large')
+                ));
+            }
+            else {
+                element.append($('<div>').append(data.name).css('font-size', 'large'));
+            }
+
+            element.append(
+                $('<span>').append(data.modelnumber),
+                $('<span>').append(data.serialnumber).css('float', 'right'),
+                $('<br/>'),
+                $('<span>').append(equipmentType),
+                $('<span>').append(manufacturer).css('float', 'right')
+            );
+
+            if (data.gpmasterequipmentnumber != undefined) {
+                var masterEquipLabel = MobileCRM.Localization.get(entityName + "." + SCHEMA.equipment.Properties.gpmasterequipmentnumber);
+                element.append(
+                    $('<br />'),
+                    $('<span>').append(masterEquipLabel.toUpperCase()).addClass('listItemLabel'),
+                    $('<span>').append(data.gpmasterequipmentnumber).css('margin-left', '10px')
+                )
+            }
+        };
+        //============== TOOLBAR ITEMS ================
+        var mainToolbarItems = [ToolbarItemType.selectView, ToolbarItemType.btnNew, ToolbarItemType.title];
+        var listToolbarItems = [
+            ToolbarItemType.btnSort, ToolbarItemType.selectSort, ToolbarItemType.btnFilter
+        ];
+        //============== LIST ACTION ITEMS ================
+        var actionItems = [
+            { text: "More", onClick: viewEntity },
+            { text: "Assign to Service Call", onClick: attachToServiceCall },
+            { text: "Unassign", onClick: detachFromServiceCall }
+        ];
+
+        $(function () {
+            //============== LOCALIZATION ================
+            MobileCRM.Localization.initialize(function (localization) {
+
+                //============== ANDROID CHECK ================
+                MobileCRM.Platform.preventBackButton(btnBackClicked);
+
+                //============== LOADPANEL ================
+                loading = MobileCRM.UI.Form.showPleaseWait(MobileCRM.Localization.get("Msg.Loading"));
+
+                //============== SCROLLVIEW ================
+                mainScrollView = $("#mainScrollView").dxScrollView({
+                    showScrollbar: "always",
+                    height: function () { return window.innerHeight - scrollHeight; },
+                    width: '100%'
+                }).dxScrollView("instance");
+                $(window).resize(function () {
+                    if (callingObjectName === SCHEMA.servicecall.name) {
+                        updateToolbarItem(mainToolbar, ToolbarItemType.selectView, 'options', {
+                            width: $(window).width() * 0.75,
+                            value: selectedView
+                        });
+                    }
+                    repaintScrollView(mainScrollView);
+                });
+
+                //============== TOOLBARS ================
+                mainToolbar = $("#mainToolbar").dxToolbar({
+                    items: (new ToolbarFactory()).addItems(mainToolbarItems)
+                }).dxToolbar("instance");
+                listToolbar = $("#listToolbar").dxToolbar({
+                    items: (new ToolbarFactory()).addItems(listToolbarItems)
+                }).dxToolbar("instance");
+
+                //============== LIST ================
+                mainList = (new ListFactory()).createItem("#mainList", entityName, [
+                    { name: 'searchExpr', value: listSearchItems },
+                    { name: 'itemTemplate', value: listItemTemplate }
+                ]);
+
+                //============== ACTION SHEETS ================
+                actionSheet = (new ActionSheetFactory()).createItem(actionItems, "#actionSheet");
+
+                //============== EVENT HANDLERS ================
+                MobileCRM.bridge.onGlobalEvent("EntityFormClosed", function (closedForm) {
+                    if (closedForm.entity && closedForm.entity.entityName === entityName) {
+                        reloadEquipmentList()
+                    }
+                }, true);
+
+                MobileCRM.bridge.onGlobalEvent('ReloadEquipmentList', reloadEquipmentList, true);
+                MobileCRM.Configuration.requestObject(function (config) {
+                    MobileCRM.bridge.onGlobalEvent('SyncFinished', reloadEquipmentList, !config.settings.requireSyncLogin);
+                }, MobileCRM.bridge.alert);
+
+                loadSetupOptions(loadListOptions);
+            }, alertError);
+        });
+
+        //============== LOAD OPTIONS ================
+        function loadListOptions() {
+            MobileCRM.UI.EntityForm.requestObject(function (entityForm) {
+                callingObjectName = entityForm.entity.entityName;
+                callingObject = entityForm.entity;
+
+                switch (callingObjectName) {
+                    case SCHEMA.location.name:
+                        selected.locationid = entityForm.entity.id;
+                        break;
+                    case SCHEMA.servicecall.name:
+                        selected.locationid = entityForm.entity.properties.locationid.id;
+                        servicecallid = entityForm.entity.id;
+                        selectedView = ViewLabel.assigned;
+                        break;
+                    case SCHEMA.appointment.name:
+                        callingObjectName = SCHEMA.servicecall.name;
+                        callingObject = entityForm.entity.properties.servicecallid;
+                        callingObject.properties = { 'gpservicecallid': entityForm.entity.properties.gpservicecallid };
+
+                        selected.locationid = entityForm.entity.properties.locationid.id;
+                        servicecallid = entityForm.entity.properties.servicecallid.id;
+                        selectedView = ViewLabel.assigned;
+                        break;
+                    default:
+                        alertError("Unable to Load Equipment List: Missing Lookup Entity Details");
+                        return;
+                }
+
+                if (entityForm.iFrameOptions) {
+                    selected.barcode = entityForm.iFrameOptions.barcode;
+                }
+
+                loadToolbarOptions();
+                loadListItemOptions();
+            }, alertError);
+        }
+        function loadToolbarOptions() {
+            checkCanCreate(SCHEMA.equipment.name).then(function (canCreate) {
+                if (callingObjectName === SCHEMA.servicecall.name) {
+                    if (!canCreate) {
+                        updateToolbarItem(mainToolbar, ToolbarItemType.btnNew, 'visible', false);
+                    }
+                    updateToolbarItem(mainToolbar, ToolbarItemType.title, 'visible', false);
+
+                    updateToolbarItem(mainToolbar, ToolbarItemType.selectView, 'options', {
+                        displayExpr: 'display',
+                        valueExpr: 'value',
+                        items: [
+                            { display: MobileCRM.Localization.getComponentLabel(entityName, "View", ViewLabel.assigned), value: ViewLabel.assigned },
+                            { display: MobileCRM.Localization.getComponentLabel(entityName, "View", ViewLabel.unassigned), value: ViewLabel.unassigned }
+                        ],
+                        width: $(window).width() * 0.75,
+                        value: selectedView
+                    });
+                }
+                else if (callingObjectName === SCHEMA.location.name) {
+                    updateToolbarItem(mainToolbar, ToolbarItemType.selectView, 'visible', false);
+                    updateToolbarItem(mainToolbar, ToolbarItemType.btnNew, 'visible', false);
+
+                    updateToolbarItem(mainToolbar, ToolbarItemType.title, "html",
+                        "<b>" + MobileCRM.Localization.get("DetailView." + entityName) + "</b>");
+                }
+
+                if (typeof listFilterItems !== 'undefined' && listFilterItems.length > 0)
+                    (new FilterFactory()).createFilterPopup(mainList, listToolbar);
+
+                loadSortItemsLocalization(listSortItems).then(function (sortDataSource) {
+                    updateToolbarItem(listToolbar, ToolbarItemType.selectSort, "options.dataSource", sortDataSource);
+                    updateToolbarItem(listToolbar, ToolbarItemType.selectSort, "options.value", sortSelector);
+                });
+            }, alertError);
+        }
+        function loadListItemOptions() {
+            if (setupOptions.UseBarcoding)
+                addBarcodeSearch();
+
+            if (selected.barcode)
+                mainList.option('searchValue', selected.barcode);
+
+            fetchListEntityData();
+        }
+
+        //============== LOAD DATA ================
+        function fetchListEntityData(equipmentIds) {
+            var entity = new MobileCRM.FetchXml.Entity(entityName);
+            $(entityAttributes).each(function (index, attribute) {
+                entity.addAttribute(attribute);
+            });
+            entity.orderBy(sortSelector, sortDesc);
+
+            // Filter: Location
+            entity.addFilter().where(SCHEMA.equipment.Properties.locationid, 'eq', selected.locationid);
+            // Filter: ID
+            if (equipmentIds !== undefined && $.isArray(equipmentIds)) {
+                entity.filter.notIn(SCHEMA.equipment.Properties.id, equipmentIds);
+            }
+            // Filter: Service Call Task
+            if (callingObjectName === SCHEMA.servicecall.name && selectedView === ViewLabel.assigned) {
+                var taskLinkEntity = entity.addLink(
+                    SCHEMA.task.name,
+                    SCHEMA.task.Properties.equipmentid,
+                    SCHEMA.equipment.Properties.id,
+                    "inner");
+                taskLinkEntity.addFilter().where(SCHEMA.task.Properties.servicecallid, 'eq', servicecallid);
+            }
+
+            // Link: EquipmentType
+            entity.addLink(SCHEMA.equipmenttype.name, SCHEMA.equipmenttype.Properties.id, SCHEMA.equipment.Properties.equipmenttypeid, "outer");
+            // Link: Manufacturer
+            entity.addLink(SCHEMA.manufacturer.name, SCHEMA.manufacturer.Properties.id, SCHEMA.equipment.Properties.manufacturerid, "outer");
+            // Link: Sublocation Barcode
+            var sublocationLink = entity.addLink(SCHEMA.sublocation.name, SCHEMA.sublocation.Properties.id, SCHEMA.equipment.Properties.sublocationid, "outer");
+            sublocationLink.addAttribute(SCHEMA.sublocation.Properties.barcode);
+            sublocationLink.alias = 'sl';
+            // Link: Contract Equipment
+            var contractLink = entity.addLink(SCHEMA.contractequipment.name, SCHEMA.contractequipment.Properties.equipmentid, SCHEMA.equipment.Properties.id, "outer");
+            contractLink.addAttribute(SCHEMA.contractequipment.Properties.contractid);
+            contractLink.alias = 'contract';
+
+            var fetch = new MobileCRM.FetchXml.Fetch(entity);
+            fetch.count = 1000;
+            fetchAllPages(fetch, "JSON").then(function (res) {
+                $(res).each(function (i, equipment) {
+                    // For list search to work can not have "." in attribute name
+                    // Create string of linked barcodes (from equipment or sublocation)
+                    if (equipment[sublocationLink.alias + "." + SCHEMA.equipment.Properties.barcode]) {
+                        equipment.barcode = equipment.barcode + " " + equipment[sublocationLink.alias + "." + SCHEMA.equipment.Properties.barcode];
+                    }
+                    // MTW-1833: Identify if equipment is under a contract(s)
+                    if (equipment[contractLink.alias + "." + SCHEMA.contractequipment.Properties.contractid]) {
+                        equipment.hasContract = true;
+                    }
+                });
+
+                // Group and ungroup data because of contractequipment link filter
+                var groupedData = new DevExpress.data.DataSource({
+                    store: res,
+                    group: SCHEMA.equipment.Properties.id,
+                    paginate: false
+                });
+
+                groupedData.load().done(function (data) {
+                    var deGroupedData = [];
+                    $(data).each(function (i, groupedEquip) {
+                        deGroupedData.push(groupedEquip.items[0]);
+                    });
+
+                    loadListData(mainList, deGroupedData);
+                    entityListData = deGroupedData;
+                    loading.close();
+                });
+            }, alertError);
+        }
+
+        function getAssignedEquipment() {
+            var deferred = $.Deferred();
+
+            var taskEntity = new MobileCRM.FetchXml.Entity(SCHEMA.task.name);
+            taskEntity.addAttribute(SCHEMA.task.Properties.equipmentid);
+            taskEntity.addFilter().where(SCHEMA.task.Properties.servicecallid, 'eq', servicecallid);
+            taskEntity.addFilter().where(SCHEMA.task.Properties.equipmentid, 'not-null');
+            taskEntity.filter.type = 'and';
+
+            var equipIdFetch = new MobileCRM.FetchXml.Fetch(taskEntity);
+            equipIdFetch.execute("JSON",
+                function (result) {
+                    var equipmentIds = [];
+                    var ds = new DevExpress.data.DataSource({
+                        store: result,
+                        group: SCHEMA.task.Properties.equipmentid,
+                        pageSize: 10,
+                        paginate: false
+                    });
+                    ds.load().done(function (data) {
+                        $.each(data, function (i, v) {
+                            equipmentIds.push(v.key.id);
+                        })
+                    })
+
+                    if (equipmentIds.length === 0) {
+                        return deferred.resolve(null);
+                    }
+
+                    return deferred.resolve(equipmentIds);
+                }, function (error) {
+                    MobileCRM.bridge.alert(error);
+                    return deferred.reject(null);
+                }, null);
+
+            return deferred.promise();
+        }
+
+        function btnSortClicked() {
+            loadListData(mainList, entityListData);
+        }
+        function sortSelected() {
+            loadListData(mainList, entityListData);
+        }
+
+        function viewSelected(e) {
+            if (selectedView != e.selectedItem.value) {
+                selectedView = e.selectedItem.value;
+                if (selectedView === ViewLabel.assigned) {
+                    fetchListEntityData();
+                }
+                else {
+                    // need to get the list of assigned equipment.
+                    // Do this first then call the fetch
+                    var ids = mainList.getDataSource();
+                    var equipmentIds = [];
+                    ids.load().done(function (data) {
+                        $(data).each(function (i, v) {
+                            equipmentIds.push(v.id);
+                        })
+                        if (equipmentIds.length > 0) {
+                            fetchListEntityData(equipmentIds);
+                        }
+                        else {
+                            fetchListEntityData();
+                        }
+                    })
+                }
+            }
+        }
+
+        function btnNewClicked() {
+            if (!selected.locationid) {
+                alertError("New Equipment Error: Missing Location details");
+                return;
+            }
+            MobileCRM.DynamicEntity.loadById(SCHEMA.location.name, selected.locationid, function (location) {
+                var gpequipmentid = '';
+                var equipmentname = '';
+                if (!setupOptions.AllowModifyNewEquipmentId) {
+                    gpequipmentid = MobileCRM.Localization.get("PendingString");
+                    equipmentname = MobileCRM.Localization.get("PendingString");
+                }
+                var reference = new MobileCRM.Reference(SCHEMA.location.name, selected.locationid);
+                var relationShip = new MobileCRM.Relationship(SCHEMA.equipment.Properties.locationid, reference, null, null);
+                MobileCRM.UI.FormManager.showNewDialog(entityName, relationShip, {
+                    "@initialize": {
+                        gpcustomernumber: location.properties.gpcustomernumber,
+                        gplocationnumber: location.properties.gplocationnumber,
+                        gpequipmentid: gpequipmentid,
+                        name: equipmentname,
+                        componentquantity: 0
+                    },
+                    iFrameOptions: {
+                        callingObjectName: callingObjectName,
+                        callingEntity: callingObject
+                    }
+                });
+            }, alertError);
+        }
+
+        function fetchRelatedTask(equipmentid, servicecallid) {
+            var deferred = $.Deferred();
+            if (!equipmentid)
+                return deferred.reject("Unable to fetch related task: Missing Equipment ID");
+            if (!servicecallid)
+                return deferred.reject("Unable to fetch related task: Missing Service Call ID");
+
+            var entity = new MobileCRM.FetchXml.Entity(SCHEMA.task.name);
+            entity.addAttribute(SCHEMA.task.Properties.id);
+            entity.addAttribute(SCHEMA.task.Properties.createdon);
+            entity.orderBy(SCHEMA.task.Properties.gptasklinenumber, false);
+
+            entity.addFilter().where(SCHEMA.task.Properties.equipmentid, 'eq', equipmentid);
+            entity.addFilter().where(SCHEMA.task.Properties.servicecallid, 'eq', servicecallid);
+            entity.addFilter().where(SCHEMA.task.Properties.gptaskcode, 'eq', "DEFAULT");
+            entity.addFilter().where(SCHEMA.task.Properties.recordlevel, 'eq', 4);
+            entity.filter.type = 'and';
+
+            var fetch = new MobileCRM.FetchXml.Fetch(entity);
+            fetch.execute("JSON", function (res) {
+                return deferred.resolve(res[0] ? res[0] : null);
+            }, function (err) { return deferred.reject("Fetch Related Task Error: " + err); });
+            return deferred.promise();
+        }
+
+        function reloadEquipmentList() {
+            if (selectedView === ViewLabel.assigned) {
+                fetchListEntityData();
+            }
+            else {
+                // need to get the list of assigned equipment. Do this first then call the fetch
+                var promise = getAssignedEquipment();
+                promise.then(function (results) {
+                    if ($.isArray(results)) {
+                        fetchListEntityData(results);
+                    }
+                    else
+                        fetchListEntityData();
+                });
+            }
+        }
+
+        //============== LIST ITEM FUNCTIONS ================
+        function listItemClicked() {
+            if (callingObjectName != null && callingObjectName === SCHEMA.servicecall.name) {
+                var updatedActionItems = [{ text: "Cancel", type: 'default', mode: 'outlined', onClick: function () { actionSheet.hide(); } }];
+                if (selectedView === ViewLabel.unassigned) {
+                    // 0.More, 1.Assign
+                    updatedActionItems.unshift(actionItems[0], actionItems[1]);
+                    actionSheet.option('dataSource', updatedActionItems);
+                    showActionSheet();
+                }
+                else {
+                    // If have have not synced after assigning equipment, can unassign equipment from servicecall
+                    fetchRelatedTask(selected[entityName].id, servicecallid).then(function (relatedTask) {
+                        if (relatedTask) {
+                            MobileCRM.Configuration.requestObject(function (config) {
+                                var notSynced = new Date(relatedTask.createdon) > new Date(config.settings.lastSyncDate);
+
+                                if (notSynced) {
+                                    // 0.More, 2. Unassign
+                                    updatedActionItems.unshift(actionItems[0], actionItems[2]);
+                                    actionSheet.option('dataSource', updatedActionItems);
+                                    showActionSheet();
+                                }
+                                else {
+                                    viewEntity();
+                                }
+                            }, MobileCRM.bridge.alert);
+                        }
+                        else {
+                            viewEntity();
+                        }
+                    }, MobileCRM.bridge.alert);
+                }
+            }
+            else {
+                viewEntity();
+            }
+        }
+        function showActionSheet() {
+            actionSheet.option({
+                title: MobileCRM.Localization.get(entityName) + ": " + selected[entityName].name,
+                visible: true
+            });
+        }
+
+        //============== LIST EXECUTIONS ================
+        function viewEntity() {
+            MobileCRM.UI.FormManager.showEditDialog(entityName, selected[entityName].id, null,
+                { iFrameOptions: { "callingObject": callingObject } }
+            );
+        }
+        function attachToServiceCall() {
+            // get the current service call
+            var servicecall = callingObject;
+            MobileCRM.DynamicEntity.loadById(SCHEMA.equipment.name,
+                selected[entityName].id,
+                function (entity) {
+                    loading = MobileCRM.UI.Form.showPleaseWait(MobileCRM.Localization.get("Msg.Loading"));
+
+                    var promise = assignToServiceCall(servicecall, entity);
+                    promise.then(function (result) {
+                        // refresh the list
+                        var assignedEquipmentPromise = getAssignedEquipment();
+                        assignedEquipmentPromise.then(function (results) {
+                            if ($.isArray(results)) {
+                                fetchListEntityData(results);
+                            }
+                            else
+                                fetchListEntityData();
+                            loading.close();
+                        })
+                            .fail(function (err) {
+                                MobileCRM.bridge.alert(err);
+                                loading.close();
+                            });
+
+                    })
+                        .fail(function (error) {
+                            loading.close();
+                            MobileCRM.bridge.alert(error);
+                        });
+                },
+                MobileCRM.bridge.alert, null);
+        }
+
+        function assignToServiceCall(servicecall, equipment) {
+            var deferred = $.Deferred();
+
+            // Create the default task
+            var entity = new MobileCRM.FetchXml.Entity(SCHEMA.taskstatus.name);
+            entity.addAttribute(SCHEMA.taskstatus.Properties.id);
+            entity.filter = new MobileCRM.FetchXml.Filter();
+            entity.filter.where(SCHEMA.taskstatus.Properties.name, 'eq', setupOptions.DefaultTaskStatus);
+
+            var fetch = new MobileCRM.FetchXml.Fetch(entity);
+            fetch.execute("JSON", function (result) {
+                if (result.length === 1) {
+                    var defaultTask = new MobileCRM.DynamicEntity.createNew(SCHEMA.task.name);
+                    defaultTask.properties.completiondate = null;
+                    defaultTask.properties.name = "DEFAULT - DEFAULT TASK";
+                    defaultTask.properties.gptasklevel = "Task: DEFAULT";
+                    defaultTask.properties.description = "DEFAULT TASK";
+                    defaultTask.properties.equipmentid = new MobileCRM.DynamicEntity(SCHEMA.equipment.name, equipment.id);
+                    defaultTask.properties.gpequipmentid = equipment.properties.gpequipmentid;
+                    defaultTask.properties.gpsublocationid = null;
+                    defaultTask.properties.gpsubtaskcode = '';
+                    defaultTask.properties.gpsubtasklinenumber = 0;
+                    defaultTask.properties.gptaskcode = "DEFAULT";
+                    defaultTask.properties.gptasklinenumber = 16384;
+                    defaultTask.properties.recordlevel = 4;
+                    defaultTask.properties.gptasklistid = '';
+                    defaultTask.properties.servicecallid = new MobileCRM.DynamicEntity(SCHEMA.servicecall.name, servicecall.id);
+                    defaultTask.properties.gpservicecallid = servicecall.properties.gpservicecallid;
+                    defaultTask.properties.taskstatusid = new MobileCRM.DynamicEntity(SCHEMA.taskstatus.name, result[0].id);
+                    defaultTask.save(function (error) {
+                        if (error) {
+                            MobileCRM.bridge.alert("Unable to create default task: " + error);
+                            return deferred.reject(error);
+                        }
+                        else {
+                            checkServiceCallGpequipmentid("Alert.EquipmentAssigned", function () {
+                                MobileCRM.bridge.raiseGlobalEvent("ReloadEquipmentList");
+                                return deferred.resolve();
+                            });
+                        }
+                    });
+                }
+                else {
+                    return deferred.resolve(true);
+                }
+            }, function (error) {
+                return deferred.reject(error);
+            }, null);
+
+            return deferred.promise();
+
+        }
+
+        function detachFromServiceCall() {
+            fetchRelatedTask(selected[entityName].id, servicecallid).then(function (relatedTask) {
+                if (relatedTask) {
+                    MobileCRM.DynamicEntity.deleteById(SCHEMA.task.name, relatedTask.id, function () {
+                        checkServiceCallGpequipmentid("Alert.EquipmentUnassigned", function () {
+                            MobileCRM.bridge.raiseGlobalEvent("ReloadEquipmentList");
+                        });
+                    }, alertError);
+                }
+                else {
+                    alertError("Unable to fetch related task.");
+                }
+            }, MobileCRM.bridge.alert);
+        }
+
+        function checkServiceCallGpequipmentid(msg, callback) {
+            // If this is the only piece of equipment on the service call then update the service call record
+            // If more than 1 piece then set the gpequipmentid = ''
+            var entity = new MobileCRM.FetchXml.Entity(SCHEMA.task.name);
+            entity.addAttribute(SCHEMA.task.Properties.gpequipmentid);
+            entity.addFilter().where(SCHEMA.task.Properties.servicecallid, 'eq', servicecallid);
+            entity.addFilter().where(SCHEMA.task.Properties.equipmentid, 'not-null');
+
+            var fetch = new MobileCRM.FetchXml.Fetch(entity);
+            fetch.execute("JSON", function (res) {
+                if (res.length < 1) {
+                    updateServiceCallGpequipmentid(null).then(function () {
+                        showToast(MobileCRM.Localization.get(msg), 'success');
+                        callback();
+                    });
+                }
+                else if (res.length === 1) {
+                    updateServiceCallGpequipmentid(res[0].gpequipmentid).then(function () {
+                        showToast(MobileCRM.Localization.get(msg), 'success');
+                        callback();
+                    });
+                }
+                else {
+                    var distinctEquipment = [];
+                    $(res).each(function (i, task) {
+                        if (distinctEquipment.indexOf(task.gpequipmentid) < 0) {
+                            distinctEquipment.push(task.gpequipmentid);
+                        }
+                    });
+
+                    var gpequipmentid = distinctEquipment.length === 1 ? distinctEquipment[0] : null;
+                    updateServiceCallGpequipmentid(gpequipmentid).then(function () {
+                        showToast(MobileCRM.Localization.get(msg), 'success');
+                        callback();
+                    });
+                }
+            }, alertError);
+        }
+
+        function updateServiceCallGpequipmentid(gpequipmentid) {
+            var deferred = $.Deferred();
+            if (servicecallid) {
+                MobileCRM.DynamicEntity.loadById(SCHEMA.servicecall.name, servicecallid, function (call) {
+                    call.properties.gpequipmentid = gpequipmentid ? gpequipmentid : "";
+                    call.save(function (err) {
+                        if (err) {
+                            alertError("Update Service Call gpequipmentid Error: " + err);
+                        }
+                        else {
+                            return deferred.resolve();
+                        }
+                    });
+                }, function (err) { alertError("Load Service Call Error: " + err); });
+            }
+            else {
+                alertError("Update Service Call gpequipment Error: Missing call details");
+            }
+            return deferred.promise();
+        }
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,348 @@
+﻿<!DOCTYPE html>
+<html>
+
+<head>
+    <!-- Activate IE9 document mode, if available -->
+    <meta charset="utf-8" http-equiv="X-UA-Compatible" content="IE=edge" />
+    <!-- Defined iOS viewport -->
+    <meta name="viewport" content="initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=false">
+    <!-- Disable iOS Phone No Detection -->
+    <meta name="format-detection" content="telephone=no" />
+    <!-- DevExtreme dependencies -->
+    <script type="text/javascript" src="../../scripts/jquery.min.js"></script>
+    <!-- Offline HTML JavaScript Bridge-->
+    <script type="text/javascript" src="../../scripts/JSBridge.js"></script>
+    <script type="text/javascript" src="../../scripts/k2aMethods.js"></script>
+    <script type="text/javascript" src="../../enum/Schema.js"></script>
+    <script type="text/javascript" src="../../enum/setupoption.js"></script>
+    <title>Entity Form</title>
+</head>
+
+<body>
+    <script>
+        // Array of file extensions that will not be allowed as attachments
+        // Default is Executable, Script, and Batch Files: 'exe', 'dll', 'ocx', 'js', 'wsf', 'bat', 'cmd', 'btm'
+        var invalidFileExtensions = ['exe', 'dll', 'ocx', 'js', 'wsf', 'bat', 'cmd', 'btm'];
+
+        //============== INITIAL SETTINGS ================
+        var loading, entityName = SCHEMA.annotation.name;
+        var detailViewName = "details";
+        var requiredSetupOptions = [SETUPOPTION.CompanyDatabaseVersion];
+        //============== SELECTED DATA ================
+        var selected = { servicecall: null, appointment: null }
+
+        $(function () {
+            //============== LOCALIZATION ================
+            MobileCRM.Localization.initialize(function (localization) {
+
+                //============== ANDROID CHECK ================
+                MobileCRM.Platform.preventBackButton(btnBackClicked);
+
+                loading = MobileCRM.UI.Form.showPleaseWait("Loading");
+                MobileCRM.UI.EntityForm.onSave(onSave, true, null);
+
+                loadSetupOptions(loadFormOptions);
+            }, alertError);
+        });
+
+        //============== LOAD OPTIONS ================
+        function loadFormOptions() {
+            MobileCRM.UI.EntityForm.requestObject(function (entityForm) {
+                if (entityForm.entity.properties.gpnotetype === 'Z') {
+                    // Created from Appointment Completion Form
+                    MobileCRM.DynamicEntity.loadById(SCHEMA.appointment.name, entityForm.entity.properties.objectid.id, function (appt) {
+                        selected.appointment = appt.properties;
+                        selected.servicecall = appt.properties.servicecallid;
+                        loadFormItemOptions();
+                    }, alertError);
+                }
+                else {
+                    loadFormItemOptions();
+                }
+            }, alertError);
+        }
+
+        function loadFormItemOptions() {
+            MobileCRM.UI.EntityForm.requestObject(function (entityForm) {
+                // Load Form Items
+                var entityProps = entityForm.entity.properties;
+                var detailView = entityForm.getDetailView("details");
+                var formItems = [];
+                $(detailView.items).each(function (index, item) {
+                    item.errorMessage = null;
+                    formItems[item.name] = item;
+                });
+
+                if (entityProps.isdocument) {
+                    addExtentionValidation();
+                }
+
+                entityForm.form.caption = MobileCRM.Localization.get("attachment");
+                formItems.notetext.label = "Description";
+                formItems.notetext.isEnabled =
+                    !(entityProps.objectid && entityProps.objectid.entityName === SCHEMA.report.name);
+
+                switch (entityProps.gpnotetype) {
+                    case "A":
+                        formItems.notetext.validate = true;
+                        formItems.notetext.errorMessage = entityProps.notetext ? null : MobileCRM.Localization.get("Alert.FmtFieldNotEmpty").format(formItems.notetext.label);
+                        formItems.objectid.label = MobileCRM.Localization.get(SCHEMA.appointment.name);
+                        break;
+                    case "Z":   // From Appointment Completion - Add Attachment
+                        formItems.objectid.value = new MobileCRM.Reference(SCHEMA.servicecall.name, selected.servicecall.id, selected.servicecall.primaryName);
+                    case "S":
+                        formItems.objectid.label = MobileCRM.Localization.get(SCHEMA.servicecall.name);
+                        break;
+                    case "E":
+                        formItems.objectid.label = MobileCRM.Localization.get(SCHEMA.equipment.name);
+                        break;
+                    case "T":
+                        formItems.objectid.label = MobileCRM.Localization.get(SCHEMA.task.name);
+                        break;
+                    case "W":
+                        formItems.objectid.label = MobileCRM.Localization.get(SCHEMA.additionalwork.name);
+                        break;
+                    case "X":
+                        formItems.objectid.label = MobileCRM.Localization.get(SCHEMA.laborexpense.name);
+                        break;
+                    default:
+                        if (entityProps.objectid) {
+                            formItems.objectid.label = MobileCRM.Localization.get(entityProps.objectid.entityName);
+                        }
+                }
+
+                formItems.objectid.isEnabled = false;
+                formItems.modifieddate.isEnabled = false;
+                formItems.modifieddate.parts = 1;
+                if (entityForm.entity.isNew) {
+                    detailView.startEditItem(detailView.getItemIndex(SCHEMA.annotation.Properties.notetext));
+                }
+                else {
+                    MobileCRM.UI.EntityForm.onCanExecuteCommand("DocAction.Clear", function (entityForm) { return false }, true);
+                }
+
+                // Change Objectid form item from link to text
+                formItems.objectid.isVisible = false;
+                createTextBoxItem(
+                    formItems.objectid.label,
+                    formItems.objectid.name + "text",
+                    detailView.getItemIndex('objectid') + 1,
+                    formItems.objectid.value ? formItems.objectid.value.primaryName : "Unknown",
+                    false
+                ).then(function () {
+                    if (entityProps.gpnotetype === 'Z') {
+                        loadFormItems().then(loadFormData, alertError);
+                    }
+                    else {
+                        loading.close();
+                    }
+                }, alertError);
+            }, alertError);
+        }
+
+        function createTextBoxItem(label, name, position, value, isEnabled) {
+            var deferred = $.Deferred();
+            MobileCRM.UI.EntityForm.requestObject(function (entityForm) {
+                var detailView = entityForm.getDetailView(detailViewName);
+                var textBoxItem = detailView.getItemByName(name);
+
+                if (!textBoxItem)
+                    textBoxItem = new MobileCRM.UI.DetailViewItems.TextBoxItem(name, label);
+
+                textBoxItem.value = value;
+                textBoxItem.isEnabled = isEnabled;
+                detailView.insertItem(textBoxItem, position);
+                return deferred.resolve();
+            }, function (err) { return deferred.reject(err); });
+            return deferred.promise();
+        }
+
+        function loadFormItems() {
+            var deferred = $.Deferred();
+            try {
+                MobileCRM.UI.EntityForm.requestObject(function (entityForm) {
+                    var detailView = entityForm.getDetailView(detailViewName);
+                    // Create Entity Type Drop Down
+                    var comboItem = detailView.getItemByName("objectidEntityName");
+                    if (comboItem) {
+                        comboItem.value = SCHEMA.servicecall.name;
+                    }
+                    else {
+                        comboItem = new MobileCRM.UI.DetailViewItems.ComboBoxItem("objectidEntityName", "Select Type");
+                        comboItem.value = SCHEMA.servicecall.name;
+
+                        var dataSource = {};
+                        dataSource[MobileCRM.Localization.get(SCHEMA.servicecall.name)] = SCHEMA.servicecall.name;
+
+                        var version = setupOptions.CompanyDatabaseVersion.split(".");
+                        var year = parseInt(version[0]);
+                        var release = parseInt(version[2]);
+                        var afterVersionR7 = (year >= 18 && release >= 7) || year > 18; // Version 18.0.7
+                        if (afterVersionR7) {
+                            dataSource[MobileCRM.Localization.get(SCHEMA.appointment.name)] = SCHEMA.appointment.name;
+                        }
+                        dataSource[MobileCRM.Localization.get(SCHEMA.equipment.name)] = SCHEMA.equipment.name;
+                        comboItem.listDataSource = dataSource;
+
+                        detailView.insertItem(comboItem, 0);
+                    }
+
+                    // Add Fetch Filter to objectid for Assigned Equipment
+                    var viewSetup = new MobileCRM.UI.DetailViewItems.LookupSetup();
+                    var fetch = '<fetch version="1.0"><entity name="equipment">' +
+                        '<link-entity name="task" alias="L1" from="equipmentid" to="id" link-type="inner">' +
+                        '<filter type="and">' +
+                        '<condition attribute="gpservicecallid" operator="eq" value="' + selected.appointment.gpservicecallid + '"/>' +
+                        '</filter>' +
+                        '</link-entity >' +
+                        '</entity ></fetch >';
+
+                    viewSetup.addView(SCHEMA.equipment.name, "View Assigned", true);
+                    viewSetup.addFilter(SCHEMA.equipment.name, fetch);
+                    detailView.updateLinkItemViews(1, viewSetup, viewSetup, false);
+
+                    // Add Event Listener
+                    MobileCRM.UI.EntityForm.onChange(formValueChanged, true);
+                    return deferred.resolve();
+                }, function (err) {
+                    return deferred.reject(err);
+                });
+            }
+            catch (e) {
+                return deferred.reject(e);
+            }
+            return deferred.promise();
+        }
+
+        //============== LOAD DATA ================
+        function loadFormData() {
+            MobileCRM.UI.EntityForm.requestObject(function (entityForm) {
+                if (entityForm.entity.properties.gpnotetype === 'Z') {
+                    // Created from Appointment Completion Form - Default Value = service call
+                    entityForm.entity.properties.gpnotetype = 'S';
+                    entityForm.entity.properties.documenttype = 3;
+
+                    if (selected.appointment) {
+                        entityForm.entity.properties.gpservicecallid = selected.appointment.gpservicecallid;
+                    }
+                }
+                loading.close();
+            }, alertError);
+        }
+
+        //============== FORM ITEM FUNCTIONS ================
+        function formValueChanged(entityForm) {
+            var detailView = entityForm.getDetailView(detailViewName);
+            var objectIdItem = detailView.getItemByName(SCHEMA.annotation.Properties.objectid);
+
+            switch (entityForm.context.changedItem) {
+                case "objectidEntityName":
+                    entityForm.entity.properties.gpequipmentid = null;
+                    var comboItem = detailView.getItemByName("objectidEntityName");
+                    var objectidTextItem = detailView.getItemByName("objectidtext");
+
+                    if (comboItem.value === SCHEMA.servicecall.name) {
+                        entityForm.entity.properties.gpnotetype = 'S';
+                        entityForm.entity.properties.documenttype = 3;
+                        objectIdItem.isVisible = false;
+                        objectidTextItem.isVisible = true;
+                        objectidTextItem.label = MobileCRM.Localization.get(SCHEMA.servicecall.name);
+
+                        if (selected.appointment && selected.servicecall) {
+                            objectidTextItem.value = selected.appointment.gpservicecallid;
+                            entityForm.entity.properties.gpservicecallid = selected.appointment.gpservicecallid;
+                            entityForm.entity.properties.objectid = new MobileCRM.Reference(SCHEMA.servicecall.name, selected.servicecall.id);
+                        }
+                        else {
+                            alertError("Unable to set objectid: Missing Service Call Details");
+                        }
+                    }
+                    else if (comboItem.value === SCHEMA.appointment.name) {
+                        entityForm.entity.properties.gpnotetype = 'A';
+                        entityForm.entity.properties.documenttype = 24;
+                        objectIdItem.isVisible = false;
+                        objectidTextItem.isVisible = true;
+                        objectidTextItem.label = MobileCRM.Localization.get(SCHEMA.appointment.name);
+
+                        if (selected.appointment) {
+                            objectidTextItem.value = selected.appointment.name;
+                            entityForm.entity.properties.gpservicecallid = selected.appointment.gpservicecallid;
+                            entityForm.entity.properties.objectid = new MobileCRM.Reference(SCHEMA.appointment.name, selected.appointment.id);
+                        }
+                        else {
+                            alertError("Unable to set objectid: Missing Apointment Details");
+                        }
+                    }
+                    else if (comboItem.value === SCHEMA.equipment.name) {
+                        entityForm.entity.properties.gpservicecallid = null;
+                        entityForm.entity.properties.objectid = null;
+                        objectidTextItem.isVisible = false;
+                        objectIdItem.isVisible = true;
+                        objectIdItem.label = MobileCRM.Localization.get(SCHEMA.equipment.name);
+                        objectIdItem.isEnabled = true;
+                        entityForm.entity.properties.gpnotetype = 'E';
+                        entityForm.entity.properties.documenttype = 4;
+                    }
+                    break;
+                case SCHEMA.annotation.Properties.objectid:
+                    if (objectIdItem.value && objectIdItem.value.entityName === SCHEMA.equipment.name) {
+                        var objectID = objectIdItem.value;
+                        MobileCRM.DynamicEntity.loadById(objectID.entityName, objectID.id, function (equip) {
+                            MobileCRM.UI.EntityForm.requestObject(function (form) {
+                                form.entity.properties.gpequipmentid = equip.properties.gpequipmentid;
+                            }, alertError);
+                        }, alertError);
+                    }
+                    break;
+            }
+        }
+
+        //============== FORM EXECUTIONS ================
+        function onSave(entityForm) {
+            var saveHander = entityForm.suspendSave();
+            if (!entityForm.entity.properties.filename) {
+                saveHander.resumeSave("Attachment cannot be empty.");
+                return;
+            }
+
+            var notetext = entityForm.entity.properties.notetext ? entityForm.entity.properties.notetext : "";
+            switch (entityForm.entity.properties.gpnotetype) {
+                case 'E':
+                    entityForm.entity.properties.subject = entityForm.entity.properties.gpequipment + ' - ' + notetext;
+                    break;
+                default:
+                    entityForm.entity.properties.subject = entityForm.entity.properties.gpreferenceid + ' - ' + notetext;
+                    break;
+            }
+            if (entityForm.entity.properties.subject.length > 500) {
+                entityForm.entity.properties.subject = entityForm.entity.properties.subject.substring(0, 500);
+            }
+
+            saveHander.resumeSave();
+        }
+
+        function addExtentionValidation() {
+            MobileCRM.UI.EntityForm.onPostSave(function (entityForm) {
+                var saveHandler = entityForm.suspendPostSave();
+                var entityProps = entityForm.entity.properties;
+                var invalidFileType = null;
+
+                invalidFileExtensions.forEach(function (extension) {
+                    if (entityProps.filename.toUpperCase().indexOf('.' + extension.toUpperCase()) > -1)
+                        invalidFileType = extension;
+                });
+
+                if (invalidFileType) {
+                    MobileCRM.DynamicEntity.deleteById("annotation", entityProps.id, function () {
+                        MobileCRM.UI.MessageBox.sayText("Invalid File Type (." + invalidFileType + ")");
+                        saveHandler.resumePostSave();
+                    }, MobileCRM.bridge.alert, null);
+                }
+                else
+                    saveHandler.resumePostSave();
+            }, true, null);
+        }
+    </script>
+</body>
+
+</html>

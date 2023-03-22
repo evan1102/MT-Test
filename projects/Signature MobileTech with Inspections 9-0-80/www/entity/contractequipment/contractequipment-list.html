@@ -1,0 +1,237 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <!-- Activate IE9 document mode, if available -->
+    <meta charset="utf-8" http-equiv="X-UA-Compatible" content="IE=edge" />
+    <!-- Defined iOS viewport -->
+    <meta name="viewport" content="initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=false">
+    <!-- Disable iOS Phone No Detection -->
+    <meta name="format-detection" content="telephone=no" />
+    <!-- DevExtreme dependencies -->
+    <script type="text/javascript" src="../../scripts/jquery.min.js"></script>
+    <!-- DevExtreme themes -->
+    <link rel="stylesheet" type="text/css" href="../../css/dx.light.css" />
+    <!-- A DevExtreme library -->
+    <script type="text/javascript" src="../../scripts/dx.all.js"></script>
+    <!-- Offline HTML JavaScript Bridge-->
+    <script type="text/javascript" src="../../scripts/JSBridge.js"></script>
+    <script type="text/javascript" src="../../scripts/k2aMethods.js"></script>
+    <script type="text/javascript" src="../../enum/Schema.js"></script>
+    <script type="text/javascript" src="../../enum/setupoption.js"></script>
+    <!-- Offline HTML Template Factory-->
+    <script type="text/javascript" src="../../templates/listItem-factory.js"></script>
+    <script type="text/javascript" src="../../templates/toolbar-factory.js"></script>
+    <!-- Offline HTML Styling -->
+    <link rel="stylesheet" type="text/css" href="../../css/k2a.css" />
+    <title>Entity List</title>
+</head>
+<body>
+    <div id="toast"></div>
+    <div class="fixedPosition">
+        <div id="mainToolbar"></div><br>
+        <div id="listToolbar"></div>
+        <div id="mainScrollView">
+            <div id='mainList'></div>
+        </div>
+        <div id="actionSheet"></div>
+        <div id="filterPopup"></div>
+    </div>
+
+    <script>
+        //============== INITIAL SETTINGS ================
+        var entityName = SCHEMA.contractequipment.name, scrollHeight = 110;
+        var isLookupList = false, lookupID = null, lookupAttribute = SCHEMA.contractequipment.Properties.equipmentid;
+        var sortDesc = false, sortSelector = SCHEMA.contractequipment.Properties.name;
+        //============== OFFLINE DATA ================
+        var entityListData;
+        //============== SELECTED DATA ================
+        var selected = { entityName: null };
+        //============== FETCH DATA ================
+        var requiredSetupOptions = [];
+        var entityAttributes = [
+            SCHEMA.contractequipment.Properties.id,
+            SCHEMA.contractequipment.Properties.name,
+            SCHEMA.contractequipment.Properties.contractid
+        ];
+        var contractAttributes = [
+            SCHEMA.contract.Properties.id,
+            SCHEMA.contract.Properties.name,
+            SCHEMA.contract.Properties.contracttype,
+            SCHEMA.contract.Properties.enddate,
+            SCHEMA.contract.Properties.startdate
+        ];
+        var listSortItems = [
+            SCHEMA.contractequipment.Properties.name,
+            "contract_contracttype",
+            "contract_startdate",
+            "contract_enddate"
+        ];
+        var listSearchItems = [
+            SCHEMA.contract.Properties.name,
+            'contract_contracttype',
+            'contract_startdate',
+            'contract_enddate'
+        ];
+        var listFilterItems = [
+            { dataField: SCHEMA.contractequipment.Properties.name, dataType: FilterDataType.string },
+            { dataField: 'contract_contracttype', dataType: FilterDataType.string },
+            { dataField: 'contract_startdate', dataType: FilterDataType.date },
+            { dataField: 'contract_enddate', dataType: FilterDataType.date }
+        ];
+        var listItemTemplate = function (data, _, element) {
+            element.append(
+                $('<div>').append(data.name).css('font-size', 'large'),
+                $('<span>').append(data.contract_contracttype),
+                $('<div>').append($('<span>').append(formatDate(data.contract_startdate)),
+                    $('<span>').append(formatDate(data.contract_enddate)).css('float', 'right'))
+            );
+        };
+        //============== TOOLBAR ITEMS ================
+        var mainToolbarItems = [ToolbarItemType.title];
+        var listToolbarItems = [
+            ToolbarItemType.btnSort, ToolbarItemType.selectSort, ToolbarItemType.btnFilter
+        ];
+
+        $(function () {
+            //============== LOCALIZATION ================
+            MobileCRM.Localization.initialize(function (localization) {
+
+                //============== ANDROID CHECK ================
+                MobileCRM.Platform.preventBackButton(btnBackClicked);
+
+                //============== LOADPANEL ================
+                loading = MobileCRM.UI.Form.showPleaseWait(MobileCRM.Localization.get("Msg.Loading"));
+
+                //============== SCROLLVIEW ================
+                mainScrollView = $("#mainScrollView").dxScrollView({
+                    showScrollbar: "always",
+                    height: function () { return window.innerHeight - scrollHeight; },
+                    width: '100%'
+                }).dxScrollView("instance");
+                $(window).resize(function () {
+                    repaintScrollView(mainScrollView);
+                });
+
+                //============== TOOLBARS ================
+                mainToolbar = $("#mainToolbar").dxToolbar({
+                    items: (new ToolbarFactory()).addItems(mainToolbarItems)
+                }).dxToolbar("instance");
+                listToolbar = $("#listToolbar").dxToolbar({
+                    items: (new ToolbarFactory()).addItems(listToolbarItems)
+                }).dxToolbar("instance");
+
+                //============== LIST ================
+                mainList = (new ListFactory()).createItem("#mainList", entityName, [
+                    { name: 'searchExpr', value: listSearchItems },
+                    { name: 'itemTemplate', value: listItemTemplate }
+                ]);
+
+                //============== EVENT HANDLERS ================
+                MobileCRM.bridge.onGlobalEvent("EntityFormClosed", function (closedForm) {
+                    if (closedForm.entity && closedForm.entity.entityName === entityName)
+                        fetchListEntityData();
+                }, true);
+                MobileCRM.Configuration.requestObject(function (config) {
+                    MobileCRM.bridge.onGlobalEvent("SyncFinished", fetchListEntityData, !config.settings.requireSyncLogin);
+                }, MobileCRM.bridge.alert);
+
+                loadSetupOptions(loadListOptions);
+            }, alertError);
+        });
+
+        //============== LOAD OPTIONS ================
+        function loadListOptions() {
+            MobileCRM.UI.EntityForm.requestObject(function (entityForm) {
+                isLookupList = true;
+                lookupID = entityForm.entity.id;
+
+                loadToolbarOptions();
+                loadListItemOptions();
+            },
+                function (error) {
+                    loadToolbarOptions();
+                    loadListItemOptions();
+                });
+        }
+
+        function loadToolbarOptions() {
+            if (typeof listFilterItems !== 'undefined' && listFilterItems.length > 0)
+                (new FilterFactory()).createFilterPopup(mainList, listToolbar);
+
+            $("#toolbarTitle").text(MobileCRM.Localization.get("DetailView." + entityName));
+
+            loadSortItemsLocalization(listSortItems).then(function (sortDataSource) {
+                updateToolbarItem(listToolbar, ToolbarItemType.selectSort, "options.dataSource", sortDataSource);
+                updateToolbarItem(listToolbar, ToolbarItemType.selectSort, "options.value", sortSelector);
+            });
+        }
+        function loadListItemOptions() {
+            fetchListEntityData();
+        }
+
+        //============== LOAD DATA ================
+        function fetchListEntityData() {
+            var entity = new MobileCRM.FetchXml.Entity(entityName);
+            $(entityAttributes).each(function (index, attribute) {
+                entity.addAttribute(attribute);
+            });
+            entity.orderBy(sortSelector, sortDesc);
+
+            if (isLookupList) {
+                entity.filter = new MobileCRM.FetchXml.Filter();
+                entity.filter.where(SCHEMA.contractequipment.Properties.equipmentid, 'eq', lookupID);
+            }
+
+            // Link Contract
+            var contractLink = entity.addLink(
+                SCHEMA.contract.name,
+                SCHEMA.contract.Properties.id,
+                SCHEMA.contractequipment.Properties.contractid,
+                "inner");
+            $(contractAttributes).each(function (index, attribute) {
+                contractLink.addAttribute(attribute);
+            });
+            contractLink.alias = SCHEMA.contract.name;
+
+            var fetch = new MobileCRM.FetchXml.Fetch(entity);
+            fetch.execute("JSON", function (res) {
+                var formattedData = [];
+                $(res).each(function (i, ce) {
+                    // For list search to work can not have "." in attribute name
+                    $(contractAttributes).each(function (index, attr) {
+                        if (attr === SCHEMA.contract.Properties.startdate || attr === SCHEMA.contract.Properties.enddate) {
+                            ce[contractLink.alias + "_" + attr] = new Date(ce[contractLink.alias + "." + attr]).setHours(0, 0, 0, 0)
+                        }
+                        else {
+                            ce[contractLink.alias + "_" + attr] = ce[contractLink.alias + "." + attr]
+                        }
+                    });
+                    formattedData.push(ce);
+                });
+
+                loadListData(mainList, formattedData);
+                entityListData = formattedData;
+                loading.close();
+            }, alertError);
+        }
+
+        //============== TOOLBAR FUNCTIONS ================
+        function btnSortClicked() {
+            loadListData(mainList, entityListData);
+        }
+        function sortSelected() {
+            loadListData(mainList, entityListData);
+        }
+
+        //============== LIST ITEM FUNCTIONS ================
+        function listItemClicked() {
+            viewEntity();
+        }
+
+        //============== LIST EXECUTIONS ================
+        function viewEntity() {
+            MobileCRM.UI.FormManager.showEditDialog(SCHEMA.contract.name, selected[entityName].contract_id);
+        }
+    </script>
+</body>
+</html>

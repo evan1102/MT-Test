@@ -1,0 +1,32 @@
+<EntityForm xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:dummy="0" flexi="0" fleximode="1" fullscreen="0" resize="0" version="2">
+  <IsContactForm>false</IsContactForm>
+  <EntityName>changeorderdetail</EntityName>
+  <CamelCase>changeorderdetail</CamelCase>
+  <WorkflowLoad>&lt;?xml version="1.0" ?&gt;&lt;Workflow e="true" isvalid="true" syntaxVersion="11" version="0"&gt;&lt;function e="false"&gt;&lt;var&gt;Tabs.formCommands.IsVisible&lt;/var&gt;&lt;func&gt;Assign&lt;/func&gt;&lt;arg&gt;Boolean:False&lt;/arg&gt;&lt;/function&gt;&lt;/Workflow&gt;</WorkflowLoad>
+  <SharedVariables>&lt;SharedVariables&gt;&lt;Variables&gt;&lt;/Variables&gt;&lt;/SharedVariables&gt;</SharedVariables>
+  <PrimaryCommands>!defcmd</PrimaryCommands>
+  <SharedVariableNames/>
+  <ClassBinding/>
+  <EnabledWorkflows>OnLoadEnabled OnChangeEnabled OnSaveEnabled OnExecuteCommand OnCanExecuteCommand</EnabledWorkflows>
+  <SerializedChildrenV2>
+    <FormTab xsi:type="DetailTab" flexiHeader="0">
+      <Name>General</Name>
+      <SerializedChildren>
+        <DetailItem SchemaName="gpjobnumber"/>
+        <DetailItem SchemaName="gpchangeordernumber"/>
+        <DetailItem SchemaName="costelementid"/>
+        <DetailItem SchemaName="jobcostcodeid"/>
+        <DetailItem SchemaName="costcodedescription"/>
+        <DetailItem SchemaName="estimatedunits"/>
+        <DetailItem SchemaName="estimatedamountperunit"/>
+        <DetailItem SchemaName="estimatedamount"/>
+        <DetailItem SchemaName="measurecodeid"/>
+      </SerializedChildren>
+    </FormTab>
+    <FormTab xsi:type="IFrameTab">
+      <Name>formCommands</Name>
+      <Url>file://entity/changeorderdetail/changeorderdetail-form.html</Url>
+      <DelayLoad>false</DelayLoad>
+    </FormTab>
+  </SerializedChildrenV2>
+</EntityForm>

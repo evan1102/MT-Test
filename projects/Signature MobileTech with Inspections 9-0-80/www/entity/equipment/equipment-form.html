@@ -1,0 +1,770 @@
+﻿<!DOCTYPE html>
+<html>
+
+<head>
+    <!-- Activate IE9 document mode, if available -->
+    <meta charset="utf-8" http-equiv="X-UA-Compatible" content="IE=edge" />
+    <!-- Defined iOS viewport -->
+    <meta name="viewport" content="initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=false">
+    <!-- DevExtreme dependencies -->
+    <script type="text/javascript" src="../../scripts/jquery.min.js"></script>
+    <!-- A DevExtreme library -->
+    <script type="text/javascript" src="../../scripts/dx.all.js"></script>
+    <!-- Offline HTML JavaScript Bridge-->
+    <script type="text/javascript" src="../../scripts/JSBridge.js"></script>
+    <script type="text/javascript" src="../../scripts/k2aMethods.js"></script>
+    <script type="text/javascript" src="../../enum/Schema.js"></script>
+    <script type="text/javascript" src="../../enum/setupoption.js"></script>
+    <title>Equipment Component Indicator</title>
+</head>
+
+<body>
+    <script>
+        //============== INITIAL SETTINGS ================
+        var entityName = SCHEMA.equipment.name;
+        var pendingMasterErrorMsg = "Synchronize your device before assigning a component to this pending equipment";
+        var selectedMasterID = null;
+        var iFrameOptions = null;
+        var views = null;
+        var loading;
+        var isNew = false;
+        //============== FETCH DATA ================
+        var requiredSetupOptions = [
+            SETUPOPTION.AllowModifyNewEquipmentId,
+            SETUPOPTION.AllowModifyEquipmentRecord,
+            SETUPOPTION.UseSublocationValidation,
+            SETUPOPTION.DefaultTaskStatus,
+            SETUPOPTION.UseBarcoding,
+            SETUPOPTION.UseEventBasedSync,
+            SETUPOPTION.UseRefrigerantTracking
+        ];
+
+        $(function () {
+            //============== LOCALIZATION ================
+            MobileCRM.Localization.initialize(function (localization) {
+
+                //============== ANDROID CHECK ================
+                MobileCRM.Platform.preventBackButton(btnBackClicked);
+
+                loading = MobileCRM.UI.Form.showPleaseWait("Loading Equipment List");
+
+                MobileCRM.UI.EntityForm.onSave(onSave, true, null);
+                MobileCRM.UI.EntityForm.onPostSave(onPostSave, true);
+                MobileCRM.UI.EntityForm.onChange(formValueChanged, true, null);
+                MobileCRM.bridge.onGlobalEvent("SelectTab", function (args) {
+                    if (args.entity === entityName && args.entityID === selected[entityName].id)
+                        MobileCRM.UI.EntityForm.requestObject(function (entityForm) {
+                            entityForm.selectTab(args.tabName);
+                        }, MobileCRM.bridge.alert);
+                }, true);
+
+                // Get Coordinates
+                MobileCRM.UI.EntityForm.onCommand("custom_getGPS", getGPSCoords, true)
+
+                // Navigate To
+                MobileCRM.UI.EntityForm.onCommand("custom_navigateTo", navigateTo, true);
+
+                loadSetupOptions(loadFormOptions);
+            }, alertError);
+        });
+
+        //============== LOAD OPTIONS ================
+        function loadFormOptions() {
+            setInspectionReportsTabVisibility();
+            MobileCRM.UI.EntityForm.requestObject(function (entityForm) {
+                if (entityForm.iFrameOptions) {
+                    iFrameOptions = entityForm.iFrameOptions;
+                    if (entityForm.iFrameOptions.selectTab)
+                        entityForm.selectTab(entityForm.iFrameOptions.selectTab);
+                }
+
+                var detailView = entityForm.getDetailView(SCHEMA.equipment.name);
+
+                var location = detailView.getItemByName('locationid');
+                location.isEnabled = false;
+
+                // Sublocation check
+                var sublocid = detailView.getItemByName(SCHEMA.equipment.Properties.sublocationid);
+                sublocid.isVisible = setupOptions.UseSublocationValidation;
+
+                var gpSubLocation = detailView.getItemByName(SCHEMA.equipment.Properties.gpsublocationid);
+                gpSubLocation.isVisible = !setupOptions.UseSublocationValidation;
+
+                if (setupOptions.UseSublocationValidation) {
+                    // Set the filter for the lookup
+                    var gpCustomer = detailView.getItemByName(SCHEMA.equipment.Properties.gpcustomernumber).value;
+                    var gpLocation = detailView.getItemByName(SCHEMA.equipment.Properties.gplocationnumber).value;
+                    setSubLocationLookupFilter(gpCustomer, gpLocation);
+                }
+                if (setupOptions.UseRefrigerantTracking) {
+                    var refTypeItem = detailView.getItemByName("refrigerantType");
+                    refTypeItem.label = MobileCRM.Localization.get(SCHEMA.refrigeranttype.name);
+
+                    var viewSetup = new MobileCRM.UI.DetailViewItems.LookupSetup();
+                    viewSetup.addView(SCHEMA.refrigeranttype.name, "Default");
+                    var refTypeIndex = detailView.getItemIndex("refrigerantType");
+                    detailView.updateLinkItemViews(refTypeIndex, viewSetup, viewSetup, false);
+                }
+
+                var latitude = detailView.getItemByName('latitude');
+                latitude.isVisible = false;
+                var longitude = detailView.getItemByName('longitude');
+                longitude.isVisible = false;
+
+                var serviceLevel = detailView.getItemByName('servicelevel');
+                serviceLevel.isVisible = false;
+                serviceLevel.isEnabled = false;
+
+                var barcode = detailView.getItemByName('barcode');
+                barcode.kind = setupOptions.UseBarcoding ? 4 : 0;
+
+                if (entityForm.entity.isNew) {
+                    isNew = true;
+                    loadNewFormLayout();
+                    detailView.getItemByName(SCHEMA.equipment.Properties.iscomponent).isVisible = true;
+                    detailView.getItemByName(SCHEMA.equipment.Properties.iscomponent).isEnabled = true;
+                    detailView.getItemByName(SCHEMA.equipment.Properties.gpequipmentid).isEnabled = setupOptions.AllowModifyNewEquipmentId;
+                    detailView.getItemByName('componentquantity').isVisible = false;
+                }
+                else {
+                    detailView.getItemByName(SCHEMA.equipment.Properties.gpequipmentid).isEnabled = false;
+                    var entityProps = entityForm.entity.properties;
+                    if (entityProps["servicelevel"] !== null) {
+                        serviceLevel.isVisible = true;
+                    }
+                    // Equipment is Component
+                    if (entityProps["iscomponent"] && entityProps["gpmasterequipmentnumber"] !== null) {
+                        loadExisitingFormLayout(false, false, true);
+                        var qtyItem = detailView.getItemByName('componentquantity');
+                        if (qtyItem) {
+                            qtyItem.isVisible = false;
+                            qtyItem.isEnabled = false;
+                        }
+                    }
+                    // Equipment is Master
+                    else if (entityProps["componentquantity"] > 0) {
+                        loadExisitingFormLayout(false, true, false);
+                        var qtyItem = detailView.getItemByName('componentquantity');
+                        if (qtyItem) {
+                            qtyItem.isVisible = true;
+                            qtyItem.isEnabled = false;
+                        }
+                    }
+                    // Equipment is NOT Component or Master
+                    else {
+                        loadExisitingFormLayout(false, false, false);
+                        var qtyItem = detailView.getItemByName('componentquantity');
+                        if (qtyItem) {
+                            qtyItem.isVisible = false;
+                            qtyItem.isEnabled = false;
+                        }
+                    }
+                    detailView.getItemByName(SCHEMA.equipment.Properties.iscomponent).isVisible = false;
+                    detailView.isEnabled = setupOptions.AllowModifyEquipmentRecord;
+                }
+                detailView.getItemByName(SCHEMA.equipment.Properties.name).isVisible = false;
+                detailView.getItemByName(SCHEMA.equipment.Properties.name).isEnabled = false;
+                detailView.getItemByName(SCHEMA.equipment.Properties.name).validate = false;
+                detailView.getItemByName(SCHEMA.equipment.Properties.name).errorMessage = '';
+                detailView.getItemByName(SCHEMA.equipment.Properties.gpcustomernumber).isVisible = false;
+                detailView.getItemByName(SCHEMA.equipment.Properties.gplocationnumber).isVisible = false;
+
+                loadUserDefineLabels().then(loadFormValues, alertError);
+            }, MobileCRM.bridge.alert, null);
+        }
+
+        function setSubLocationLookupFilter(gpCustomerNumber, gpLocationNumber) {
+            var fetch = "<fetch version='1.0'><entity name='" + SCHEMA.sublocation.name + "'><filter type='and'>" +
+                "<condition attribute='" + SCHEMA.sublocation.Properties.gpcustomernumber + "' operator='eq' value='" + gpCustomerNumber + "' />" +
+                "<condition attribute='" + SCHEMA.sublocation.Properties.gplocationnumber + "' operator='eq' value='" + gpLocationNumber + "' />" +
+                "</filter></entity></fetch>";
+
+            addFetchFilter(SCHEMA.equipment.Properties.sublocationid, SCHEMA.sublocation.name, fetch, SCHEMA.equipment.name);
+        }
+
+        function loadUserDefineLabels() {
+            var deferred = $.Deferred();
+            fetchUserDefineLabels().then(function (labels) {
+                MobileCRM.UI.EntityForm.requestObject(function (entityForm) {
+                    try {
+                        var detailView = entityForm.getDetailView(SCHEMA.equipment.name);
+                        // String Fields
+                        var userdefine1aItem = detailView.getItemByName(SCHEMA.equipment.Properties.gpuserdefine1a);
+                        userdefine1aItem.label = labels.userdefine14 ? labels.userdefine14 : "USER-DEFINED";
+                        userdefine1aItem.placeholderText = "Enter " + userdefine1aItem.label;
+
+                        var userdefine2aItem = detailView.getItemByName(SCHEMA.equipment.Properties.gpuserdefine2a)
+                        userdefine2aItem.label = labels.userdefine15 ? labels.userdefine15 : "USER-DEFINED";
+                        userdefine2aItem.placeholderText = "Enter " + userdefine2aItem.label;
+
+                        var userdefine3aItem = detailView.getItemByName(SCHEMA.equipment.Properties.gpuserdefine3a);
+                        userdefine3aItem.label = labels.userdefine16 ? labels.userdefine16 : "USER-DEFINED";
+                        userdefine3aItem.placeholderText = "Enter " + userdefine3aItem.label;
+
+                        var userdefine4aItem = detailView.getItemByName(SCHEMA.equipment.Properties.gpuserdefine4a)
+                        userdefine4aItem.label = labels.userdefine17 ? labels.userdefine17 : "USER-DEFINED";
+                        userdefine4aItem.placeholderText = "Enter " + userdefine4aItem.label;
+
+                        var userdefine5aItem = detailView.getItemByName(SCHEMA.equipment.Properties.gpuserdefine5a);
+                        userdefine5aItem.label = labels.userdefine18 ? labels.userdefine18 : "USER-DEFINED";
+                        userdefine5aItem.placeholderText = "Enter " + userdefine5aItem.label;
+
+                        // Date Field
+                        var userDefine9aItem = detailView.getItemByName(SCHEMA.equipment.Properties.gpuserdefine9a);
+                        userDefine9aItem.label = labels.userdefine19 ? labels.userdefine19 : "USER-DEFINED";
+                        var userDefine9aValue = entityForm.entity.properties.gpuserdefine9a;
+                        userDefine9aItem.value = (!userDefine9aValue || userDefine9aValue.getFullYear() <= 1900) ? null : userDefine9aValue;
+
+                        return deferred.resolve();
+                    }
+                    catch (e) {
+                        return deferred.reject("Load User Define Labels Error Caught: " + e);
+                    }
+                }, function (err) {
+                    return deferred.reject("Load User Define Labels Error: " + err);
+                });
+            }, function (err) {
+                return deferred.reject(err);
+            });
+            return deferred.promise();
+        }
+        function fetchUserDefineLabels() {
+            var deferred = $.Deferred();
+            var entity = new MobileCRM.FetchXml.Entity(SCHEMA.userdefinelabel.name);
+            entity.addAttributes();
+            entity.addFilter().where(SCHEMA.userdefinelabel.Properties.gprowid, 'eq', 1);
+
+            var fetch = new MobileCRM.FetchXml.Fetch(entity);
+            fetch.execute("JSON", function (res) {
+                if (res.length === 1) {
+                    return deferred.resolve(res[0]);
+                }
+                else {
+                    return deferred.reject("Fetch User Define Labels Error: Returned " + res.length + " results.");
+                }
+            }, function (err) {
+                return deferred.reject("Fetch User Define Labels Error: " + err);
+            });
+            return deferred.promise();
+        }
+
+        //============== LOAD DATA ================
+        function loadFormValues() {
+            MobileCRM.UI.EntityForm.requestObject(function (entityForm) {
+                if (isNew) {
+                    loadRefrigerantEquipmentType('0');
+                }
+                if (setupOptions.UseRefrigerantTracking) {
+                    loadRefrigerantTracking(parseInt(entityForm.entity.properties.refrigeranttypeid));
+                }
+                entityForm.isDirty = false;
+                loading.close();
+            }, alertError);
+        }
+        function loadRefrigerantEquipmentType(gpRefEquipmentType) {
+            fetchRefrigerantEquipmentType(gpRefEquipmentType).then(function (refEquipmentType) {
+                MobileCRM.UI.EntityForm.requestObject(function (entityForm) {
+                    entityForm.entity.properties.refrigerantequipmenttypeid = refEquipmentType;
+                    setClean();
+                }, alertError);
+            }, alertError);
+        }
+        function fetchRefrigerantEquipmentType(gpRefEquipmentType) {
+            var deferred = $.Deferred();
+            var entity = new MobileCRM.FetchXml.Entity(SCHEMA.refrigerantequipmenttype.name);
+            entity.addAttributes();
+            entity.addFilter().where(SCHEMA.refrigerantequipmenttype.Properties.gprefrigerantequipmenttype, 'eq', gpRefEquipmentType);
+
+            var fetch = new MobileCRM.FetchXml.Fetch(entity);
+            fetch.execute("DynamicEntities", function (res) {
+                if (res.length === 1) {
+                    return deferred.resolve(res[0]);
+                }
+                else {
+                    return deferred.reject("Fetch Refrigerant Equipment Type Error: Returned " + res.length + " results");
+                }
+            }, function (err) {
+                return deferred.reject("Fetch Refrigerant Equipment Type Error: " + err);
+            });
+            return deferred.promise();
+        }
+        function loadRefrigerantTracking(gptypeid) {
+            if (!gptypeid || gptypeid === 0) {
+                return;
+            }
+
+            var entity = new MobileCRM.FetchXml.Entity(SCHEMA.refrigeranttype.name);
+            entity.addAttributes();
+            entity.addFilter().where(SCHEMA.refrigeranttype.Properties.gptypeid, 'eq', gptypeid);
+
+            var fetch = new MobileCRM.FetchXml.Fetch(entity);
+            fetch.execute("DynamicEntities", function (res) {
+                if (res.length === 1) {
+                    MobileCRM.UI.EntityForm.requestObject(function (entityForm) {
+                        entityForm.entity.properties.refrigerantType = res[0];
+                    }, alertError);
+                }
+                else {
+                    alertError("Fetch Refrigerant Type Error: Returned " + res.length + " results");
+                }
+            }, function (err) {
+                alertError("Fetch Refrigerant Type Error: " + err);
+            });
+        }
+
+        //============== FORM ITEM FUNCTIONS ================
+        function formValueChanged(entityForm) {
+            var changedItem = entityForm.context.changedItem;
+            switch (changedItem) {
+                case SCHEMA.equipment.Properties.iscomponent:
+                    updateMasterEquipmentLink(entityForm.entity.properties.iscomponent, true);
+                    break;
+                case SCHEMA.equipment.Properties.gpequipmentid:
+                    if (entityForm.entity.isNew && setupOptions.AllowModifyNewEquipmentId) {
+                        var detailView = entityForm.getDetailView(SCHEMA.equipment.name);
+                        var item = detailView.getItemByName(changedItem);
+                        detailView.getItemByName(SCHEMA.equipment.Properties.name).value = item.value;
+                        if (item.value === '') {
+                            detailView.getItemByName(SCHEMA.equipment.Properties.name).errorMessage = 'Equipment cannot be empty';
+                        }
+                        else {
+                            detailView.getItemByName(SCHEMA.equipment.Properties.name).errorMessage = '';
+                        }
+                        detailView.getItemByName(SCHEMA.equipment.Properties.name).validate = item.value !== '';
+                    }
+                    break;
+                case "refrigerantType":
+                    var refType = entityForm.entity.properties.refrigerantType;
+                    MobileCRM.DynamicEntity.loadById(SCHEMA.refrigeranttype.name, refType.id, function (refTypeEntity) {
+                        MobileCRM.UI.EntityForm.requestObject(function (form) {
+                            form.entity.properties.refrigeranttypeid = refTypeEntity.properties.gptypeid;
+                        }, alertError);
+                    }, alertError);
+                    break;
+            }
+        }
+
+        // ----- NEW EQUIPMENT -----
+        function loadNewFormLayout() {
+            MobileCRM.Localization.initialize(function (localization) {
+                MobileCRM.UI.EntityForm.requestObject(function (entityForm) {
+                    var detailView = entityForm.getDetailView(SCHEMA.equipment.name);
+                    // --- isComponent Switch ---
+                    var componentSwitch = detailView.getItemByName('iscomponent');
+                    componentSwitch.isVisible = true;
+
+                    // --- ComponentQty Text Item ---
+                    var qtyItem = detailView.getItemByName('componentquantity');
+                    if (qtyItem)
+                        qtyItem.isVisible = false;
+
+                    var latitude = detailView.getItemByName('latitude');
+                    var longitude = detailView.getItemByName('longitude');
+                    latitude.value = 0;
+                    longitude.value = 0;
+
+                    // --- Master Equipment Link ---
+                    updateMasterEquipmentLink(entityForm.entity.properties.iscomponent, true);
+
+                    // --- gpequipmentid Label ---
+                    var equipItem = detailView.getItemByName('gpequipmentid');
+                    equipItem.label = "Equipment";
+
+                    if (!setupOptions.AllowModifyNewEquipmentId) {
+                        equipItem.value = MobileCRM.Localization.get("PendingString");
+                        equipItem.errorMessage = '';
+                        equipItem.isEnabled = false;
+                        entityForm.entity.properties.name = MobileCRM.Localization.get("PendingString");
+                        detailView.startEditItem(detailView.getItemIndex("description"));
+                    }
+                    else {
+                        equipItem.value = "";
+                        equipItem.errorMessage = "Equipment ID Required";
+                        equipItem.isEnabled = true;
+                        detailView.startEditItem(detailView.getItemIndex("gpequipmentid"));
+                    }
+                    entityForm.entity.isDirty = false;
+                }, MobileCRM.bridge.alert, null);
+            }, function (error) {
+                MobileCRM.bridge.alert(error);
+                resolve(false);
+            })
+        }
+
+        // ----- EXISTING EQUIPMENT -----
+        function loadExisitingFormLayout(showIsComponent, showComponentQty, showMasterEquipment) {
+            MobileCRM.UI.EntityForm.requestObject(function (entityForm) {
+                var detailView = entityForm.getDetailView("equipment");
+
+                var gpequipmentidIndex = detailView.getItemIndex("gpequipmentid");
+
+                // --- Master Equipment Link ---
+                updateMasterEquipmentLink(showMasterEquipment, false);
+
+                // --- gpequipmentid Label ---
+                var equipItem = detailView.getItemByName("gpequipmentid");
+                equipItem.label = showMasterEquipment ? "Component" : "Equipment";
+
+                var equipmentItem = detailView.getItemByName(SCHEMA.equipment.Properties.gpequipmentid);
+                equipmentItem.isEnabled = false;
+            }, MobileCRM.bridge.alert, null);
+        }
+
+        // --- MASTER EQUIPMENT LINK ---
+        function updateMasterEquipmentLink(showLink, isNew) {
+            MobileCRM.UI.EntityForm.requestObject(function (entityForm) {
+                var detailView = entityForm.getDetailView("equipment");
+                var iscomponentIndex = detailView.getItemIndex("iscomponent");
+                var masterLink = detailView.getItemByName("MasterEquip");
+                if (masterLink) {
+                    masterLink.isVisible = showLink;
+                    if (showLink) {
+                        if (isNew) {
+                            masterLink.setTypedValue("value", "System.String", "Click To Select");
+                            detailView.registerClickHandler(masterLink, createMasterEquipmentLookup);
+                        } else {
+                            masterLink.setTypedValue("value", "System.String",
+                                entityForm.entity.properties["gpmasterequipmentnumber"]);
+                            detailView.registerClickHandler(masterLink, onExistingItemClick);
+                        }
+                    }
+                } else if (showLink) {
+                    masterLink = new MobileCRM.UI.DetailViewItems.LinkItem("MasterEquip", "Master Equipment");
+                    if (isNew) {
+                        masterLink.value = "Click To Select";
+                        detailView.registerClickHandler(masterLink, createMasterEquipmentLookup);
+                    } else {
+                        masterLink.value = entityForm.entity.properties["gpmasterequipmentnumber"];
+                        detailView.registerClickHandler(masterLink, onExistingItemClick);
+                    }
+                    detailView.insertItem(masterLink, iscomponentIndex + 1);
+                }
+
+                if (showLink && isNew) {
+                    entityForm.entity.properties.gpmasterequipmentnumber = null;
+                    entityForm.entity.properties.componentquantity = 0;
+                }
+            }, MobileCRM.bridge.alert, null);
+        }
+
+        function createMasterEquipmentLookup() {
+            MobileCRM.UI.EntityForm.requestObject(function (entityForm) {
+                var lookupForm = new MobileCRM.UI.LookupForm();
+                var fetch = "<fetch verion='1.0'><entity name='equipment'>" +
+                    "<filter type='and'><condition attribute='gplocationnumber' operator='eq' value='" +
+                    entityForm.entity.properties.gplocationnumber +
+                    "'/><condition attribute='gpcustomernumber' operator='eq' value='" +
+                    entityForm.entity.properties.gpcustomernumber +
+                    "'/><condition attribute='iscomponent' operator='eq' value='false'/>" +
+                    "<condition attribute='isgroupitem' operator='eq' value='false' />" +
+                    "</filter></entity></fetch>";
+                lookupForm.addEntityFilter("equipment", fetch);
+                lookupForm.allowNull = false;
+                lookupForm.addView("equipment", "Equipment");
+                lookupForm.show(masterEquipmentSelected, MobileCRM.bridge.alert, null);
+            }, MobileCRM.bridge.alert, null);
+        }
+
+        function masterEquipmentSelected(masterEquipment) {
+            MobileCRM.Localization.initialize(function (localization) {
+                selectedMasterID = masterEquipment.id;
+                MobileCRM.DynamicEntity.loadById("equipment", masterEquipment.id, function (master) {
+                    if (master.properties.gpequipmentid.toUpperCase() === MobileCRM.Localization.get("PendingString"))
+                        MobileCRM.UI.MessageBox.sayText(pendingMasterErrorMsg, null);
+                    else {
+                        MobileCRM.UI.EntityForm.requestObject(function (entityForm) {
+                            var detailView = entityForm.getDetailView("equipment");
+                            var masterLink = detailView.getItemByName("MasterEquip");
+                            masterLink.setTypedValue("value", "System.String", master.properties
+                                .gpequipmentid);
+                            entityForm.entity.properties.gpmasterequipmentnumber = masterLink.value;
+                        }, MobileCRM.bridge.alert, null);
+                    }
+                }, MobileCRM.bridge.alert, null);
+            }, function (error) {
+                MobileCRM.bridge.alert(error);
+                resolve(false);
+            })
+        }
+
+        function onExistingItemClick() {
+            MobileCRM.UI.EntityForm.requestObject(function (entityForm) {
+                var entity = new MobileCRM.FetchXml.Entity("equipment");
+                entity.addAttribute('id');
+
+                entity.filter = new MobileCRM.FetchXml.Filter();
+                entity.filter.where("gpequipmentid", "eq", entityForm.entity.properties
+                    .gpmasterequipmentnumber);
+
+                var fetch = new MobileCRM.FetchXml.Fetch(entity);
+                fetch.execute("JSON", function (res) {
+                    if (res.length === 1)
+                        MobileCRM.UI.FormManager.showDetailDialog("equipment", res[0].id, null);
+                    else
+                        MobileCRM.UI.MessageBox.sayText("Master Equipment Not Found On Device",
+                            function () { });
+                }, MobileCRM.bridge.alert, null);
+            }, MobileCRM.bridge.alert, null);
+        }
+
+        //============== FORM EXECUTIONS ================
+        function onSave(entityForm) {
+            var equipment = entityForm.entity;
+            var saving = MobileCRM.UI.Form.showPleaseWait("Saving Equipment");
+            var entityProps = entityForm.entity.properties;
+            var allowSave = true;
+            var saveHandler = entityForm.suspendSave();
+
+            if (entityForm.entity.isNew) {
+
+
+                // Check for duplicate equpiment id at location
+                var duplicateCheckPromise = [duplicateIdCheck(entityProps['gpequipmentid'], entityProps['gpcustomernumber'], entityProps['gplocationnumber'])];
+                $.when.apply($, duplicateCheckPromise).then(function () {
+                    if (arguments[0] === 'OK') {
+                        var detailView = entityForm.getDetailView("equipment");
+                        var masterLink = detailView.getItemByName("MasterEquip");
+                        if (entityForm.entity.properties.iscomponent) {
+                            if (masterLink.value === "Click To Select") {
+                                allowSave = false;
+                                saving.close();
+                                saveHandler.resumeSave("Missing Master Equipment");
+                            }
+                            else {
+                                entityForm.entity.properties.gpmasterequipmentnumber = masterLink.value;
+
+                                // Increase Master Equipment's Component Qty
+                                MobileCRM.DynamicEntity.loadById("equipment", selectedMasterID, function (masterEquip) {
+                                    masterEquip.properties.componentquantity = masterEquip.properties.componentquantity ?
+                                        masterEquip.properties.componentquantity + 1 : 1;
+                                    masterEquip.save(function (err) {
+                                        if (err) {
+                                            saving.close();
+                                            allowSave = false;
+                                            saveHandler.resumeSave("Error Updating Master Equipment Component Qty: " + err);
+                                        }
+                                    });
+                                }, MobileCRM.bridge.alert, null);
+                            }
+                        }
+
+                        if (allowSave) {
+                            var msgBox = new MobileCRM.UI.MessageBox("Assign equipment to service call?");
+                            msgBox.multiLine = true;
+                            msgBox.items = ["Yes", "No"];
+                            msgBox.show(function (button) {
+                                if (button === "Yes") {
+                                    // assign to current service call
+                                    var assignToServiceCallPromise = [assignToServiceCall(iFrameOptions.callingEntity, equipment, saving)];
+                                    $.when.apply($, assignToServiceCallPromise).then(function () {
+                                        if (arguments[0]) {
+                                            MobileCRM.bridge.raiseGlobalEvent('ReloadEquipmentList', entityForm);
+                                            saving.close();
+                                            saveHandler.resumeSave();
+                                        }
+                                        else {
+                                            saving.close();
+                                            showToast('Failed to assign to service call', 'error');
+                                            saveHandler.resumeSave();
+                                        }
+                                    });
+                                }
+                                else {
+                                    MobileCRM.bridge.raiseGlobalEvent('ReloadEquipmentList', entityForm);
+                                    saving.close();
+                                    saveHandler.resumeSave();
+                                }
+
+                                return;
+                            }, function (error) {
+                                saving.close();
+                                saveHandler.resumeSave(error);
+                            }, null);
+                        }
+                    }
+                    else {
+                        saving.close();
+                        saveHandler.resumeSave(arguments[0]);
+                    }
+                });
+            }
+            else {
+                saving.close();
+                MobileCRM.bridge.raiseGlobalEvent('ReloadEquipmentList', entityForm);
+                saveHandler.resumeSave();
+            }
+        }
+
+        function onPostSave(entityForm) {
+            var suspend = entityForm.suspendPostSave();
+            if (!isNew || !setupOptions.UseEventBasedSync) {
+                setCleanAndClose();
+                return;
+            }
+
+            MobileCRM.UI.EntityForm.requestObject(function (entityForm) {
+                entityForm.isDirty = false;
+                MobileCRM.Configuration.requestObject(function (config) {
+                    // If require sync login then foreground sync
+                    if (config.settings.requireSyncLogin) {
+                        MobileCRM.bridge.raiseGlobalEvent("CloseCallFormAndSync", { equipment: entityForm.entity });
+                    }
+                    else {
+                        MobileCRM.Application.synchronize(!config.settings.requireSyncLogin);
+                    }
+                    MobileCRM.bridge.closeForm();
+                }, alertError);
+            }, alertError);
+        }
+
+        function duplicateIdCheck(equipmentid, gpcustomernumber, gplocationnumber) {
+            var deferred = $.Deferred();
+            if (!setupOptions.AllowModifyNewEquipmentId && equipmentid === 'PENDING')
+                return deferred.resolve('OK');
+
+            var filterlist = [];
+            var entity = new MobileCRM.FetchXml.Entity('equipment');
+            entity.addAttribute('id');
+            var filter = new MobileCRM.FetchXml.Filter();
+            filter.type = "and";
+
+            var custfilter = new MobileCRM.FetchXml.Filter();
+            custfilter.where('gpcustomernumber', 'eq', gpcustomernumber);
+            var locfilter = new MobileCRM.FetchXml.Filter();
+            locfilter.where('gplocationnumber', 'eq', gplocationnumber);
+            var equipfilter = new MobileCRM.FetchXml.Filter();
+            equipfilter.where('gpequipmentid', 'eq', equipmentid);
+
+            filter.filters = [custfilter, locfilter, equipfilter];
+            filterlist.push(filter);
+            entity.addFilter().filters = filterlist;
+
+            var fetch = new MobileCRM.FetchXml.Fetch(entity);
+            fetch.execute("JSON", function (res) {
+                if (res.length != 0) {
+                    return deferred.resolve('Duplicate equipment id found for Equipment: ' + equipmentid + ' at this location.');
+                }
+                else {
+                    return deferred.resolve('OK');
+                }
+            }, function (error) {
+                return deferred.reject(error);
+            });
+
+            return deferred.promise();
+        }
+
+        function assignToServiceCall(servicecall, equipment, saving) {
+            var deferred = $.Deferred();
+
+            // Create the default task
+            var entity = new MobileCRM.FetchXml.Entity(SCHEMA.taskstatus.name);
+            entity.addAttribute('id');
+            entity.filter = new MobileCRM.FetchXml.Filter();
+            entity.filter.where('name', 'eq', setupOptions.DefaultTaskStatus);
+
+            var fetch = new MobileCRM.FetchXml.Fetch(entity);
+            fetch.execute("JSON", function (result) {
+                if (result.length === 1) {
+                    var defaultTask = new MobileCRM.DynamicEntity.createNew(SCHEMA.task.name);
+                    defaultTask.properties.completiondate = null;
+                    defaultTask.properties.name = "DEFAULT - DEFAULT TASK";
+                    defaultTask.properties.gptasklevel = "Task: DEFAULT";
+                    defaultTask.properties.description = "DEFAULT TASK";
+                    defaultTask.properties.equipmentid = new MobileCRM.DynamicEntity('equipment', equipment.id);
+                    defaultTask.properties.gpequipmentid = equipment.properties.gpequipmentid;
+                    defaultTask.properties.gpsublocationid = null;
+                    defaultTask.properties.gpsubtaskcode = '';
+                    defaultTask.properties.gpsubtasklinenumber = 0;
+                    defaultTask.properties.gptaskcode = "DEFAULT";
+                    defaultTask.properties.gptasklinenumber = 16384;
+                    defaultTask.properties.recordlevel = 4;
+                    defaultTask.properties.gptasklistid = '';
+                    defaultTask.properties.servicecallid = new MobileCRM.DynamicEntity('servicecall', servicecall.id);
+                    defaultTask.properties.gpservicecallid = servicecall.properties.gpservicecallid;
+                    defaultTask.properties.taskstatusid = new MobileCRM.DynamicEntity('taskstatus', result[0].id);
+                    defaultTask.save(function (error) {
+                        if (error) {
+                            MobileCRM.bridge.alert("Unable to create default task: " + error);
+                            saving.close();
+                            return deferred.reject(false);
+                        }
+                        else {
+                            servicecallid = servicecall.id;
+                            checkServiceCallGpequipmentid(saving, function () {
+                                return deferred.resolve(true);
+                            });
+                        }
+                    });
+                }
+            }, function (error) {
+                MobileCRM.bridge.alert(error);
+                return deferred.reject(false);
+            });
+
+            return deferred.promise();
+        }
+
+        function checkServiceCallGpequipmentid(saving, callback) {
+            // If this is the only piece of equipment on the service call then update the service call record
+            // If more than 1 piece then set the gpequipmentid = ''
+            var entity = new MobileCRM.FetchXml.Entity(SCHEMA.task.name);
+            entity.addAttribute('gpequipmentid');
+            entity.addFilter().where('servicecallid', 'eq', servicecallid);
+            entity.addFilter().where('equipmentid', 'not-null');
+
+            var fetch = new MobileCRM.FetchXml.Fetch(entity);
+            fetch.execute("JSON", function (res) {
+                if (res.length < 1) {
+                    updateServiceCallGpequipmentid(null).then(function () {
+                        callback();
+                    });
+                }
+                else if (res.length === 1) {
+                    updateServiceCallGpequipmentid(res[0].gpequipmentid).then(function () {
+                        callback();
+                    });
+                }
+                else {
+                    var distinctEquipment = [];
+                    $(res).each(function (i, task) {
+                        if (distinctEquipment.indexOf(task.gpequipmentid) < 0) {
+                            distinctEquipment.push(task.gpequipmentid);
+                        }
+                    });
+
+                    var gpequipmentid = distinctEquipment.length === 1 ? distinctEquipment[0] : null;
+                    updateServiceCallGpequipmentid(gpequipmentid).then(function () {
+                        callback();
+                    });
+                }
+            }, function (err) {
+                saving.close();
+                MobileCRM.bridge.alert("Fetch Task Error: " + err);
+            });
+        }
+
+        function updateServiceCallGpequipmentid(gpequipmentid) {
+            var deferred = $.Deferred();
+            if (servicecallid) {
+                MobileCRM.DynamicEntity.loadById(SCHEMA.servicecall.name, servicecallid, function (call) {
+                    call.properties.gpequipmentid = gpequipmentid ? gpequipmentid : "";
+                    call.save(function (err) {
+                        if (err) {
+                            alertError("Update Service Call gpequipmentid Error: " + err);
+                        }
+                        else {
+                            return deferred.resolve();
+                        }
+                    });
+                }, function (err) { alertError("Load Service Call Error: " + err); });
+            }
+            else {
+                alertError("Update Service Call gpequipment Error: Missing call details");
+            }
+            return deferred.promise();
+        }
+    </script>
+</body>
+
+</html>

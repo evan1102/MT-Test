@@ -1,0 +1,453 @@
+﻿<!DOCTYPE html>
+<html>
+
+<head>
+    <!-- Activate IE9 document mode, if available -->
+    <meta charset="utf-8" http-equiv="X-UA-Compatible" content="IE=edge" />
+    <!-- Defined iOS viewport -->
+    <meta name="viewport" content="initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=false">
+    <!-- Disable iOS Phone No Detection -->
+    <meta name="format-detection" content="telephone=no" />
+    <!-- DevExtreme dependencies -->
+    <script type="text/javascript" src="../../scripts/jquery.min.js"></script>
+    <!-- DevExtreme themes -->
+    <link rel="stylesheet" type="text/css" href="../../css/dx.light.css" />
+    <!-- A DevExtreme library -->
+    <script type="text/javascript" src="../../scripts/dx.all.js"></script>
+    <!-- Offline HTML JavaScript Bridge-->
+    <script type="text/javascript" src="../../scripts/JSBridge.js"></script>
+    <script type="text/javascript" src="../../scripts/k2aMethods.js"></script>
+    <script type="text/javascript" src="../../enum/Schema.js"></script>
+    <script type="text/javascript" src="../../enum/setupoption.js"></script>
+    <!-- Offline HTML Template Factory-->
+    <script type="text/javascript" src="../../templates/listItem-factory.js"></script>
+    <script type="text/javascript" src="../../templates/toolbar-factory.js"></script>
+    <!-- Offline HTML Styling -->
+    <link rel="stylesheet" type="text/css" href="../../css/k2a.css" />
+    <title>Entity List</title>
+</head>
+
+<body>
+    <div id="toast"></div>
+    <div class="fixedPosition">
+        <div id="mainToolbar"></div>
+        <div id="labelToolbar"></div>
+        <div id="dateToolbar"></div><br />
+        <div id="listToolbar"></div>
+        <div id="mainScrollView">
+            <div id='mainList'></div>
+        </div>
+        <div id="filterPopup"></div>
+    </div>
+
+    <script>
+        //============== INITIAL SETTINGS ================
+        var entityName = SCHEMA.relatedappointment.name, scrollHeight = 180;
+        var sortDesc = false, sortSelector = SCHEMA.relatedappointment.Properties.startdate;
+        var isOnline = false, apptType = null;
+        var requestBegin = (new Date()).setDate(((new Date()).getDate() - 1));  // Yesterday
+        var requestEnd = (new Date()).setDate(((new Date()).getDate() + 1));    // Tomorrow
+        //============== OFFLINE DATA ================
+        var entityListData;
+        //============== SELECTED DATA ================
+        var selected = { entityName: null, appointment: null, currentuser: null };
+        //============== FETCH DATA ================
+        var requiredSetupOptions = [];
+        var entityAttributes = [
+            SCHEMA.relatedappointment.Properties.appointmentstatus,
+            SCHEMA.relatedappointment.Properties.completiondate,
+            SCHEMA.relatedappointment.Properties.description,
+            SCHEMA.relatedappointment.Properties.gpappointmentid,
+            SCHEMA.relatedappointment.Properties.gpjobnumber,
+            SCHEMA.relatedappointment.Properties.gpservicecallid,
+            SCHEMA.relatedappointment.Properties.gptechnicianid,
+            SCHEMA.relatedappointment.Properties.startdate,
+            SCHEMA.relatedappointment.Properties.requestbegindate,
+            SCHEMA.relatedappointment.Properties.requestenddate
+        ];
+        var listSortItems = [
+            SCHEMA.relatedappointment.Properties.gpappointmentid,
+            SCHEMA.relatedappointment.Properties.startdate
+        ];
+        var listSearchItems = [
+            SCHEMA.relatedappointment.Properties.appointmentstatus,
+            SCHEMA.relatedappointment.Properties.completiondate,
+            SCHEMA.relatedappointment.Properties.gpappointmentid,
+            SCHEMA.relatedappointment.Properties.gptechnicianid,
+            SCHEMA.relatedappointment.Properties.startdate
+        ];
+        var listFilterItems = [
+            { dataField: SCHEMA.relatedappointment.Properties.gpappointmentid, dataType: FilterDataType.string },
+            { dataField: SCHEMA.relatedappointment.Properties.gptechnicianid, dataType: FilterDataType.string },
+            { dataField: SCHEMA.relatedappointment.Properties.appointmentstatus, dataType: FilterDataType.string }
+        ];
+        var listItemTemplate = function (data, _, element) {
+            var labels = {};
+            labels.status = MobileCRM.Localization.get(entityName + "." + SCHEMA.relatedappointment.Properties.appointmentstatus);
+            labels.completiondate = MobileCRM.Localization.get(entityName + "." + SCHEMA.relatedappointment.Properties.completiondate);
+            labels.technician = MobileCRM.Localization.get(entityName + "." + SCHEMA.relatedappointment.Properties.gptechnicianid);
+            labels.description = MobileCRM.Localization.get(entityName + "." + SCHEMA.appointment.Properties.description);
+
+            element.append(
+                $("<span>").append((apptType === 1 ? data.gpservicecallid : data.gpjobnumber) + ":" + data.gpappointmentid).css("font-size", "large"),
+                $("<span>").append(formatDateTime(data.startdate)).css('float', 'right'),
+                $("<br>"),
+                $("<span>").append(labels.status.toUpperCase() + ": ").addClass('listItemLabel'),
+                $("<span>").append(data.appointmentstatus)
+            );
+
+            if (data.completiondate && data.appointmentstatus) {
+                element.append(
+                    $("<span>").append(
+                        $("<span>").append(labels.completiondate.toUpperCase() + ": ").addClass('listItemLabel'),
+                        $("<span>").append(formatDate(data.completiondate))
+                    ).css('float', 'right')
+                );
+            }
+
+            element.append(
+                $("<div>").append(
+                    $("<span>").append(labels.technician.toUpperCase() + ": ").addClass('listItemLabel'),
+                    $("<span>").append(data.gptechnicianid)
+                )
+            );
+
+            if (data.description && data.description.trim() !== "") {
+                element.append(
+                    $("<br>"),
+                    $("<span>").append(labels.description.toUpperCase() + ": ").addClass('listItemLabel'),
+                    $("<span>").append(data.description)
+                );
+            }
+        };
+        //============== TOOLBAR ITEMS ================
+        var mainToolbarItems = [
+            ToolbarItemType.title, ToolbarItemType.btnRefresh
+        ];
+        var listToolbarItems = [
+            ToolbarItemType.btnSort, ToolbarItemType.selectSort, ToolbarItemType.btnFilter
+        ];
+
+        $(function () {
+            //============== LOCALIZATION ================
+            MobileCRM.Localization.initialize(function (localization) {
+
+                //============== ANDROID CHECK ================
+                MobileCRM.Platform.preventBackButton(btnBackClicked);
+
+                //============== LOADPANEL ================
+                loading = MobileCRM.UI.Form.showPleaseWait(MobileCRM.Localization.get("Msg.Loading"));
+
+                //============== SCROLLVIEW ================
+                mainScrollView = $("#mainScrollView").dxScrollView({
+                    showScrollbar: "always",
+                    height: function () { return window.innerHeight - scrollHeight; },
+                    width: '100%'
+                }).dxScrollView("instance");
+                $(window).resize(function () {
+                    repaintScrollView(mainScrollView);
+                });
+
+                //============== TOOLBARS ================
+                mainToolbar = $("#mainToolbar").dxToolbar({
+                    items: (new ToolbarFactory()).addItems(mainToolbarItems)
+                }).dxToolbar("instance");
+                labelToolbar = $("#labelToolbar").dxToolbar({
+                    items: [{
+                        location: 'before',
+                        locateInMenu: 'never',
+                        html: "<span style='font-size:small;padding-left:8px;'>Start</span>"
+                    }, {
+                        location: 'after',
+                        locateInMenu: 'never',
+                        html: "<span style='font-size:small;padding-right:8px;'>End</span>"
+                    }],
+                    visible: false
+                }).dxToolbar('instance');
+                dateToolbar = $("#dateToolbar").dxToolbar({
+                    items: [{
+                        location: 'before',
+                        locateInMenu: 'never',
+                        widget: 'dxDateBox',
+                        options: {
+                            type: 'date',
+                            pickerType: 'calendar',
+                            useMaskBehavior: true,
+                            displayFormat: 'shortdate',
+                            value: requestBegin,
+                            onValueChanged: function (e) { requestBegin = new Date(e.value); }
+                        }
+                    }, {
+                        location: 'after',
+                        locateInMenu: 'never',
+                        widget: 'dxDateBox',
+                        options: {
+                            type: 'date',
+                            pickerType: 'calendar',
+                            useMaskBehavior: true,
+                            displayFormat: 'shortdate',
+                            value: requestEnd,
+                            onValueChanged: function (e) { requestEnd = new Date(e.value); }
+                        }
+                    }],
+                    visible: false
+                }).dxToolbar('instance');
+                listToolbar = $("#listToolbar").dxToolbar({
+                    items: (new ToolbarFactory()).addItems(listToolbarItems)
+                }).dxToolbar("instance");
+
+                //============== LIST ================
+                mainList = (new ListFactory()).createItem("#mainList", entityName, [
+                    { name: 'searchExpr', value: listSearchItems },
+                    { name: 'itemTemplate', value: listItemTemplate }
+                ]);
+
+                loadSetupOptions(loadListOptions);
+            }, alertError);
+        });
+
+        //============== LOAD OPTIONS ================
+        function loadListOptions() {
+            MobileCRM.UI.EntityForm.requestObject(function (entityForm) {
+                if (entityForm.entity.entityName !== SCHEMA.appointment.name) {
+                    alertError();
+                    return;
+                }
+
+                selected.appointment = entityForm.entity.properties;
+                apptType = parseInt(selected.appointment.gpappointmenttype);
+
+                loadToolbarOptions();
+                loadListItemOptions();
+            }, alertError);
+        }
+        function loadToolbarOptions() {
+            if (typeof listFilterItems !== 'undefined' && listFilterItems.length > 0)
+                (new FilterFactory()).createFilterPopup(mainList, listToolbar);
+
+            updateToolbarItem(mainToolbar, ToolbarItemType.title, "html",
+                "<span>" + MobileCRM.Localization.getPlural(entityName) + "</span>");
+
+            labelToolbar.option('visible', apptType === 3);
+            dateToolbar.option('visible', apptType === 3);
+            scrollHeight = apptType === 1 ? 110 : 180;
+            repaintScrollView(mainScrollView);
+
+            loadSortItemsLocalization(listSortItems).then(function (sortDataSource) {
+                updateToolbarItem(listToolbar, ToolbarItemType.selectSort, "options.dataSource", sortDataSource);
+                updateToolbarItem(listToolbar, ToolbarItemType.selectSort, "options.value", sortSelector);
+            });
+        }
+
+        function loadListItemOptions() {
+            fetchCurrentUser().then(fetchListEntityData, alertError);
+        }
+        function fetchCurrentUser() {
+            var deferred = $.Deferred();
+            var entity = new MobileCRM.FetchXml.Entity(SCHEMA.systemuser.name);
+            entity.addAttribute(SCHEMA.systemuser.Properties.id);
+
+            var fetch = new MobileCRM.FetchXml.Fetch(entity);
+            fetch.execute("JSON", function (res) {
+                if (res.length === 1) {
+                    selected.currentuser = res[0];
+                    return deferred.resolve();
+                }
+                else {
+                    return deferred.reject("Fetch Current User Error: Fetch returned " + res.length + " results");
+                }
+            }, function (err) {
+                return deferred.reject("Fetch Current User Error: " + err);
+            });
+            return deferred.promise();
+        }
+
+        //============== LOAD DATA ================
+        function fetchListEntityData(isOnline) {
+            var entity = new MobileCRM.FetchXml.Entity(entityName);
+            $(entityAttributes).each(function (index, attribute) {
+                entity.addAttribute(attribute);
+            });
+            entity.orderBy(sortSelector, sortDesc);
+
+            if (selected.currentuser) {
+                entity.addFilter().where(SCHEMA.relatedappointment.Properties.createdby, 'eq', selected.currentuser.id);
+            }
+
+            if (selected.appointment) {
+                entity.addFilter().where(SCHEMA.relatedappointment.Properties.gpappointmentid, 'ne', selected.appointment.gpappointmentid);
+
+                if (apptType === 1) {
+                    entity.addFilter().where(SCHEMA.relatedappointment.Properties.gpservicecallid, 'eq', selected.appointment.gpservicecallid);
+                }
+                if (apptType === 3) {
+                    entity.addFilter().where(SCHEMA.relatedappointment.Properties.gpjobnumber, 'eq', selected.appointment.gpjobnumber);
+                }
+            }
+
+            var fetch = new MobileCRM.FetchXml.Fetch(entity);
+            fetch.execute(isOnline ? "Online.JSON" : "JSON", function (res) {
+                if (isOnline) {
+                    if (res.length < 1) {
+                        sayLocalization("Alert.NoRelatedAppointment");
+                    }
+                    else {
+                        showToast(MobileCRM.Localization.get("Alert.RelatedAppointmentUpdated"), 'success');
+                        createLocalData(res);
+                    }
+                }
+                loadListData(mainList, res);
+                entityListData = res;
+                loading.close();
+            }, alertError);
+        }
+
+        //============== TOOLBAR FUNCTIONS ================
+        function btnSortClicked() {
+            sortSelected();
+        }
+        function sortSelected() {
+            loadListData(mainList, entityListData);
+        }
+
+        function btnRefreshClicked() {
+            // Validate Dates
+            var begin = (new Date(requestBegin)).setHours(0, 0, 0, 0);
+            var end = (new Date(requestEnd)).setHours(11, 59, 59, 999);
+
+            if (begin > end) {
+                MobileCRM.UI.MessageBox.sayText("Request Begin Date must be before Request End Date.\nPlease select valid date range.", function () { }, alertError);
+                alertError();
+                return;
+            }
+            try {
+                loading = MobileCRM.UI.Form.showPleaseWait(MobileCRM.Localization.get("Msg.Loading"));
+                connectionCheck(true, function () {
+                    sendDeleteRequest().then(function () {
+                        getRelatedAppointments().then(function () {
+                            fetchListEntityData(true);
+                        }, alertError);
+                    }, alertError);
+                });
+            }
+            catch (e) {
+                alertError(e);
+            }
+        }
+
+        function getRelatedAppointments() {
+            var deferred = $.Deferred();
+            if (!selected.appointment) {
+                return deferred.reject("Unable to get Related Appointments: Missing Appointment Details");
+            }
+
+            // Middle Tier Entity creation triggers History Plugin
+            var entity = new MobileCRM.DynamicEntity(entityName);
+            if (apptType === 1) {
+                entity.properties.gpservicecallid = selected.appointment.gpservicecallid;
+            }
+            if (apptType === 3) {
+                entity.properties.gpjobnumber = selected.appointment.gpjobnumber;
+                entity.properties.requestbegindate = new Date(requestBegin);
+                entity.properties.requestenddate = new Date(requestEnd);
+            }
+            var saveOnline = true;
+
+            entity.save(function (err) {
+                if (err) {
+                    return deferred.reject("Related Appointment Error:\n" + err);
+                }
+                else {
+                    return deferred.resolve();
+                }
+            }, saveOnline);
+            return deferred.promise();
+        }
+
+        //============== LIST ITEM FUNCTIONS ================
+        function listItemClicked() {
+        }
+
+        //============== LIST EXECUTIONS ================
+        function sendDeleteRequest() {
+            var deferred = $.Deferred();
+            if (apptType === 1 && (!selected.appointment || !selected.appointment.gpservicecallid)) {
+                return deferred.reject("Unable to Send Delete Request: Missing Service Call ID");
+            }
+            if (apptType === 3 && (!selected.appointment || !selected.appointment.gpjobnumber)) {
+                return deferred.reject("Unable to Send Delete Request: Missing Job Number");
+            }
+
+            var entity = new MobileCRM.FetchXml.Entity(entityName);
+            entity.addAttribute(SCHEMA.relatedappointment.Properties.id);
+
+            if (apptType === 1) {
+                entity.addFilter().where(SCHEMA.relatedappointment.Properties.gpservicecallid, 'eq', selected.appointment.gpservicecallid);
+            }
+            if (apptType === 3) {
+                entity.addFilter().where(SCHEMA.relatedappointment.Properties.gpjobnumber, 'eq', selected.appointment.gpjobnumber);
+            }
+
+            var fetch = new MobileCRM.FetchXml.Fetch(entity);
+            fetch.execute("JSON", function (res) {
+                var itemsDeferred = [];
+
+                $(res).each(function (_, relatedAppt) {
+                    itemsDeferred.push(deleteRelatedAppt(relatedAppt));
+                });
+
+                $.when.apply($, itemsDeferred).then(function () {
+                    return deferred.resolve();
+                }, function (err) { return deferred.reject(err); });
+            }, function (err) {
+                return deferred.reject("Fetch Delete Request Error: " + err);
+            });
+            return deferred.promise();
+        }
+        function deleteRelatedAppt(appt) {
+            var deferred = $.Deferred();
+            if (!appt || !appt.id) {
+                return deferred.reje("Delete Related Appt Error: Missing Appointment Details");
+            }
+
+            MobileCRM.DynamicEntity.deleteById(entityName, appt.id,
+                function () { return deferred.resolve(); },
+                function (err) { return deferred.reject("Delete Related Appt Error: " + err); }
+            );
+            return deferred.promise();
+        }
+
+        function createLocalData(data) {
+            // Create local copies of related appointments so it stays on the device until next sync
+            $(data).each(function (_, relatedAppt) {
+                MobileCRM.DynamicEntity.loadById(entityName, relatedAppt.id, function () { },
+                    function (err) {    // Entity is only on the server
+                        var entity = new MobileCRM.DynamicEntity(entityName);
+                        // Entity attributes needed for display
+                        if (apptType === 1) {
+                            entity.properties.name = relatedAppt.gpservicecallid + ":" + relatedAppt.gpappointmentid;
+                        }
+                        if (apptType === 3) {
+                            entity.properties.name = relatedAppt.gpjobnumber + ":" + relatedAppt.gpappointmentid;
+                        }
+                        entity.properties.appointmentstatus = relatedAppt.appointmentstatus;
+                        entity.properties.startdate = new Date(relatedAppt.startdate);
+                        entity.properties.completiondate = relatedAppt.completiondate ? new Date(relatedAppt.completiondate) : null;
+                        entity.properties.gpappointmentid = relatedAppt.gpappointmentid;
+                        entity.properties.gpjobnumber = relatedAppt.gpjobnumber;
+                        entity.properties.gpservicecallid = relatedAppt.gpservicecallid;
+                        entity.properties.gptechnicianid = relatedAppt.gptechnicianid;
+
+                        entity.save(function (err) {
+                            if (err) {
+                                MobileCRM.bridge.alert("Create Local Data Error:\n" + err);
+                            }
+                        });
+                    }
+                );
+            });
+        }
+    </script>
+</body>
+
+</html>
