@@ -1,0 +1,40 @@
+﻿<EntityForm xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:dummy="0" flexi="0" fleximode="1" fullscreen="0" resize="0" version="2">
+  <IsContactForm>false</IsContactForm>
+  <EntityName>consumedinventory</EntityName>
+  <CamelCase>consumedinventory</CamelCase>
+  <WorkflowLoad>&lt;?xml version="1.0" ?&gt;&lt;Workflow e="true" isvalid="true" syntaxVersion="11" version="0"&gt;&lt;definition e="false"&gt;&lt;var&gt;noninventory&lt;/var&gt;&lt;func&gt;Assign&lt;/func&gt;&lt;type&gt;Boolean&lt;/type&gt;&lt;arg&gt;Boolean:False&lt;/arg&gt;&lt;/definition&gt;&lt;function e="false"&gt;&lt;var&gt;Tabs.formCommands.IsVisible&lt;/var&gt;&lt;func&gt;Assign&lt;/func&gt;&lt;arg&gt;Boolean:False&lt;/arg&gt;&lt;/function&gt;&lt;function e="false"&gt;&lt;var&gt;IsFormEditable&lt;/var&gt;&lt;func&gt;Negate&lt;/func&gt;&lt;arg&gt;var:Entity.isprocessed&lt;/arg&gt;&lt;/function&gt;&lt;/Workflow&gt;</WorkflowLoad>
+  <WorkflowCommandCanExecute>&lt;?xml version="1.0" ?&gt;&lt;Workflow e="true" isvalid="true" syntaxVersion="11" version="0"&gt;&lt;branch e="true" info="" &gt;&lt;if e="true"&gt;&lt;conditions e="true" op="And"&gt;&lt;condition e="false"&gt;&lt;var&gt;Command.Name&lt;/var&gt;&lt;op&gt;Contains&lt;/op&gt;&lt;arg&gt;String:Save&lt;/arg&gt;&lt;/condition&gt;&lt;/conditions&gt;&lt;action&gt;&lt;function e="false"&gt;&lt;var&gt;Command.IsEnabled&lt;/var&gt;&lt;func&gt;Negate&lt;/func&gt;&lt;arg&gt;var:Entity.isprocessed&lt;/arg&gt;&lt;/function&gt;&lt;/action&gt;&lt;/if&gt;&lt;/branch&gt;&lt;/Workflow&gt;</WorkflowCommandCanExecute>
+  <SharedVariables>&lt;SharedVariables&gt;&lt;Variables&gt;&lt;/Variables&gt;&lt;/SharedVariables&gt;</SharedVariables>
+  <PrimaryCommands>!defcmd</PrimaryCommands>
+  <SharedVariableNames/>
+  <ClassBinding>
+    <SerializedClassBinding name="#noninventory" label="noninventory" type="String"/>
+  </ClassBinding>
+  <EnabledWorkflows>OnLoadEnabled OnChangeEnabled OnSaveEnabled OnExecuteCommand OnCanExecuteCommand</EnabledWorkflows>
+  <SerializedChildrenV2>
+    <FormTab xsi:type="DetailTab" flexiHeader="0" NameModified="0" IconModified="0" EntityIconName="MobileCrm\Images.MonoTouch\Tabs\consumedinventory@2x.png" IsIconNameReadOnly="0">
+      <Name>consumedinventory</Name>
+      <SerializedChildren>
+        <DetailItem SchemaName="appointmentid"/>
+        <DetailItem SchemaName="transactiondate"/>
+        <DetailItem SchemaName="equipmentid"/>
+        <DetailItem SchemaName="jobcostcodeid"/>
+        <DetailItem SchemaName="costcodeid"/>
+        <DetailItem SchemaName="siteinventoryid"/>
+        <DetailItem SchemaName="itemnumber"/>
+        <DetailItem SchemaName="Quantity x Billable Price EA will be charged to client" separator="true" xsi:type="SeparatorDetailItem" Style="MultiLine">
+          <IsConstant>true</IsConstant>
+        </DetailItem>
+        <DetailItem SchemaName="quantity"/>
+        <DetailItem SchemaName="unitcost"/>
+        <DetailItem SchemaName="listprice"/>
+        <DetailItem SchemaName="itemdescription" Style="MultiLine"/>
+      </SerializedChildren>
+    </FormTab>
+    <FormTab xsi:type="IFrameTab" NameModified="0" IconModified="0" EntityIconName="MobileCrm\Images.MonoTouch\Tabs\General@2x.png" IsIconNameReadOnly="0">
+      <Name>formCommands</Name>
+      <Url>file://entity/consumedinventory/consumedinventory-form.html</Url>
+      <DelayLoad>false</DelayLoad>
+    </FormTab>
+  </SerializedChildrenV2>
+</EntityForm>

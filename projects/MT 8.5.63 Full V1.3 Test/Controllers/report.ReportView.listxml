@@ -1,0 +1,72 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<EntityList xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <Attributes>
+    <EntityName>report</EntityName>
+    <CamelCase>report</CamelCase>
+    <VisualStudioProjectId>00000000-0000-0000-0000-000000000000</VisualStudioProjectId>
+    <WrapperClass>MobileCrm.Model.report</WrapperClass>
+    <ClassBinding>
+      <SerializedClassBinding name="#Email" label="Email" type="String" />
+    </ClassBinding>
+  </Attributes>
+  <ComponentId>00000000-0000-0000-0000-000000000000</ComponentId>
+  <Name>ReportView</Name>
+  <Kind>List</Kind>
+  <IsDefault>false</IsDefault>
+  <Fetch version="1.0">
+    <entity name="report">
+      <filter type="and">
+        <condition attribute="name" operator="ne" value="Call Summary Report" />
+        <condition attribute="name" operator="ne" value="Appointment Summary Report" />
+        <condition attribute="name" operator="ne" value="Inspection Report" />
+      </filter>
+    </entity>
+  </Fetch>
+  <OrderBy>name</OrderBy>
+  <SerializedBindings>
+    <string>email</string>
+    <string>id</string>
+    <string>ispreview</string>
+    <string>name</string>
+    <string>errormessage</string>
+    <string>objectid</string>
+    <string>status</string>
+  </SerializedBindings>
+  <SerializedTemplates>
+    <RowTemplate>
+      <DesignWidth>240</DesignWidth>
+      <DesignHeight>40</DesignHeight>
+      <Name>Default</Name>
+      <Width>240</Width>
+      <Height>56</Height>
+      <SerializedBackground>0</SerializedBackground>
+      <SerializedSelectedBackground>0</SerializedSelectedBackground>
+      <SerializedChildren>
+        <CellTemplate SchemaName="name">
+          <IsConstant>false</IsConstant>
+          <StyleName>primary</StyleName>
+          <Bounds>2,2,160,20</Bounds>
+          <CellKind>0</CellKind>
+          <Anchor>13</Anchor>
+        </CellTemplate>
+        <CellTemplate SchemaName="status">
+          <IsConstant>false</IsConstant>
+          <StyleName>r_gray_bold</StyleName>
+          <Bounds>162,5,76,14</Bounds>
+          <CellKind>0</CellKind>
+          <Anchor>15</Anchor>
+        </CellTemplate>
+        <CellTemplate SchemaName="errormessage">
+          <IsConstant>false</IsConstant>
+          <StyleName>gray_text</StyleName>
+          <Bounds>2,22,236,32</Bounds>
+          <CellKind>0</CellKind>
+          <Anchor>13</Anchor>
+        </CellTemplate>
+      </SerializedChildren>
+    </RowTemplate>
+  </SerializedTemplates>
+  <CustomProperties />
+  <SerializedChildren />
+  <Height>0</Height>
+</EntityList>

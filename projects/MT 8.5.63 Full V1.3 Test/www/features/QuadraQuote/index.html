@@ -1,0 +1,202 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <!-- Activate IE9 document mode, if available -->
+    <meta charset="utf-8" http-equiv="X-UA-Compatible" content="IE=edge" />
+    <!-- Defined iOS viewport -->
+    <meta name="viewport" content="initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=false">
+    <!-- Disable iOS Phone No Detection -->
+    <meta name="format-detection" content="telephone=no" />
+    <!-- DevExtreme dependencies -->
+    <script type="text/javascript" src="../../scripts/jquery-3.3.1.min.js"></script>
+    <!-- DevExtreme themes -->
+    <link rel="stylesheet" type="text/css" href="../../css/dx.common.css" />
+    <link rel="stylesheet" type="text/css" href="../../css/dx.light.css" />
+    <!-- A DevExtreme library -->
+    <script type="text/javascript" src="../../scripts/dx.all.js"></script>
+    <!-- Offline HTML JavaScript Bridge-->
+    <script type="text/javascript" src="../../scripts/JSBridge.js"></script>
+    <script type="text/javascript" src="../../scripts/k2aMethods.js"></script>
+    <title>Quadra Quote</title>
+</head>
+<body onload="onBodyLoad()">
+    <div id="toast"></div>
+    <div id="formPopup"></div>
+
+    <script>
+        function onBodyLoad() {
+            //============== ANDROID CHECK ================
+            MobileCRM.Platform.preventBackButton(btnBackClicked);
+
+            //============== EVENT LISTENERS ================
+            MobileCRM.bridge.onGlobalEvent("SyncStarted", function (args) {
+                MobileCRM.bridge.closeForm();
+            }, true);
+
+            //============== LOAD OPTION DATA ================
+            MobileCRM.UI.IFrameForm.requestObject(function (iFrame) {
+                serviceCallId = iFrame.options.serviceCallId;
+                employeeId = iFrame.options.employeeId;
+                customerNumber = iFrame.options.customerNumber;
+                addressCode = iFrame.options.addressCode;
+                contractNumber = iFrame.options.contractNumber;
+                callerName = iFrame.options.callerName;
+                callerEmail = iFrame.options.callerEmail;
+                callerPhone = iFrame.options.callerPhone;
+                equipmentId = iFrame.options.equipmentId;
+
+                quadraForm.option("formData", {
+                    'serviceCallId': serviceCallId,
+                    'employeeId': employeeId,
+                    'customerNumber': customerNumber,
+                    'addressCode': addressCode
+                });
+            }, MobileCRM.bridge.alert, null);
+            loadQuadraAPIParameters();
+
+            //============== FORMS ================
+            quadraForm = $("<div id='quadraForm' />").dxForm({
+                items: [{
+                    dataField: "recommendationtemplateid",
+                    label: { location: "top", text: "Recommendation Template" },
+                    editorType: "dxSelectBox",
+                    editorOptions: {
+                        displayExpr: "name",
+                        valueExpr: "recommendationtemplateid"
+                    },
+                    isRequired: true
+                }],
+                onInitialized: fetchRecommendationTemplate
+            }).dxForm("instance");
+
+            //============== POPUPS ================
+            formPopup = $("#formPopup").dxPopup({
+                shading: true,
+                shadingColor: "rgba(0,0,0,0.2)",
+                contentTemplate: function (container) {
+                    container.append(
+                        quadraForm.element(),
+                        $("<span style='float:right;margin:10px'>").dxButton({
+                            text: "Create", icon: "add", type: 'success',
+                            onClick: btnCreateClicked
+                        }),
+                        $("<span style='float:right;margin:10px'>").dxButton({
+                            text: "Cancel", icon: "close", type: 'danger',
+                            onClick: btnCancelClicked
+                        })
+                    );
+                    return container;
+                },
+                showTitle: false,
+                height: '150px',
+                position: { offset: '0, 50', my: 'top', at: 'top' },
+                visible: true
+            }).dxPopup("instance");
+        }
+
+        //============== OFFLINE HTML FUNCTIONS ================
+        // ----- LOAD SYSTEM DATA -----
+        function loadQuadraAPIParameters() {
+            var entity = new MobileCRM.FetchXml.Entity("setupoption");
+            entity.addAttribute('name');
+            entity.addAttribute('optionvalue');
+
+            entity.filter = new MobileCRM.FetchXml.Filter();
+            entity.filter.where("name", "like", "QuadraAPI%");
+
+            var fetch = new MobileCRM.FetchXml.Fetch(entity);
+            fetch.execute("JSON", function (res) {
+                quadraAPIUrl = null;
+                quadraAPIKey = null;
+                res.forEach(function (option) {
+                    switch (option.name) {
+                        case 'QuadraAPIUrl':
+                            quadraAPIUrl = option.optionvalue ? option.optionvalue + "/api/mfq_recommendation/CreateRemote/" : null;
+                            break;
+                        case 'QuadraAPIKey':
+                            quadraAPIKey = option.optionvalue;
+                    }
+                });
+                if (!quadraAPIUrl)
+                    showToast("Quadra API Url Not Found", "error");
+                if (!quadraAPIKey)
+                    showToast("Quadra API Key Not Found", "error");
+            }, MobileCRM.bridge.alert, null);
+        }
+
+        // ----- LOAD FORM DATA -----
+        function fetchRecommendationTemplate() {
+            var entity = new MobileCRM.FetchXml.Entity("mfq_recommendationtemplate");
+            entity.addAttribute("recommendationtemplateid");
+            entity.addAttribute("name");
+            entity.orderBy("recommendationtemplateid");
+
+            var fetch = new MobileCRM.FetchXml.Fetch(entity);
+            fetch.execute("JSON", function (res) {
+                quadraForm.getEditor("recommendationtemplateid").option("dataSource", res);
+            }, MobileCRM.bridge.alert, null);
+        }
+
+        function btnCreateClicked() {
+            quadraForm.validate();
+            if (!quadraForm.getEditor("recommendationtemplateid").option("value"))
+                showToast("Missing Recommendation Template", "error");
+            else
+                createRecommendation();
+        }
+        function btnCancelClicked() {
+            MobileCRM.bridge.closeForm();
+        }
+
+        function createRecommendation() {
+            if (!quadraAPIUrl) {
+                MobileCRM.bridge.alert("ERROR: Missing Quadra API Url\nUnable to create recommendation");
+                return;
+            }
+            if (!quadraAPIKey) {
+                MobileCRM.bridge.alert("ERROR: Missing Quadra API Key\nUnable to create recommendation");
+                return;
+            }
+            recommendationTemplateId = quadraForm.getEditor("recommendationtemplateid").option("value");
+            var wait = MobileCRM.UI.EntityForm.showPleaseWait("Creating the Quadra Recommendation...");
+            $(document).ready(function () {
+                $.ajax({
+                    type: 'POST',
+                    dataType: 'json',
+                    contentType: 'application/json',
+                    url: quadraAPIUrl,
+                    data: '{ ' +
+                        '"customerNumber": "' + customerNumber +
+                        '", "addressCode": "' + addressCode +
+                        '", "employeeId": "' + employeeId +
+                        '", "serviceCallId": "' + serviceCallId +
+                        (contractNumber ? '", "contractNumber": "' + contractNumber : "") +
+                        (callerName ? '", "callerName": "' + callerName : "") +
+                        (callerEmail ? '", "callerEmail": "' + callerEmail : "") +
+                        (callerPhone ? '", "callerPhone": "' + callerPhone : "") +
+                        (equipmentId ? '", "equipmentId": "' + equipmentId : "") +
+                        '", "recommendationTemplateId": "' + recommendationTemplateId +
+                        '", "key": "' + quadraAPIKey +
+                        '" }',
+                    success: function (data) {
+                        MobileCRM.UI.IFrameForm.requestObject(function (iFrame) {
+                            var recommendation = data.payload.recommendation;
+                            iFrame.form.caption = 'Quadra recommendation successfully created: \n' +
+                                'ID ' + recommendation.id + " - " + recommendation.description;
+
+                            wait.close();
+                            MobileCRM.bridge.closeForm();
+                        }, MobileCRM.bridge.alert, null);
+                    },
+                    error: function (xhr, status, errorThrown) {
+                        wait.close();
+                        msg = xhr.responseJSON ? xhr.responseJSON.message :
+                            (errorThrown.length > 0 ? errorThrown : "Unknown error returned from Quadra Service");
+                        alert("Create Recommendation Error:\n" + msg);
+                    }
+                });
+            });
+        }
+    </script>
+</body>
+</html>

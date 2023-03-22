@@ -1,0 +1,14 @@
+<EntityForm xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:dummy="0" flexi="0" fleximode="0" fullscreen="0" resize="0" version="2">
+  <IsContactForm>false</IsContactForm>
+  <EntityName>timesheetreportrequest</EntityName>
+  <CamelCase>timesheetreportrequest</CamelCase>
+  <PrimaryCommands>!defcmd</PrimaryCommands>
+  <ClassBinding/>
+  <EnabledWorkflows>OnLoadEnabled OnChangeEnabled OnSaveEnabled OnExecuteCommand OnCanExecuteCommand</EnabledWorkflows>
+  <SerializedChildrenV2>
+    <FormTab xsi:type="IFrameTab" flexiHeader="0">
+      <Name>signature</Name>
+      <Url>file://entity/timesheetreportrequest/timesheet-signature.html</Url>
+    </FormTab>
+  </SerializedChildrenV2>
+</EntityForm>

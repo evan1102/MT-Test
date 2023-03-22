@@ -1,0 +1,50 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<EntityList xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <Attributes>
+    <EntityName>jobcostcode</EntityName>
+    <CamelCase>jobcostcode</CamelCase>
+    <VisualStudioProjectId>00000000-0000-0000-0000-000000000000</VisualStudioProjectId>
+    <ClassBinding />
+  </Attributes>
+  <ComponentId>00000000-0000-0000-0000-000000000000</ComponentId>
+  <Name>Default</Name>
+  <Kind>List</Kind>
+  <IsDefault>false</IsDefault>
+  <OrderBy>name</OrderBy>
+  <SerializedBindings>
+    <string>costcodealias</string>
+    <string>description</string>
+    <string>id</string>
+    <string>name</string>
+  </SerializedBindings>
+  <SerializedTemplates>
+    <RowTemplate>
+      <DesignWidth>240</DesignWidth>
+      <DesignHeight>40</DesignHeight>
+      <Name>Default</Name>
+      <Width>240</Width>
+      <Height>50</Height>
+      <SerializedBackground>0</SerializedBackground>
+      <SerializedSelectedBackground>0</SerializedSelectedBackground>
+      <SerializedChildren>
+        <CellTemplate SchemaName="costcodealias">
+          <IsConstant>false</IsConstant>
+          <StyleName>primary</StyleName>
+          <Bounds>4,24,232,18</Bounds>
+          <CellKind>0</CellKind>
+          <Anchor>15</Anchor>
+        </CellTemplate>
+        <CellTemplate SchemaName="description">
+          <IsConstant>false</IsConstant>
+          <StyleName>primary</StyleName>
+          <Bounds>4,4,232,20</Bounds>
+          <CellKind>0</CellKind>
+          <Anchor>5</Anchor>
+        </CellTemplate>
+      </SerializedChildren>
+    </RowTemplate>
+  </SerializedTemplates>
+  <CustomProperties />
+  <SerializedChildren />
+  <Height>0</Height>
+</EntityList>

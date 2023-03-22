@@ -1,0 +1,31 @@
+<EntityForm xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:dummy="0" flexi="0" fleximode="1" fullscreen="0" resize="0" version="2">
+  <IsContactForm>false</IsContactForm>
+  <EntityName>timelog</EntityName>
+  <CamelCase>timelog</CamelCase>
+  <WorkflowLoad>&lt;?xml version="1.0" ?&gt;&lt;Workflow e="true" isvalid="true" syntaxVersion="11" version="0"&gt;&lt;function e="false"&gt;&lt;var&gt;Tabs.formCommands.IsVisible&lt;/var&gt;&lt;func&gt;Assign&lt;/func&gt;&lt;arg&gt;Boolean:False&lt;/arg&gt;&lt;/function&gt;&lt;/Workflow&gt;</WorkflowLoad>
+  <SharedVariables>&lt;SharedVariables&gt;&lt;Variables&gt;&lt;/Variables&gt;&lt;/SharedVariables&gt;</SharedVariables>
+  <PrimaryCommands>!defcmd</PrimaryCommands>
+  <SharedVariableNames/>
+  <ClassBinding/>
+  <EnabledWorkflows>OnLoadEnabled OnChangeEnabled OnSaveEnabled OnExecuteCommand OnCanExecuteCommand</EnabledWorkflows>
+  <SerializedChildrenV2>
+    <FormTab xsi:type="DetailTab" flexiHeader="0">
+      <Name>timelog</Name>
+      <SerializedChildren>
+        <DetailItem SchemaName="appointmentid"/>
+        <DetailItem SchemaName="gptimein"/>
+        <DetailItem SchemaName="gptimeout"/>
+        <DetailItem SchemaName="laborhours"/>
+        <DetailItem SchemaName="costcodeid"/>
+        <DetailItem SchemaName="jobcostcodeid"/>
+        <DetailItem SchemaName="paycodeid"/>
+        <DetailItem SchemaName="description" Style="MultiLine"/>
+      </SerializedChildren>
+    </FormTab>
+    <FormTab xsi:type="IFrameTab">
+      <Name>formCommands</Name>
+      <Url>file://entity/timelog/timelog-form.html</Url>
+      <DelayLoad>false</DelayLoad>
+    </FormTab>
+  </SerializedChildrenV2>
+</EntityForm>

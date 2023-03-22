@@ -1,0 +1,281 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <!-- Activate IE9 document mode, if available -->
+    <meta charset="utf-8" http-equiv="X-UA-Compatible" content="IE=edge" />
+    <!-- Defined iOS viewport -->
+    <meta name="viewport" content="initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=false">
+    <!-- Disable iOS Phone No Detection -->
+    <meta name="format-detection" content="telephone=no" />
+    <!-- DevExtreme dependencies -->
+    <script type="text/javascript" src="../../scripts/jquery-3.3.1.min.js"></script>
+    <!-- DevExtreme themes -->
+    <link rel="stylesheet" type="text/css" href="../../css/dx.common.css" />
+    <link rel="stylesheet" type="text/css" href="../../css/dx.light.css" />
+    <!-- A DevExtreme library -->
+    <script type="text/javascript" src="../../scripts/dx.all.js"></script>
+    <!-- Offline HTML JavaScript Bridge-->
+    <script type="text/javascript" src="../../scripts/JSBridge.js"></script>
+    <script type="text/javascript" src="../../scripts/k2aMethods.js"></script>
+    <script type="text/javascript" src="../../enum/Schema.js"></script>
+    <script type="text/javascript" src="../../enum/setupoption.js"></script>
+    <!-- Offline HTML Template Factory-->
+    <script type="text/javascript" src="../../templates/formItem-factory.js"></script>
+    <script type="text/javascript" src="../../templates/toolbar-factory.js"></script>
+    <!-- Offline HTML Styling -->
+    <link rel="stylesheet" type="text/css" href="../../css/k2a.css" />
+    <title>About Form</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+    </style>
+</head>
+<body>
+    <div id="toast"></div>
+    <div class="fixedPosition">
+        <div id="toolbar"></div><br>
+        <div id="mainScrollView">
+            <div id='aboutDetails'></div>
+        </div>
+    </div>
+    <script>
+        //============== INITIAL SETTINGS ================
+        var aboutInfo = null, config = null;
+        var logFileNames = [
+            "syncLog.txt", "integrationLog.txt", "onlineLog.txt", "rulesLog.txt", "secmanLog.txt",
+            "crash.log", "crash1.log", "JSBridge.log", "JSBridge1.log"
+        ];
+        var requiredSetupOptions = ['AdminEmailAddress'];
+
+        $(function () {
+            //============== TOOLBAR ================
+            $("#toolbar").dxToolbar({
+                items: [{
+                    location: 'after',
+                    locateInMenu: 'never',
+                    widget: 'dxButton',
+                    options: {
+                        icon: 'trash',
+                        text: "Clear Log Files",
+                        stylingMode: 'outlined',
+                        onClick: clearLogFiles
+                    }
+                }, {
+                    location: 'after',
+                    locateInMenu: 'never',
+                    widget: 'dxButton',
+                    options: {
+                        icon: 'message',
+                        text: "Email Log Files",
+                        stylingMode: 'outlined',
+                        onClick: emailLogFiles
+                    }
+                }]
+            });
+
+            loadSetupOptions(loadAboutInfo);
+        });
+
+        //============== LOAD DATA ================
+        function loadAboutInfo() {
+            MobileCRM.AboutInfo.requestObject(function (data) {
+                MobileCRM.Configuration.requestObject(function (configData) {
+                    config = configData;
+                    aboutInfo = data;
+                    aboutInfo.supportEmail = setupOptions.AdminEmailAddress ? setupOptions.AdminEmailAddress : aboutInfo.supportEmail; // "support@Key2Act.com"
+                    aboutInfo.build = "Build " + config.applicationVersion;
+
+                    MobileCRM.Application.getAppImage(aboutInfo.icon, null, function (icon) {
+                        loadWoodfordProjectName().then(function (woodford) {
+                            $("#aboutDetails").append(
+                                $("<div>").append(aboutInfo.manufacturer),
+                                $("<br>"),
+                                $("<div>").append(aboutInfo.productTitle).css('font-size', 'x-large'),
+                                $("<div>").append(aboutInfo.productSubTitle),
+                                $("<br>")
+                            );
+
+                            if (woodford)
+                                $("#aboutDetails").append(
+                                    $("<div>").append("Woodford Project:<br>" + woodford),
+                                    $("<br>")
+                                );
+
+                            $("#aboutDetails").append(
+                                $("<div>").append(aboutInfo.poweredBy),
+                                $("<img>").attr('src', icon).css({
+                                    'width': '260px', 'height': '130px', 'display': 'block', 'margin-left': 'auto', 'margin-right': 'auto'
+                                }),
+                                $("<div>").append(aboutInfo.website)
+                            );
+                        }, MobileCRM.bridge.alert);
+                    }, MobileCRM.bridge.alert);
+                }, MobileCRM.bridge.alert);
+            }, MobileCRM.bridge.alert);
+        }
+
+        function loadWoodfordProjectName() {
+            var deferred = $.Deferred();
+            var projectInfoPath = config.customizationDirectory + "/MobileCrm/GenDate.txt";
+
+            MobileCRM.Application.fileExists(projectInfoPath, function (exists) {
+                if (exists)
+                    MobileCRM.Application.readFile(projectInfoPath, function (fileString) {
+                        var fileByLine = fileString.split("\n");
+                        return deferred.resolve(fileByLine[2] ? fileByLine[2] : null);
+                    }, function (err) { return deferred.reject("Read File Error: " + projectInfoPath + "\n" + err); });
+
+                else
+                    return deferred.resolve(null);
+            }, function (err) { return deferred.reject("File Exists Error: " + projectInfoPath + "\n" + err); });
+            return deferred.promise();
+        }
+
+        //============== TOOLBAR FUNCTIONS ================
+        function clearLogFiles() {
+            var itemsDeferred = [];
+
+            $(logFileNames).each(function (i, fileName) {
+                itemsDeferred.push(deleteLogFile(fileName));
+            });
+
+            $.when.apply($, itemsDeferred).then(function () {
+                showToast("Log files deleted", 'success');
+            }, MobileCRM.bridge.alert);
+        }
+        function deleteLogFile(fileName) {
+            var deferred = $.Deferred();
+            if (!fileName)
+                return deferred.reject("Unable to clear log file: Missing File Name");
+
+            MobileCRM.Application.fileExists(fileName, function (exists) {
+                if (exists)
+                    MobileCRM.Application.deleteFile(fileName,
+                        function (res) { return deferred.resolve(); },
+                        function (err) { return deferred.reject("Delete File Error: " + fileName + "\n" + err); }
+                    );
+                else
+                    return deferred.resolve();
+            }, function (err) { return deferred.reject("File Exists Error: " + fileName + "\n" + err); });
+
+            return deferred.promise();
+        }
+
+        function emailLogFiles() {
+            generateMailHeader()
+                .then(appendProjectInfo, MobileCRM.bridge.alert)
+                .then(appendLogFiles, MobileCRM.bridge.alert)
+                .then(function (body) {
+                    try {
+                        MobileCRM.Platform.email(aboutInfo.supportEmail, 'Signature MobileTech', body, MobileCRM.bridge.alert);
+                    }
+                    catch (e) {
+                        MobileCRM.bridge.alert(e);
+                    }
+                }, MobileCRM.bridge.alert);
+        }
+        function generateMailHeader() {
+            var deferred = $.Deferred();
+            var header = aboutInfo.productTitle + (aboutInfo.productSubTitle ? " " + aboutInfo.productSubTitle : "") + "\n";
+            header += "Powered by Resco Mobile CRM v" + config.applicationVersion + "\n";
+            header += "Device ID: " + config.settings.deviceIdentifier + "\n";
+
+            MobileCRM.Platform.getDeviceInfo(function (devInfo) {
+                header += devInfo.name + "\n";
+                header += devInfo.model + "\n";
+                header += devInfo.oSVersion + "\n";
+
+                return deferred.resolve(header);
+            }, function (err) { return deferred.reject("Get Device Info Error: " + err); });
+            return deferred.promise();
+        }
+        function appendProjectInfo(sb) {
+            var deferred = $.Deferred();
+            var projectInfoPath = config.customizationDirectory + "/MobileCrm/GenDate.txt";
+            readTextFile(sb, projectInfoPath, "\n===Project===\n", "\n").then(function (sb) {
+                readTextFile(sb, "WWW/version.txt", "\n===WWW Version===\n", "\n").then(function (sb) {
+                    readTextFile(sb, "WWW/packageversion.txt", "\n===Package Version===\n", "\n").then(function (sb) {
+                        return deferred.resolve(sb);
+
+                    }, function (err) { return deferred.reject(err); });
+                }, function (err) { return deferred.reject(err); });
+            }, function (err) { return deferred.reject(err); });
+            return deferred.promise();
+        }
+
+        function appendLogFiles(sb) {
+            var deferred = $.Deferred();
+            readLogFile(sb, "syncLog.txt").then(function (sb) {
+                readLogFile(sb, "integrationLog.txt").then(function (sb) {
+                    readLogFile(sb, "onlineLog.txt").then(function (sb) {
+                        readLogFile(sb, "rulesLog.txt").then(function (sb) {
+                            readLogFile(sb, "secmanLog.txt").then(function (sb) {
+                                readLogFile(sb, "RefCleaner.log").then(function (sb) {
+                                    readLogFile(sb, "OfflineMapsDownload.log")
+                                        .then(readJSBridgeLog, function (err) { return deferred.reject(err); })
+                                        .then(readCrashLog, function (err) { return deferred.reject(err); })
+                                        .then(function (sb) {
+                                            return deferred.resolve(sb);
+                                        }, function (err) { return deferred.reject(err); });
+                                }, function (err) { return deferred.reject(err); });
+                            }, function (err) { return deferred.reject(err); });
+                        }, function (err) { return deferred.reject(err); });
+                    }, function (err) { return deferred.reject(err); });
+                }, function (err) { return deferred.reject(err); });
+            }, function (err) { return deferred.reject(err); });
+            return deferred.promise();
+        }
+        function readLogFile(sb, fileName) {
+            var deferred = $.Deferred();
+            var fileBreak = "\n=============================\nLogFile: ";
+
+            readTextFile(sb, fileName, fileBreak + fileName + "\n\n", "\n").then(
+                function (sb) { return deferred.resolve(sb); },
+                function (err) { return deferred.reject(err); }
+            );
+            return deferred.promise();
+        }
+        function readJSBridgeLog(sb) {
+            var deferred = $.Deferred();
+            var header = "\nJSBridge log\n-------------------------------------------------\n";
+
+            readTextFile(sb, "JSBridge.log", header, "\n").then(function (sb) {
+                readTextFile(sb, "JSBridge1.log", null, "\n").then(function (sb) {
+                    return deferred.resolve(sb);
+                }, function (err) { return deferred.reject(err); });
+            }, function (err) { return deferred.reject(err); });
+            return deferred.promise();
+        }
+        function readCrashLog(sb) {
+            var deferred = $.Deferred();
+            var header = "\n=============================\nLog File: CRASH LOG\n";
+
+            readTextFile(sb, "crash.log", header, "\n").then(function (sb) {
+                readTextFile(sb, "crash1.log", null, "\n").then(function (sb) {
+                    return deferred.resolve(sb);
+                }, function (err) { return deferred.reject(err); });
+            }, function (err) { return deferred.reject(err); });
+            return deferred.promise();
+        }
+
+        function readTextFile(sb, projectInfoPath, header, footer) {
+            var deferred = $.Deferred();
+
+            MobileCRM.Application.fileExists(projectInfoPath, function (exists) {
+                if (exists)
+                    MobileCRM.Application.readFile(projectInfoPath, function (fileString) {
+                        var resultStr = (fileString ? ((header ? header : "") + fileString + (footer ? footer : "")) : "");
+                        return deferred.resolve(sb + resultStr);
+
+                    }, function (err) { return deferred.reject("Read File Error: " + projectInfoPath + "\n" + err); });
+
+                else
+                    return deferred.resolve(sb);
+
+            }, function (err) { return deferred.reject("File Exists Error: " + projectInfoPath + "\n" + err); });
+            return deferred.promise();
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,316 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <!-- Activate IE9 document mode, if available -->
+    <meta charset="utf-8" http-equiv="X-UA-Compatible" content="IE=edge" />
+    <!-- Defined iOS viewport -->
+    <meta name="viewport" content="initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=false">
+    <!-- Disable iOS Phone No Detection -->
+    <meta name="format-detection" content="telephone=no" />
+    <!-- DevExtreme dependencies -->
+    <script type="text/javascript" src="../../scripts/jquery-3.3.1.min.js"></script>
+    <!-- DevExtreme themes -->
+    <link rel="stylesheet" type="text/css" href="../../css/dx.common.css" />
+    <link rel="stylesheet" type="text/css" href="../../css/dx.light.css" />
+    <!-- A DevExtreme library -->
+    <script type="text/javascript" src="../../scripts/dx.all.js"></script>
+    <!-- Offline HTML JavaScript Bridge-->
+    <script type="text/javascript" src="../../scripts/JSBridge.js"></script>
+    <script type="text/javascript" src="../../scripts/k2aMethods.js"></script>
+    <script type="text/javascript" src="../../enum/Schema.js"></script>
+    <script type="text/javascript" src="../../enum/setupoption.js"></script>
+    <!-- Offline HTML Template Factory-->
+    <script type="text/javascript" src="../../templates/listItem-factory.js"></script>
+    <script type="text/javascript" src="../../templates/toolbar-factory.js"></script>
+    <!-- Offline HTML Styling -->
+    <link rel="stylesheet" type="text/css" href="../../css/k2a.css" />
+    <title>Entity List</title>
+</head>
+<body>
+    <div id="toast"></div>
+    <div class="fixedPosition">
+        <div id="mainToolbar"></div><br>
+        <div id="listToolbar"></div>
+        <div id="mainScrollView">
+            <div id='mainList'></div>
+        </div>
+        <div id="actionSheet"></div>
+        <div id="filterPopup"></div>
+    </div>
+
+    <script>
+        //============== INITIAL SETTINGS ================
+        var entityName = SCHEMA.purchaseorderreceipt.name, isOnline = false;
+        var sortDesc = false, sortSelector = SCHEMA.purchaseorderreceipt.Properties.gppurchaseordernumber;
+        //============== OFFLINE DATA ================
+        var entityListData, entityKeyData = {};
+        //============== SELECTED DATA ================
+        var selected = { entityName: null, appointment: null, vendor: null };
+        //============== FETCH DATA ================
+        var requiredSetupOptions = [
+            SETUPOPTION.UsePurchaseOrderReceipt
+        ];
+        var entityAttributes = [
+            SCHEMA.purchaseorderreceipt.Properties.id,
+            SCHEMA.purchaseorderreceipt.Properties.gppurchaseordernumber,
+            SCHEMA.purchaseorderreceipt.Properties.gpjobnumber,
+            SCHEMA.purchaseorderreceipt.Properties.vendordocumentnumber,
+            SCHEMA.purchaseorderreceipt.Properties.vendorid,
+            SCHEMA.purchaseorderreceipt.Properties.transactiondate,
+            SCHEMA.purchaseorderreceipt.Properties.isprocessed,
+            SCHEMA.purchaseorderreceipt.Properties.freightamount,
+            SCHEMA.purchaseorderreceipt.Properties.miscellaneousamount,
+            SCHEMA.purchaseorderreceipt.Properties.name,
+            SCHEMA.purchaseorderreceipt.Properties.purchaseorderstatus,
+            SCHEMA.purchaseorderreceipt.Properties.purchaseordertype,
+            SCHEMA.purchaseorderreceipt.Properties.gpproductindicator,
+            SCHEMA.purchaseorderreceipt.Properties.appointmentid
+        ];
+        var listSortItems = [
+            SCHEMA.purchaseorderreceipt.Properties.gppurchaseordernumber
+        ];
+        var listSearchItems = [
+            SCHEMA.purchaseorderreceipt.Properties.gppurchaseordernumber,
+            SCHEMA.purchaseorderreceipt.Properties.gpjobnumber,
+            SCHEMA.purchaseorderreceipt.Properties.vendordocumentnumber,
+            SCHEMA.purchaseorderreceipt.Properties.vendorid,
+            SCHEMA.purchaseorderreceipt.Properties.transactiondate,
+            SCHEMA.purchaseorderreceipt.Properties.isprocessed
+        ];
+        var listFilterItems = [
+            { dataField: SCHEMA.purchaseorderreceipt.Properties.gppurchaseordernumber, dataType: FilterDataType.string },
+            { dataField: SCHEMA.purchaseorderreceipt.Properties.gpjobnumber, dataType: FilterDataType.string },
+            { dataField: SCHEMA.purchaseorderreceipt.Properties.vendordocumentnumber, dataType: FilterDataType.string },
+            { dataField: SCHEMA.purchaseorderreceipt.Properties.vendorid, dataType: FilterDataType.string },
+            { dataField: SCHEMA.purchaseorderreceipt.Properties.transactiondate, dataType: FilterDataType.date },
+            { dataField: SCHEMA.purchaseorderreceipt.Properties.isprocessed, dataType: FilterDataType.boolean }
+        ];
+        var listItemTemplate = function (data, _, element) {
+            element.append(
+                $("<span>").append(data.gppurchaseordernumber).css("font-size", "large"),
+                $("<span>").append(data.gpjobnumber).css("float", "right"),
+                $("<br>"),
+                $("<span>").append(data.vendorid.primaryName),
+                $("<span>").append(data.transactiondate ? formatDate(data.transactiondate) : "").css("float", "right"),
+                $("<br>"),
+                $("<span>").append(data.vendordocumentnumber),
+                $("<span>").append(
+                    $("<span>").append(
+                        MobileCRM.Localization.get(entityName + "." + SCHEMA.purchaseorderreceipt.Properties.isprocessed) + ": "
+                    ).addClass('listItemLabel'),
+                    $("<span>").append(data.isprocessed ? MobileCRM.Localization.get("enum.Yes") : MobileCRM.Localization.get("enum.No"))
+                ).css("float", "right")
+            );
+        };
+        //============== TOOLBAR ITEMS ================
+        var mainToolbarItems = [
+            ToolbarItemType.title, ToolbarItemType.btnRefresh
+        ];
+        var listToolbarItems = [
+            ToolbarItemType.btnSort, ToolbarItemType.selectSort, ToolbarItemType.btnFilter
+        ];
+
+        $(function () {
+            //============== LOCALIZATION ================
+            MobileCRM.Localization.initialize(function (localization) {
+
+                //============== ANDROID CHECK ================
+                MobileCRM.Platform.preventBackButton(btnBackClicked);
+
+                //============== SCROLLVIEW ================
+                mainScrollView = $("#mainScrollView").dxScrollView({
+                    showScrollbar: "always",
+                    height: function () { return window.innerHeight - 80; },
+                    width: '100%'
+                }).dxScrollView("instance");
+                $(window).resize(function () {
+                    repaintScrollView(mainScrollView);
+                });
+
+                //============== TOOLBARS ================
+                mainToolbar = $("#mainToolbar").dxToolbar({
+                    items: (new ToolbarFactory()).addItems(mainToolbarItems)
+                }).dxToolbar("instance");
+                listToolbar = $("#listToolbar").dxToolbar({
+                    items: (new ToolbarFactory()).addItems(listToolbarItems)
+                }).dxToolbar("instance");
+
+                //============== LIST ================
+                mainList = (new ListFactory()).createItem("#mainList", entityName, [
+                    { name: 'searchExpr', value: listSearchItems },
+                    { name: 'itemTemplate', value: listItemTemplate }
+                ]);
+
+                //============== EVENT HANDLERS ================
+                MobileCRM.bridge.onGlobalEvent("EntityFormClosed", function (closedForm) {
+                    if (closedForm.entity && closedForm.entity.entityName === entityName)
+                        fetchListEntityData();
+                }, true);
+                MobileCRM.Configuration.requestObject(function (config) {
+                    MobileCRM.bridge.onGlobalEvent("SyncFinished", fetchListEntityData, !config.settings.requireSyncLogin);
+                }, MobileCRM.bridge.alert);
+
+                loadSetupOptions(loadListOptions);
+            }, alertError);
+        });
+
+        //============== LOAD OPTIONS ================
+        function loadListOptions() {
+            if (!setupOptions.UsePurchaseOrderReceipt)
+                return; // Tab is not visible so do not need to load
+
+            MobileCRM.UI.EntityForm.requestObject(function (entityForm) {
+                selected[entityForm.entity.entityName] = entityForm.entity.properties;
+
+                loadToolbarOptions();
+                loadListItemOptions();
+            }, MobileCRM.bridge.alert);
+        }
+        function loadToolbarOptions() {
+            if (typeof listFilterItems !== 'undefined' && listFilterItems.length > 0)
+                (new FilterFactory()).createFilterPopup(mainList, listToolbar);
+
+            $("#toolbarTitle").text(MobileCRM.Localization.get("DetailView." + entityName));
+
+            loadSortItemsLocalization(listSortItems).then(function (sortDataSource) {
+                updateToolbarItem(listToolbar, ToolbarItemType.selectSort, "options.dataSource", sortDataSource);
+                updateToolbarItem(listToolbar, ToolbarItemType.selectSort, "options.value", sortSelector);
+            });
+        }
+        function loadListItemOptions() {
+            fetchListEntityData();
+        }
+
+        //============== LOAD DATA ================
+        function fetchListEntityData() {
+            if (!selected.appointment) {
+                MobileCRM.bridge.alert("Unable to load appointment details for PO Receipt filter");
+                return;
+            }
+
+            var filter_gpjobnumber = parseInt(selected.appointment.gpappointmenttype) === 1 ?
+                selected.appointment.gpservicecallid : selected.appointment.gpjobnumber;
+
+            var entity = new MobileCRM.FetchXml.Entity(entityName);
+            $(entityAttributes).each(function (index, attribute) {
+                entity.addAttribute(attribute);
+            });
+            entity.orderBy(sortSelector, sortDesc);
+            entity.addFilter().where(SCHEMA.purchaseorderreceipt.Properties.purchaseordertype, 'eq', 2);  // 2 Drop Ship
+            entity.addFilter().where(SCHEMA.purchaseorderreceipt.Properties.gpjobnumber, 'eq', filter_gpjobnumber);
+            entity.filter.type = 'and';
+
+            // Receipt is either not processed or processed for this appointment
+            var processedFilter = new MobileCRM.FetchXml.Filter();
+            processedFilter.where(SCHEMA.purchaseorderreceipt.Properties.isprocessed, 'ne', true);
+            processedFilter.where(SCHEMA.purchaseorderreceipt.Properties.appointmentid, 'eq', selected.appointment.id);
+            processedFilter.type = 'or';
+            entity.filter.filters.push(processedFilter);
+
+            var fetch = new MobileCRM.FetchXml.Fetch(entity);
+            connectionCheck(isOnline, function () {
+                fetch.execute(isOnline ? "Online.JSON" : "JSON", function (res) {
+                    $(res).each(function (i, _) {
+                        // For filter to work need formatted data  (JSON returns as string)
+                        if (res[i].transactiondate)
+                            res[i].transactiondate = new Date(res[i].transactiondate);
+                        res[i].isprocessed = JSON.parse(res[i].isprocessed.toString().toLowerCase());
+
+                        // Update data if offline otherwise add server data
+                        if (!isOnline || !entityKeyData[res[i].id]) {
+                            entityKeyData[res[i].id] = res[i];
+                        }
+                    });
+
+                    entityListData = [];
+                    for (var i in entityKeyData) {
+                        entityListData.push(entityKeyData[i]);
+                    }
+                    if (isOnline && entityListData.length === 0)
+                        showToast(MobileCRM.Localization.get("Alert.NoReceiptsFound"), 'error');
+
+                    loadListData(mainList, entityListData);
+                    isOnline = false;
+                    createLocalData(entityListData);
+                }, MobileCRM.bridge.alert);
+            });
+        }
+        function createLocalData(data) {
+            $(data).each(function (i, receipt) {
+                MobileCRM.DynamicEntity.loadById(entityName, receipt.id, function (res) { },
+                    function (err) {    // Entity is only on the server
+                        var entity = new MobileCRM.DynamicEntity(entityName);
+                        var entityProps = entity.properties;
+
+                        entityProps.name = receipt.name;
+                        entityProps.purchaseorderstatus = receipt.purchaseorderstatus;
+                        entityProps.purchaseordertype = receipt.purchaseordertype;
+                        entityProps.gppurchaseordernumber = receipt.gppurchaseordernumber;
+                        entityProps.gpjobnumber = receipt.gpjobnumber;
+                        entityProps.vendordocumentnumber = receipt.vendordocumentnumber;
+                        if (receipt.vendorid)
+                            entityProps.vendorid = new MobileCRM.DynamicEntity(SCHEMA.vendor.name, receipt.vendorid.id);
+                        entityProps.transactiondate = new Date(receipt.transactiondate);
+                        entityProps.isprocessed = receipt.isprocessed;
+                        entityProps.freightamount = receipt.freightamount;
+                        entityProps.miscellaneousamount = receipt.miscellaneousamount;
+                        entityProps.gpproductindicator = receipt.gpproductindicator;
+                        if (receipt.appointmentid)
+                            entityProps.appointmentid = new MobileCRM.DynamicEntity(SCHEMA.appointment.name, receipt.appointmentid.id);
+
+
+                        var request = {
+                            entity: entityName, id: receipt.id,
+                            properties: entityProps, isNew: true, isOnline: false, isOnlineForce: false
+                        };
+
+                        window.MobileCRM.bridge.command('entitysave', JSON.stringify(request),
+                            fetchReceiptDetail, MobileCRM.bridge.alert);
+                    });
+            });
+        }
+
+        function fetchReceiptDetail(receipt) {
+            var entity = new MobileCRM.FetchXml.Entity(SCHEMA.purchaseorderreceiptdetail.name);
+            entity.addAttributes();
+            entity.addFilter().where(SCHEMA.purchaseorderreceiptdetail.Properties.purchaseorderreceiptid, 'eq', receipt.id);
+
+            var fetch = new MobileCRM.FetchXml.Fetch(entity);
+            fetch.executeOnline("DynamicEntities", function (res) {
+                // Create local copies of receipt details
+                $(res).each(function (i, detail) {
+                    var request = {
+                        entity: SCHEMA.purchaseorderreceiptdetail.name, id: detail.id,
+                        properties: detail.properties, isNew: true, isOnline: false, isOnlineForce: false
+                    };
+
+                    window.MobileCRM.bridge.command('entitysave', JSON.stringify(request),
+                        function (requestResult) { }, MobileCRM.bridge.alert);
+                });
+            }, MobileCRM.bridge.alert);
+        }
+
+        //============== TOOLBAR FUNCTIONS ================
+        function btnSortClicked() {
+            loadListData(mainList, entityListData);
+        }
+        function sortSelected() {
+            btnSortClicked();
+        }
+        function btnRefreshClicked() {
+            isOnline = true;
+            fetchListEntityData();
+        }
+
+        //============== LIST ITEM FUNCTIONS ================
+        function listItemClicked() {
+            MobileCRM.UI.FormManager.showEditDialog(
+                entityName,
+                selected[entityName].id,
+                null,
+                { iFrameOptions: { appointment: selected.appointment } }
+            );
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,36 @@
+﻿V2
+My Received Emails
+1
+<fetch version="1.0"><entity name="email"><attribute name="statecode" /><attribute name="createdon" /><attribute name="scheduledend" /><attribute name="activityid" /><attribute name="from" /><attribute name="ownerid" /><attribute name="regardingobjectid" /><attribute name="scheduledstart" /><attribute name="statuscode" /><attribute name="subject" /><filter type="and"><condition attribute="statuscode" operator="eq" value="4" /><condition attribute="directioncode" operator="eq" value="0" /></filter><link-entity name="activityparty" from="activityid" to="activityid"><filter type="and"><condition attribute="participationtypemask" operator="in"><value>3</value><value>2</value></condition><condition attribute="partyid" operator="eq-userid" /></filter></link-entity><order attribute="createdon" descending="1" /></entity></fetch>
+T;;240;40
+S;9;0;primary;8;2;227;24;13
+S;4;0;gray;8;26;159;11;13
+S;1;0;r_gray;167;26;68;11;9
+
+V2
+All Emails
+1
+<fetch version="1.0"><entity name="email"><attribute name="statecode" /><attribute name="createdon" /><attribute name="scheduledend" /><attribute name="activityid" /><attribute name="from" /><attribute name="ownerid" /><attribute name="regardingobjectid" /><attribute name="scheduledstart" /><attribute name="statuscode" /><attribute name="subject" /><order attribute="createdon" descending="1" /></entity></fetch>
+T;;240;40
+S;9;0;primary;8;2;227;24;13
+S;4;0;gray;8;26;159;11;13
+S;1;0;r_gray;167;26;68;11;9
+
+V2
+My Draft Emails
+1
+<fetch version="1.0"><entity name="email"><attribute name="statecode" /><attribute name="createdon" /><attribute name="scheduledend" /><attribute name="activityid" /><attribute name="from" /><attribute name="modifiedon" /><attribute name="ownerid" /><attribute name="regardingobjectid" /><attribute name="scheduledstart" /><attribute name="statuscode" /><attribute name="subject" /><attribute name="to" /><filter type="and"><condition attribute="ownerid" operator="eq-userid" /><condition attribute="statuscode" operator="eq" value="1" /></filter><order attribute="modifiedon" descending="0" /></entity></fetch>
+T;;240;40
+S;10;0;primary;8;2;227;24;13
+S;11;0;gray;8;26;159;11;13
+S;1;0;r_gray;167;26;68;11;9
+
+V2
+My Sent Emails
+1
+<fetch version="1.0"><entity name="email"><attribute name="statecode" /><attribute name="createdon" /><attribute name="scheduledend" /><attribute name="activityid" /><attribute name="from" /><attribute name="ownerid" /><attribute name="regardingobjectid" /><attribute name="scheduledstart" /><attribute name="statuscode" /><attribute name="subject" /><attribute name="to" /><filter type="and"><condition attribute="statuscode" operator="eq" value="3" /><condition attribute="directioncode" operator="eq" value="1" /></filter><link-entity name="activityparty" from="activityid" to="activityid"><filter type="and"><condition attribute="participationtypemask" operator="eq" value="1" /><condition attribute="partyid" operator="eq-userid" /></filter></link-entity><order attribute="createdon" descending="1" /></entity></fetch>
+T;;240;40
+S;9;0;primary;8;2;227;24;13
+S;10;0;gray;8;26;159;11;13
+S;1;0;r_gray;167;26;68;11;9
+

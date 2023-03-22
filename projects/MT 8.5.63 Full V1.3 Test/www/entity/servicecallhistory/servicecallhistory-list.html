@@ -1,0 +1,434 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <!-- Activate IE9 document mode, if available -->
+    <meta charset="utf-8" http-equiv="X-UA-Compatible" content="IE=edge" />
+    <!-- Defined iOS viewport -->
+    <meta name="viewport" content="initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=false">
+    <!-- Disable iOS Phone No Detection -->
+    <meta name="format-detection" content="telephone=no" />
+    <!-- DevExtreme dependencies -->
+    <script type="text/javascript" src="../../scripts/jquery-3.3.1.min.js"></script>
+    <!-- DevExtreme themes -->
+    <link rel="stylesheet" type="text/css" href="../../css/dx.common.css" />
+    <link rel="stylesheet" type="text/css" href="../../css/dx.light.css" />
+    <!-- A DevExtreme library -->
+    <script type="text/javascript" src="../../scripts/dx.all.js"></script>
+    <!-- Offline HTML JavaScript Bridge-->
+    <script type="text/javascript" src="../../scripts/JSBridge.js"></script>
+    <script type="text/javascript" src="../../scripts/k2aMethods.js"></script>
+    <script type="text/javascript" src="../../enum/Schema.js"></script>
+    <script type="text/javascript" src="../../enum/setupoption.js"></script>
+    <!-- Offline HTML Template Factory-->
+    <script type="text/javascript" src="../../templates/listItem-factory.js"></script>
+    <script type="text/javascript" src="../../templates/toolbar-factory.js"></script>
+    <!-- Offline HTML Styling -->
+    <link rel="stylesheet" type="text/css" href="../../css/k2a.css" />
+    <title>Entity List</title>
+    <style>
+        .noteTextArea {
+            white-space: normal;
+            word-wrap: break-word;
+            width: 100%;
+            margin-right: 10px;
+            padding: 10px;
+            border: 1px solid #e6e6e6;
+            border-radius: 5px;
+        }
+
+        .k2ahyperlink {
+            color: #5174FA;
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div id="toast"></div>
+    <div class="fixedPosition">
+        <div id="mainToolbar"></div><br>
+        <div id="mainScrollView">
+            <div id='historySummary'></div>
+            <hr>
+            <div id='mainAccordion'></div>
+        </div>
+        <div id="actionSheet"></div>
+        <div id="filterPopup"></div>
+    </div>
+
+    <script>
+        //============== INITIAL SETTINGS ================
+        var entityName = SCHEMA.servicecallhistory.name;
+        var sortDesc = true, sortSelector = SCHEMA.servicecallhistory.Properties.completiondate;
+        //============== OFFLINE DATA ================
+        var entityListData;
+        //============== SELECTED DATA ================
+        var selected = { entityName: null, systemuser: null, target: null };
+        //============== FETCH DATA ================
+        var requiredSetupOptions = [
+            SETUPOPTION.HistoryCount,
+            SETUPOPTION.IncludeMCCWithHistory
+        ];
+        var entityAttributes = [
+            SCHEMA.servicecallhistory.Properties.id,
+            SCHEMA.servicecallhistory.Properties.name,
+            SCHEMA.servicecallhistory.Properties.completiondate,
+            SCHEMA.servicecallhistory.Properties.descriptionnote,
+            SCHEMA.servicecallhistory.Properties.resolutionnote,
+            SCHEMA.servicecallhistory.Properties.gpservicecallid,
+            SCHEMA.servicecallhistory.Properties.calltypeid,
+            SCHEMA.servicecallhistory.Properties.employeeid,
+            SCHEMA.servicecallhistory.Properties.callresolutionid,
+            SCHEMA.servicecallhistory.Properties.description,
+            SCHEMA.servicecallhistory.Properties.locationid,
+            SCHEMA.servicecallhistory.Properties.servicecallid,
+            SCHEMA.servicecallhistory.Properties.equipmentid
+        ];
+        var servicecallAttributes = [
+            SCHEMA.servicecall.Properties.id,
+            SCHEMA.servicecall.Properties.gpservicecallid,
+            SCHEMA.servicecall.Properties.description,
+            SCHEMA.servicecall.Properties.completiondate,
+            SCHEMA.servicecall.Properties.dateofcall,
+            SCHEMA.servicecall.Properties.locationid,
+            SCHEMA.servicecall.Properties.calltypeid,
+            SCHEMA.servicecall.Properties.problemtypeid,
+            SCHEMA.servicecall.Properties.callresolutionid,
+            SCHEMA.servicecall.Properties.contractid,
+            SCHEMA.servicecall.Properties.employeeid,
+            SCHEMA.servicecall.Properties.equipmentid
+        ];
+        //============== TOOLBAR ITEMS ================
+        var mainToolbarItems = [
+            ToolbarItemType.title, ToolbarItemType.btnRefresh
+        ];
+
+        $(function () {
+            //============== LOCALIZATION ================
+            MobileCRM.Localization.initialize(function (localization) {
+
+                //============== ANDROID CHECK ================
+                MobileCRM.Platform.preventBackButton(btnBackClicked);
+
+                //============== LOADPANEL ================
+                loading = MobileCRM.UI.Form.showPleaseWait(MobileCRM.Localization.get("Msg.Loading"));
+
+                //============== SCROLLVIEW ================
+                mainScrollView = $("#mainScrollView").dxScrollView({
+                    showScrollbar: "always",
+                    height: function () { return window.innerHeight - 80; },
+                    width: '100%'
+                }).dxScrollView("instance");
+                $(window).resize(function () {
+                    checkIsMultiPanel(mainToolbar); // Update toolbar if needed
+                    repaintScrollView(mainScrollView);
+                });
+
+                //============== TOOLBARS ================
+                mainToolbar = $("#mainToolbar").dxToolbar({
+                    items: (new ToolbarFactory()).addItems(mainToolbarItems)
+                }).dxToolbar("instance");
+
+                //============== ACCORDION ================
+                mainAccordion = $("#mainAccordion").dxAccordion({
+                    collapsible: true,
+                    multiple: false,
+                    selectedIndex: -1,
+                    itemTitleTemplate: function (data, i, element) {
+                        element.append(
+                            $("<div>").append(
+                                $("<span>").append(data.gpservicecallid),
+                                $("<span>").append(formatDate(data.completiondate)).css('float', 'right')
+                            )
+                        );
+                        if (data.description) {
+                            element.append(
+                                $("<div>").append(data.description ? data.description : "")
+                            );
+                        }
+                    },
+                    itemTemplate: function (data, i, element) {
+                        var labels = {};
+                        labels.description = MobileCRM.Localization.get(entityName + "." + SCHEMA.servicecallhistory.Properties.description);
+                        labels.descriptionnote = MobileCRM.Localization.get(entityName + "." + SCHEMA.servicecallhistory.Properties.descriptionnote);
+                        labels.resolutionnote = MobileCRM.Localization.get(entityName + "." + SCHEMA.servicecallhistory.Properties.resolutionnote);
+                        labels.completiondate = MobileCRM.Localization.get(entityName + "." + SCHEMA.servicecallhistory.Properties.completiondate);
+                        labels.calltypeid = MobileCRM.Localization.get(entityName + "." + SCHEMA.servicecallhistory.Properties.calltypeid);
+                        labels.employeeid = MobileCRM.Localization.get(entityName + "." + SCHEMA.servicecallhistory.Properties.employeeid);
+                        labels.callresolutionid = MobileCRM.Localization.get(entityName + "." + SCHEMA.servicecallhistory.Properties.callresolutionid);
+
+                        element.append(
+                            $("<div>").dxBox({
+                                direction: "row",
+                                width: "100%",
+                                items: [
+                                    { ratio: 1, html: "<div id='left_" + data.id + "'>" },
+                                    { ratio: 1, html: "<div id='right_" + data.id + "'>" }
+                                ]
+                            }),
+                            $("<br>"),
+                            $("<div>").append("<b>" + labels.description + ":</b>"),
+                            $("<div>").append(data.description ? data.description : "<br>").css('padding-left', '10px'),
+                            $("<br>"),
+                            $("<div>").append("<b>" + labels.descriptionnote + ":</b>").css('text-align', 'center'),
+                            $("<div>").append(data.descriptionnote ? data.descriptionnote.replace(/\r|\n/g, "<br>") : "<br>").addClass('noteTextArea'),
+                            $("<br>"),
+                            $("<div>").append("<b>" + labels.resolutionnote + ":</b>").css({ 'text-align': 'center', 'padding': '10px' }),
+                            $("<div>").append(data.resolutionnote ? data.resolutionnote.replace(/\r|\n/g, "<br>") : "<br>").addClass('noteTextArea')
+                        ).css('font-family', "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif");
+
+                        $("#left_" + data.id).append(
+                            $("<div>").append("<b>" + labels.completiondate + ":</b>"),
+                            $("<div>").append(formatDate(data.completiondate)).css('padding-left', '10px'),
+                            $("<br>"),
+                            $("<div>").append("<b>" + labels.calltypeid + ":</b>"),
+                            $("<div>").append(data.calltypeid ? data.calltypeid.primaryName : "<br>").click(function () {
+                                if (data.calltypeid)
+                                    MobileCRM.UI.FormManager.showEditDialog(SCHEMA.calltype.name, data.calltypeid.id);
+                            }).addClass('k2ahyperlink').css('padding-left', '10px')
+                        );
+
+                        $("#right_" + data.id).append(
+                            $("<div>").append("<b>" + labels.employeeid + ":</b>"),
+                            $("<div>").append(data.employeeid ? data.employeeid.primaryName : "<br>").css('padding-left', '10px'),
+                            $("<br>"),
+                            $("<div>").append("<b>" + labels.callresolutionid + ":</b>"),
+                            $("<div>").append(data.callresolutionid ? data.callresolutionid.primaryName : "<br>").click(function () {
+                                if (data.callresolutionid)
+                                    MobileCRM.UI.FormManager.showEditDialog(SCHEMA.callresolution.name, data.callresolutionid.id);
+                            }).addClass('k2ahyperlink').css('padding-left', '10px')
+                        );
+                    }
+                }).dxAccordion('instance');
+
+                loadSetupOptions(loadListOptions);
+            }, alertError);
+        });
+
+        //============== LOAD OPTIONS ================
+        function loadListOptions() {
+            MobileCRM.UI.EntityForm.requestObject(function (entityForm) {
+                if (entityForm.entity) {
+                    selected.target = entityForm.entity;
+                    var targetDisplay = selected.target.entityName === SCHEMA.equipment.name ?
+                        MobileCRM.Localization.get(SCHEMA.equipment.name) : MobileCRM.Localization.get(SCHEMA.location.name);
+                    $("#historySummary").append(
+                        $("<div>").append(MobileCRM.Localization.get(entityName + ".Title").format(targetDisplay)),
+                        $("<div>").append(selected.target.entityName === SCHEMA.equipment.name ?
+                            selected.target.properties.name : selected.target.properties.locationid.primaryName)
+                    ).css('font-family', "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif");
+                }
+
+                loadToolbarOptions();
+                loadListItemOptions();
+            }, MobileCRM.bridge.alert);
+        }
+        function loadToolbarOptions() {
+            $("#toolbarTitle").text(MobileCRM.Localization.get("DetailView." + entityName));
+        }
+        function loadListItemOptions() {
+            fetchSystemUser().then(function (res) {
+                selected.systemuser = res;
+                fetchListEntityData();
+            }, MobileCRM.bridge.alert);
+        }
+        function fetchSystemUser() {
+            var deferred = $.Deferred();
+            var entity = new MobileCRM.FetchXml.Entity(SCHEMA.systemuser.name);
+            entity.addAttribute(SCHEMA.systemuser.Properties.id);
+
+            var fetch = new MobileCRM.FetchXml.Fetch(entity);
+            fetch.execute("JSON", function (res) {
+                if (res[0])
+                    return deferred.resolve(res[0]);
+                else
+                    return deferred.reject("Unable to fetch system user");
+            }, function (err) { return deferred.reject("Fetch System User Error: " + err); });
+            return deferred.promise();
+        }
+
+        //============== LOAD DATA ================
+        function fetchListEntityData(isOnline) {
+            var entity = new MobileCRM.FetchXml.Entity(entityName);
+            $(entityAttributes).each(function (index, attribute) {
+                entity.addAttribute(attribute);
+            });
+            entity.orderBy(sortSelector, sortDesc);
+
+            entity.addFilter().where(SCHEMA.servicecallhistory.Properties.createdby, 'eq', selected.systemuser.id);
+            entity.filter.type = 'and';
+
+            if (selected.target) {
+                entity.addFilter().where(SCHEMA.servicecallhistory.Properties.locationid, 'eq', selected.target.properties.locationid.id);
+
+                if (selected.target.entityName === SCHEMA.equipment.name) {
+                    entity.addFilter().where(SCHEMA.servicecallhistory.Properties.equipmentid, 'eq', selected.target.id);
+                }
+                if (selected.target.entityName === SCHEMA.servicecall.name) {
+                    entity.addFilter().where(SCHEMA.servicecallhistory.Properties.servicecallid, 'not-null');
+                }
+            }
+            else
+                MobileCRM.bridge.alert("Unable to Filter Fetch: Missing Location ID");
+
+            var fetch = new MobileCRM.FetchXml.Fetch(entity);
+            var historyLimit = parseInt(setupOptions.HistoryCount ? setupOptions.HistoryCount : 0);
+            fetch.count = historyLimit < 1 ? 3 : historyLimit;
+            fetch.execute(isOnline ? "Online.JSON" : "JSON", function (res) {
+                $(res).each(function (i, history) {
+                    // Need date format for sorting
+                    history.completiondate = new Date(history.completiondate);
+                });
+
+                if (isOnline) {
+                    if (res.length < 1) {
+                        sayLocalization(selected.target.entityName === SCHEMA.servicecall.name ?
+                            "Alert.NoHistoryLocation" : "Alert.NoHistoryEquipment");
+                    }
+                    else {
+                        showToast(MobileCRM.Localization.get("Alert.HistoryUpdated"), 'success');
+                        createLocalData(res);
+                    }
+                }
+
+                entityListData = new DevExpress.data.DataSource({
+                    store: {
+                        type: 'array',
+                        key: 'id',
+                        data: res
+                    },
+                    sort: [{ selector: sortSelector, desc: sortDesc }],
+                    paginate: false
+                });
+                mainAccordion.option('dataSource', entityListData);
+                loading.close();
+            }, alertError);
+        }
+
+        //============== TOOLBAR FUNCTIONS ================
+        function btnRefreshClicked() {
+            if (!selected.target) {
+                MobileCRM.bridge.alert("Unable to load location ID");
+                return;
+            }
+
+            loading = MobileCRM.UI.Form.showPleaseWait(MobileCRM.Localization.get("Msg.Loading"));
+            var locationID = selected.target.properties.locationid.id;
+
+            connectionCheck(true, function () {
+                sendDeleteRequest(locationID).then(function () {
+                    getHistory().then(function () {
+                        fetchListEntityData(true);
+                    }, alertError);
+                }, alertError);
+            });
+        }
+
+        //============== LIST EXECUTIONS ================
+        function sendDeleteRequest(locationID) {
+            // Delete any servicecallhistory with this location on the device
+            var deferred = $.Deferred();
+            if (!locationID)
+                return deferred.reject("Unable to Send Delete Request: Missing location ID");
+
+            var entity = new MobileCRM.FetchXml.Entity(entityName);
+            entity.addAttribute(SCHEMA.servicecallhistory.Properties.id);
+            entity.addFilter().where(SCHEMA.servicecallhistory.Properties.locationid, 'eq', locationID);
+            entity.filter.type = 'and';
+
+            if (selected.target.entityName === SCHEMA.equipment.name) {
+                entity.addFilter().where(SCHEMA.servicecallhistory.Properties.equipmentid, 'eq', selected.target.id);
+            }
+            else if (selected.target.entityName === SCHEMA.servicecall.name) {
+                entity.addFilter().where(SCHEMA.servicecallhistory.Properties.servicecallid, 'not-null');
+            }
+
+            var fetch = new MobileCRM.FetchXml.Fetch(entity);
+            fetch.execute("JSON", function (res) {
+                var itemsDeferred = [];
+
+                $(res).each(function (i, history) {
+                    itemsDeferred.push(deleteRequest(history));
+                });
+
+                $.when.apply($, itemsDeferred).then(function () {
+                    return deferred.resolve();
+                }, function (err) { return deferred.reject(err); });
+            }, function (err) { return deferred.reject("Fetch Delete Request Error: " + err); });
+            return deferred.promise();
+        }
+        function deleteRequest(history) {
+            var deferred = $.Deferred();
+            if (!history)
+                return deferred.reject("Unable to Delete Request: Missing history details");
+
+            MobileCRM.DynamicEntity.deleteById(entityName, history.id,
+                function () { return deferred.resolve(); },
+                function (err) { return deferred.reject("Delete By ID Error: " + err); }
+            );
+            return deferred.promise();
+        }
+
+        function getHistory() {
+            var deferred = $.Deferred();
+            if (!selected.target) {
+                return deferred.reject("Unable to Get History: Missing target entity details");
+            }
+
+            // Middle Tier Entity creation triggers History Plugin
+            var entity = new MobileCRM.DynamicEntity(entityName);
+            var lookupProp = selected.target.entityName + 'id';
+            entity.properties[lookupProp] = new MobileCRM.DynamicEntity(selected.target.entityName, selected.target.id);
+            var saveOnline = true;
+
+            entity.save(function (err) {
+                if (err) {
+                    return deferred.reject("History Create Error:\n" + err);
+                }
+                else {
+                    return deferred.resolve();
+                }
+            }, saveOnline);
+            return deferred.promise();
+        }
+        function createLocalData(data) {
+            // Create local copies of history so it stays on the device until next sync
+            $(data).each(function (i, history) {
+                MobileCRM.DynamicEntity.loadById(entityName, history.id, function (res) { },
+                    function (err) {    // Entity is only on the server
+                        var entity = new MobileCRM.DynamicEntity(entityName);
+
+                        // Entity attributes needed for display
+                        entity.properties.name = history.name;
+                        entity.properties.completiondate = new Date(history.completiondate);
+                        entity.properties.descriptionnote = history.descriptionnote;
+                        entity.properties.resolutionnote = history.resolutionnote;
+                        entity.properties.gpservicecallid = history.gpservicecallid;
+                        entity.properties.description = history.description;
+
+                        entity.properties.calltypeid = history.calltypeid ?
+                            new MobileCRM.DynamicEntity(SCHEMA.calltype.name, history.calltypeid.id) : null;
+                        entity.properties.employeeid = history.employeeid ?
+                            new MobileCRM.DynamicEntity(SCHEMA.employee, history.employeeid.id) : null;
+                        entity.properties.callresolutionid = history.callresolutionid ?
+                            new MobileCRM.DynamicEntity(SCHEMA.callresolution.name, history.callresolutionid.id) : null;
+
+                        // Entity attributes needed for fetch filters
+                        entity.properties.locationid = history.locationid ?
+                            new MobileCRM.DynamicEntity(SCHEMA.location.name, history.locationid.id) : null;
+                        entity.properties.servicecallid = history.servicecallid ?
+                            new MobileCRM.DynamicEntity(SCHEMA.servicecall.name, history.servicecallid.id) : null;
+                        entity.properties.equipmentid = history.equipmentid ?
+                            new MobileCRM.DynamicEntity(SCHEMA.equipment.name, history.equipmentid.id) : null;
+
+                        entity.save(function (err) {
+                            if (err) {
+                                MobileCRM.bridge.alert("Create Local Data Error:\n" + err);
+                            }
+                        });
+                    }
+                );
+            });
+        }
+    </script>
+</body>
+</html>

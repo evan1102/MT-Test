@@ -1,0 +1,209 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <!-- Activate IE9 document mode, if available -->
+    <meta charset="utf-8" http-equiv="X-UA-Compatible" content="IE=edge" />
+    <!-- Defined iOS viewport -->
+    <meta name="viewport" content="initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=false">
+    <!-- Disable iOS Phone No Detection -->
+    <meta name="format-detection" content="telephone=no" />
+    <!-- DevExtreme dependencies -->
+    <script type="text/javascript" src="../../scripts/jquery-3.3.1.min.js"></script>
+    <!-- DevExtreme themes -->
+    <link rel="stylesheet" type="text/css" href="../../css/dx.common.css" />
+    <link rel="stylesheet" type="text/css" href="../../css/dx.light.css" />
+    <!-- A DevExtreme library -->
+    <script type="text/javascript" src="../../scripts/dx.all.js"></script>
+    <!-- Offline HTML JavaScript Bridge-->
+    <script type="text/javascript" src="../../scripts/JSBridge.js"></script>
+    <script type="text/javascript" src="../../scripts/k2aMethods.js"></script>
+    <script type="text/javascript" src="../../enum/Schema.js"></script>
+    <script type="text/javascript" src="../../enum/setupoption.js"></script>
+    <!-- Offline HTML Template Factory-->
+    <script type="text/javascript" src="../../templates/listItem-factory.js"></script>
+    <script type="text/javascript" src="../../templates/toolbar-factory.js"></script>
+    <!-- Offline HTML Styling -->
+    <link rel="stylesheet" type="text/css" href="../../css/k2a.css" />
+    <title>Entity List</title>
+</head>
+<body>
+    <div id="toast"></div>
+    <div id="selectedItems"></div>
+    <div class="fixedPosition">
+        <div id="mainToolbar"></div><br>
+        <div id="listToolbar"></div>
+        <div id="mainScrollView">
+            <div id='mainList'></div>
+        </div>
+        <div id="actionSheet"></div>
+        <div id="filterPopup"></div>
+    </div>
+
+    <script>
+        //============== INITIAL SETTINGS ================
+        var entityName = SCHEMA.resolutionsnippet.name, appointmentID, snippetSeparator = ";";
+        var sortDesc = false, sortSelector = SCHEMA.resolutionsnippet.Properties.gpresolutioncode;
+        //============== OFFLINE DATA ================
+        var entityListData, resolutionNote = "";
+        //============== SELECTED DATA ================
+        var selected = { entityName: null, snippets: [] };
+        //============== FETCH DATA ================
+        var entityAttributes = [
+            SCHEMA.resolutionsnippet.Properties.name,
+            SCHEMA.resolutionsnippet.Properties.gpresolutioncode,
+            SCHEMA.resolutionsnippet.Properties.description,
+            SCHEMA.resolutionsnippet.Properties.isselected
+        ];
+        var listSortItems = [
+            SCHEMA.resolutionsnippet.Properties.gpresolutioncode
+        ];
+        var listSearchItems = [
+            SCHEMA.resolutionsnippet.Properties.gpresolutioncode,
+            SCHEMA.resolutionsnippet.Properties.description
+        ];
+        var listFilterItems = [
+            { dataField: SCHEMA.resolutionsnippet.Properties.gpresolutioncode, dataType: FilterDataType.string },
+            { dataField: SCHEMA.resolutionsnippet.Properties.description, dataType: FilterDataType.string }
+        ];
+        var listItemTemplate = function (data, _, element) {
+            element.append(
+                $('<span>').append(data.gpresolutioncode + ": " + (data.description ? data.description : "")),
+                $('<span>').append(data.name).css({ "float": "right", "font-size": "x-large" })
+            );
+            if (data.name)
+                element.css({ "color": "white", "background-color": "#5174FA" });
+            else
+                element.css({ "color": "black", "background-color": "white" });
+        };
+        //============== TOOLBAR ITEMS ================
+        var listToolbarItems = [
+            ToolbarItemType.btnSort, ToolbarItemType.selectSort, ToolbarItemType.btnFilter
+        ];
+
+        $(function () {
+            //============== LOCALIZATION ================
+            MobileCRM.Localization.initialize(function (localization) {
+
+                //============== LOADPANEL ================
+                loading = MobileCRM.UI.Form.showPleaseWait(MobileCRM.Localization.get("Msg.Loading"));
+
+                //============== SCROLLVIEW ================
+                mainScrollView = $("#mainScrollView").dxScrollView({
+                    showScrollbar: "always",
+                    height: function () { return window.innerHeight - 80; },
+                    width: '100%'
+                }).dxScrollView("instance");
+                $(window).resize(function () {
+                    repaintScrollView(mainScrollView);
+                });
+
+                //============== TOOLBARS ================
+                listToolbar = $("#listToolbar").dxToolbar({
+                    items: (new ToolbarFactory()).addItems(listToolbarItems)
+                }).dxToolbar("instance");
+
+                //============== LIST ================
+                mainList = (new ListFactory()).createItem("#mainList", entityName, [
+                    { name: 'searchExpr', value: listSearchItems },
+                    { name: 'itemTemplate', value: listItemTemplate }
+                ]);
+
+                //============== SELECTED PREVIEW  ================
+                $("#selectedItems").dxBox({
+                    direction: "row", width: "100%",
+                    items: [
+                        { ratio: 1, html: "<div id='preview'>" },
+                        { ratio: 0, baseSize: 60, html: "<span id='btnAdd'>" }
+                    ]
+                });
+                preview = $("#preview").dxTextArea({
+                    readOnly: true
+                }).dxTextArea("instance");
+                $("#btnAdd").dxButton({ icon: 'plus', onClick: btnAddClicked, stylingMode: 'text' }).css("float", "right");
+
+                loadListOptions();
+            }, alertError);
+        });
+
+        //============== LOAD OPTIONS ================
+        function loadListOptions() {
+            MobileCRM.UI.IFrameForm.requestObject(function (iFrameForm) {
+                appointmentID = iFrameForm.options.appointmentID;
+            }, MobileCRM.bridge.alert);
+            loadToolbarOptions();
+            loadListItemOptions();
+        }
+        function loadToolbarOptions() {
+            if (typeof listFilterItems !== 'undefined' && listFilterItems.length > 0)
+                (new FilterFactory()).createFilterPopup(mainList, listToolbar);
+
+            loadSortItemsLocalization(listSortItems).then(function (sortDataSource) {
+                updateToolbarItem(listToolbar, ToolbarItemType.selectSort, "options.dataSource", sortDataSource);
+                updateToolbarItem(listToolbar, ToolbarItemType.selectSort, "options.value", sortSelector);
+            });
+        }
+        function loadListItemOptions() {
+            fetchListEntityData();
+        }
+
+        //============== LOAD DATA ================
+        function fetchListEntityData() {
+            var entity = new MobileCRM.FetchXml.Entity(entityName);
+            $(entityAttributes).each(function (index, attribute) {
+                entity.addAttribute(attribute);
+            });
+            entity.orderBy(sortSelector, sortDesc);
+
+            var fetch = new MobileCRM.FetchXml.Fetch(entity);
+            fetch.execute("JSON", function (res) {
+                loadListData(mainList, res);
+                entityListData = res;
+                loading.close();
+            }, alertError);
+        }
+
+        //============== TOOLBAR FUNCTIONS ================
+        function btnSortClicked() {
+            loadListData(mainList, entityListData);
+        }
+        function sortSelected() {
+            loadListData(mainList, entityListData);
+        }
+
+        //============== LIST ITEM FUNCTIONS ================
+        function listItemClicked() {
+            var description = selected[entityName].description ? selected[entityName].description : " ";
+            var descriptionIndex = selected.snippets.indexOf(description);
+
+            if (descriptionIndex > -1) {    // Remove Snippet
+                selected[entityName].name = "";
+                selected.snippets.splice(descriptionIndex, 1);
+                resolutionNote = resolutionNote.replace(description + snippetSeparator + " ", '');
+                $(entityListData).each(function (i, snippet) {
+                    if (snippet.name && parseInt(snippet.name) > descriptionIndex)
+                        snippet.name = parseInt(snippet.name) - 1;
+                });
+            }
+            else {  // Add Snippet
+                selected.snippets.push(description);
+                selected[entityName].name = selected.snippets.indexOf(description) + 1;
+                resolutionNote += description + snippetSeparator + " ";
+            }
+
+            loadListData(mainList, entityListData);
+            preview.option('value', resolutionNote);
+        }
+
+        //============== LIST EXECUTIONS ================
+        function btnAddClicked() {
+            if (resolutionNote.length > 0)
+                MobileCRM.bridge.raiseGlobalEvent("AddResolutionSnippet", {
+                    appointmentID: appointmentID,
+                    resolutionSnippet: resolutionNote,
+                    snippetSeparator: snippetSeparator
+                });
+            MobileCRM.bridge.closeForm();
+        }
+    </script>
+</body>
+</html>

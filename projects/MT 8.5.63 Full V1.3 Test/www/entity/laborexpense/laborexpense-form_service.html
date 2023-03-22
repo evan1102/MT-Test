@@ -1,0 +1,389 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <!-- Activate IE9 document mode, if available -->
+    <meta charset="utf-8" http-equiv="X-UA-Compatible" content="IE=edge" />
+    <!-- Defined iOS viewport -->
+    <meta name="viewport" content="initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=false">
+    <!-- Disable iOS Phone No Detection -->
+    <meta name="format-detection" content="telephone=no" />
+    <!-- DevExtreme dependencies -->
+    <script type="text/javascript" src="../../scripts/jquery-3.3.1.min.js"></script>
+    <!-- A DevExtreme library -->
+    <script type="text/javascript" src="../../scripts/dx.all.js"></script>
+    <!-- Offline HTML JavaScript Bridge-->
+    <script type="text/javascript" src="../../scripts/JSBridge.js"></script>
+    <script type="text/javascript" src="../../scripts/k2aMethods.js"></script>
+    <script type="text/javascript" src="../../enum/Schema.js"></script>
+    <script type="text/javascript" src="../../enum/setupoption.js"></script>
+    <script type="text/javascript" src="laborexpense-form.js"></script>
+    <title>Entity Form</title>
+</head>
+<body>
+    <script>
+        //============== INITIAL SETTINGS ================
+        var entityName = "laborexpense", hasTimelog = false;
+        var isProcessed = true, isRejected = false, isEditable = false;
+        var dateOutOfRangeMsg = " must be in the current or previous work week";
+        //============== SELECTED DATA ================
+        var selected = { 'employee': null, 'appointment': null, 'appointmentstatusid': null, 'workcrew': null };
+        //============== FETCH DATA ================
+        var requiredSetupOptions = [
+            SETUPOPTION.DefaultBilledExpensePayCode,
+            SETUPOPTION.DefaultBilledHourlyPayCode,
+            SETUPOPTION.DefaultBilledTravelPayCode,
+            SETUPOPTION.DefaultCostCodeExpense,
+            SETUPOPTION.DefaultCostCodeLabor,
+            SETUPOPTION.DefaultWeekday,
+            SETUPOPTION.TimeLogLockLaborTime,
+            SETUPOPTION.TimeLogLockTimeInTimeOut,
+            SETUPOPTION.TimeLogRoundingInterval,
+            SETUPOPTION.UseExpense,
+            SETUPOPTION.UseLabor,
+            SETUPOPTION.UseManagerApproval,
+            SETUPOPTION.UseTechnicianHelper,
+            SETUPOPTION.UseTravel,
+            SETUPOPTION.UseWorkCrewService
+        ];
+        //============== ENUM ================
+        const EntryType = {
+            1: "Labor",
+            2: "Expense",
+            3: "Travel"
+        };
+
+        $(function () {
+            //============== ANDROID CHECK ================
+            MobileCRM.Platform.preventBackButton(btnBackClicked);
+
+            loadSetupOptions(loadFormOptions);
+
+            MobileCRM.UI.EntityForm.onChange(formValueChanged, true);
+            MobileCRM.UI.EntityForm.onSave(btnSaveClicked, true);
+            MobileCRM.UI.EntityForm.onCommand("Delete", btnDeleteClicked, true);
+            MobileCRM.bridge.onGlobalEvent("SaveWorkCrew", function (args) {
+                if (args.laborexpenseID === selected[entityName].id)
+                    saveWorkCrew(args.employeeList);
+            }, true);
+        });
+
+        //============== LOAD OPTIONS ================
+        function loadFormItems_TransactionType() {
+            MobileCRM.UI.EntityForm.requestObject(function (entityForm) {
+                var detailView = entityForm.getDetailView(entityName);
+
+                detailView.getItemByName('appointmentid').isEnabled = false;
+                detailView.getItemByName('appointmentid').isVisible = false;
+
+                detailView.getItemByName('equipmentid').isVisible = !isEditable && typeof selected[entityName].equipmentid !== 'undefined';
+                detailView.getItemByName('^BtnWorkCrew').isVisible = !isProcessed && !isRejected && !hasTimelog
+                    && !selected[entityName].workcrewid && setupOptions.UseWorkCrewService;
+
+                createAppointmentTextFormItem().then(loadFormValues, MobileCRM.bridge.alert);
+            }, MobileCRM.bridge.alert);
+        }
+
+        //============== LOAD DATA ================
+        function loadFormValues() {
+            MobileCRM.UI.EntityForm.requestObject(function (entityForm) {
+                if (isEditable) {
+                    if (entityForm.entity.isNew) {
+                        entityForm.entity.properties.cost = 0;
+                        entityForm.entity.properties.quantity = 0;
+                    }
+
+                    var itemsDeferred = [setMinMaxDates()];
+
+                    if (entityForm.entity.isNew || !isProcessed)
+                        itemsDeferred.push(loadAppointmentData());
+                    if (entityForm.entity.isNew)
+                        itemsDeferred.push(loadCurrentEmployee());
+
+                    $.when.apply($, itemsDeferred).then(function () {
+                        if (entityForm.isNew || !isProcessed) {
+                            setHoursUnits();
+                            createAppointmentStatusFormItem()
+                                .then(fetchEquipment, MobileCRM.bridge.alert)
+                                .then(function () {
+                                    fetchCostCode().then(setDefaultCostCode, MobileCRM.bridge.alert);
+                                    fetchPayCode().then(setDefaultBilledPayCode, MobileCRM.bridge.alert);
+                                });
+                        }
+                        else {
+                            fetchEquipment().then(function () {
+                                fetchCostCode().then(setDefaultCostCode, MobileCRM.bridge.alert);
+                                fetchPayCode().then(setDefaultBilledPayCode, MobileCRM.bridge.alert);
+                            });
+                        }
+                    }, MobileCRM.bridge.alert);
+                }
+            }, MobileCRM.bridge.alert);
+        }
+
+        function fetchEquipment() {
+            var deferred = $.Deferred();
+            fetchAssignedEquipment().then(function (assignedEquip) {
+                if (assignedEquip.length > 0) {
+                    createEquipmentLookup(assignedEquip).then(function () {
+                        return deferred.resolve();
+                    });
+                }
+                else {
+                    return deferred.resolve();
+                }
+            }, MobileCRM.bridge.alert);
+            return deferred.promise();
+        }
+        function fetchAssignedEquipment() {
+            var deferred = $.Deferred();
+            var gpservicecallid = selected[entityName].gpjobnumber ? selected[entityName].gpjobnumber :
+                selected.appointment.gpservicecallid ? selected.appointment.gpservicecallid : null;
+
+            if (!gpservicecallid)
+                return deferred.reject("Unable to load Equipment");
+
+            var entity = new MobileCRM.FetchXml.Entity(SCHEMA.task.name);
+            entity.addAttribute('gpequipmentid');
+
+            entity.addFilter().where('gpservicecallid', 'eq', gpservicecallid);
+            entity.addFilter().where('gpequipmentid', 'ne', "PENDING");
+            entity.addFilter().where('gpequipmentid', 'not-null');
+            entity.filter.type = 'and';
+
+            var fetch = new MobileCRM.FetchXml.Fetch(entity);
+            fetch.execute("JSON", function (res) {
+                var assignedEquip = [];
+                $(res).each(function (i, task) {
+                    assignedEquip.push(task.gpequipmentid);
+                });
+
+                return deferred.resolve(assignedEquip);
+            }, function (err) { return deferred.reject(err); });
+            return deferred.promise();
+        }
+        function createEquipmentLookup(assignedEquip) {
+            var deferred = $.Deferred();
+            var lookupForm = new MobileCRM.UI.LookupForm();
+
+            var fetch = "<fetch><entity name='equipment'><filter type='or'>";
+            $(assignedEquip).each(function (i, gpequipmentid) {
+                fetch += "<condition attribute='gpequipmentid' operator='eq' value='" + gpequipmentid + "' />";
+            });
+            fetch += "</filter></entity></fetch>";
+
+            lookupForm.addEntityFilter("equipment", fetch);
+            lookupForm.allowNull = false;
+            lookupForm.addView("equipment", "Equipment");
+
+            MobileCRM.UI.EntityForm.requestObject(function (entityForm) {
+                var detailView = entityForm.getDetailView(entityName);
+                var equipLink = detailView.getItemByName("equipmentLookup");
+                var equipValue = selected[entityName].equipmentid ?
+                    selected[entityName].equipmentid.primaryName : "Click To Select";
+
+                if (equipLink) {
+                    equipLink.setTypedValue("value", "System.String", equipValue);
+                    equipLink.isVisible = parseInt(entityForm.entity.properties.costtype) !== CostType.Travel;
+                }
+                else {
+                    equipLink = new MobileCRM.UI.DetailViewItems.LinkItem("equipmentLookup", "Equipment");
+                    equipLink.value = equipValue;
+                    equipLink.isVisible = parseInt(entityForm.entity.properties.costtype) !== CostType.Travel;
+                    detailView.insertItem(equipLink, detailView.getItemIndex("equipmentid") + 1);
+                }
+
+                detailView.registerClickHandler(equipLink, function (itemName, detailViewName) {
+                    lookupForm.show(equipmentSelected, MobileCRM.bridge.alert, null);
+                });
+                return deferred.resolve();
+            }, MobileCRM.bridge.alert);
+            return deferred.promise();
+        }
+        function equipmentSelected(equipment) {
+            MobileCRM.UI.EntityForm.requestObject(function (entityForm) {
+                entityForm.entity.properties.equipmentid = new MobileCRM.DynamicEntity('equipment', equipment.id);
+                entityForm.entity.properties.gpequipmentid = equipment.properties.gpequipmentid;
+
+                entityForm.getDetailView(entityName)
+                    .getItemByName("equipmentLookup").value = equipment.properties.name;
+            }, MobileCRM.bridge.alert);
+        }
+
+        function fetchCostCode() {
+            var deferred = $.Deferred();
+            MobileCRM.UI.EntityForm.requestObject(function (entityForm) {
+                var costcodeCondition = "";
+                switch (parseInt(entityForm.entity.properties.costtype)) {
+                    case CostType.Labor:
+                        costcodeCondition = "<condition attribute='code' operator='gt' value='5' />";
+                        break;
+                    case CostType.Expense:
+                        costcodeCondition = "<condition attribute='code' operator='le' value='5' />" +
+                            "<condition attribute='code' operator='ne' value='3' />";
+                        break;
+                    case CostType.Travel:
+                        costcodeCondition = "<condition attribute='code' operator='eq' value='5' />";
+                        break;
+                }
+                var fetch = "<fetch version='1.0'><entity name='costcode'><filter type='and'>" +
+                    costcodeCondition +
+                    "</filter></entity></fetch>";
+
+                addFetchFilter("costcodeid", "costcode", fetch, entityName);
+                return deferred.resolve();
+            }, function (err) { return deferred.reject(err); });
+            return deferred.promise();
+        }
+        function setDefaultCostCode() {
+            if (selected[entityName].costcodeid)
+                return; // Already has cost code, do not load default value
+
+            MobileCRM.UI.EntityForm.requestObject(function (entityForm) {
+                var defaultValue = null;
+                switch (parseInt(entityForm.entity.properties.costtype)) {
+                    case CostType.Labor:
+                        defaultValue = setupOptions.DefaultCostCodeLabor;
+                        break;
+                    case CostType.Expense:
+                        defaultValue = setupOptions.DefaultCostCodeExpense;
+                        break;
+                    case CostType.Travel:
+                        defaultValue = "OTHER";
+                        break;
+                }
+
+                if (defaultValue) {
+                    var entity = new MobileCRM.FetchXml.Entity(SCHEMA.costcode.name);
+                    entity.addAttribute('id');
+                    entity.addFilter().where('name', 'eq', defaultValue);
+
+                    var fetch = new MobileCRM.FetchXml.Fetch(entity);
+                    fetch.execute("JSON", function (res) {
+                        if (res[0])
+                            MobileCRM.UI.EntityForm.requestObject(function (entityForm) {
+                                var formItem = entityForm.getDetailView(entityName).getItemByName("costcodeid");
+                                formItem.value = new MobileCRM.DynamicEntity("costcode", res[0].id);
+                            }, MobileCRM.bridge.alert);
+                    }, MobileCRM.bridge.alert);
+                }
+            }, MobileCRM.bridge.alert);
+        }
+
+        //============== FORM ITEM FUNCTIONS ================
+        function entryTypeChanged_TransactionType(entityForm, entryType) {
+            entityForm.entity.properties.costcodeid = null;
+
+            var equipLink = entityForm.getDetailView(entityName).getItemByName("equipmentLookup");
+            if (equipLink)
+                equipLink.isVisible = entryType !== CostType.Travel;
+
+            fetchCostCode().then(setDefaultCostCode, MobileCRM.bridge.alert);
+            fetchPayCode().then(setDefaultBilledPayCode, MobileCRM.bridge.alert);
+        }
+
+        //============== FORM EXECUTIONS ================
+        function createEntity(entityForm) {
+            entityForm.entity.properties.gpjobnumber = selected.appointment.gpservicecallid;
+            entityForm.entity.properties.gpappointmentid = selected.appointment.gpappointmentid;
+            entityForm.entity.properties.name =
+                entityForm.entity.properties.transactiontype + " : " + entityForm.entity.properties.gpjobnumber;
+
+            if (parseInt(entityForm.entity.properties.costtype) === CostType.Travel) {
+                entityForm.entity.properties.equipmentid = null;
+                entityForm.entity.properties.gpequipmentid = null;
+            }
+
+            entityForm.entity.save(error_saveLaborexpense);
+        }
+        function updateEntity(entityForm) {
+            if (parseInt(entityForm.entity.properties.costtype) === CostType.Travel) {
+                entityForm.entity.properties.equipmentid = null;
+                entityForm.entity.properties.gpequipmentid = null;
+            }
+            if (hasTimelog)
+                entityForm.entity.properties.transactiondate = new Date(entityForm.entity.properties.gptimein);
+
+            entityForm.entity.save(error_saveLaborexpense);
+        }
+
+        function updateAppointment() {
+            if (selected.appointmentstatusid)
+                MobileCRM.DynamicEntity.loadById("appointment", selected.appointment.id, function (apptEntity) {
+                    apptEntity.properties.appointmentstatusid = new MobileCRM.DynamicEntity('appointmentstatus', selected.appointmentstatusid);
+                    apptEntity.save(error_updateAppointment);
+                }, alertOnSave);
+            else
+                setCleanAndClose();
+        }
+        function error_updateAppointment(err) {
+            if (err)
+                alertOnSave(err);
+            else
+                updateApptStatusTimeStamp(this.properties);
+        }
+
+        function updateApptStatusTimeStamp(apptProps) {
+            fetchApptStatusTimeStamp(apptProps).then(function (timestampID) {
+                MobileCRM.DynamicEntity.loadById("appointmentstatus", apptProps.appointmentstatusid.id, function (apptStatus) {
+                    var timestamp = new MobileCRM.DynamicEntity("appointmentstatustimestamp", timestampID);
+                    timestamp.properties.name = apptStatus.properties.name;
+                    timestamp.properties.appointmentstatus = apptStatus.properties.name;
+                    timestamp.properties.appointmentstatusdate = new Date();
+
+                    timestamp.properties.gpappointmentid = apptProps.gpappointmentid;
+                    timestamp.properties.gpservicecallid = apptProps.gpservicecallid;
+                    timestamp.properties.appointmentid = new MobileCRM.DynamicEntity('appointment', apptProps.id);
+
+                    timestamp.save(error_updateApptStatusTimeStamp);
+                }, function (err) { alertOnSave("Appointment Status Load Error: " + err); });
+            }, function (err) { alertOnSave("Timestamp Fetch Error: " + err); });
+        }
+        function fetchApptStatusTimeStamp(apptProps) {
+            var deferred = $.Deferred();
+            var entity = new MobileCRM.FetchXml.Entity(SCHEMA.appointmentstatustimestamp.name);
+            entity.addAttribute('id');
+            entity.addFilter().where("appointmentid", 'eq', apptProps.id);
+
+            var fetch = new MobileCRM.FetchXml.Fetch(entity);
+            fetch.execute("JSON", function (res) {
+                return deferred.resolve(res[0] ? res[0].id : null);
+            }, function (err) { return deferred.reject(err); });
+
+            return deferred.promise();
+        }
+        function error_updateApptStatusTimeStamp(err) {
+            if (err)
+                alertOnSave(err);
+            else
+                setCleanAndClose();
+        }
+
+        function createWorkCrewEntity() {
+            var deferred = $.Deferred();
+            MobileCRM.UI.EntityForm.requestObject(function (entityForm) {
+                entityForm.entity.properties.workcrewid = new MobileCRM.DynamicEntity('workcrew', selected.workcrew.id);
+
+                if (entityForm.entity.isNew) {
+                    entityForm.entity.properties.gpjobnumber = selected.appointment.gpservicecallid;
+                    entityForm.entity.properties.gpappointmentid = selected.appointment.gpappointmentid;
+                    entityForm.entity.properties.name =
+                        entityForm.entity.properties.transactiontype + " : " + entityForm.entity.properties.gpjobnumber;
+                }
+
+                if (parseInt(entityForm.entity.properties.costtype) === CostType.Travel) {
+                    entityForm.entity.properties.equipmentid = null;
+                    entityForm.entity.properties.gpequipmentid = null;
+                }
+
+                entityForm.entity.save(function (err) {
+                    if (err)
+                        return deferred.reject(err);
+                    else
+                        return deferred.resolve(this.properties);
+                });
+            }, function (err) { return deferred.reject(err); });
+            return deferred.promise();
+        }
+    </script>
+</body>
+</html>

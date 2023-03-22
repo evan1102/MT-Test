@@ -1,0 +1,748 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <!-- Activate IE9 document mode, if available -->
+    <meta charset="utf-8" http-equiv="X-UA-Compatible" content="IE=edge" />
+    <!-- Defined iOS viewport -->
+    <meta name="viewport" content="initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=false">
+    <!-- Disable iOS Phone No Detection -->
+    <meta name="format-detection" content="telephone=no" />
+    <!-- DevExtreme dependencies -->
+    <script type="text/javascript" src="../../scripts/jquery-3.3.1.min.js"></script>
+    <!-- DevExtreme themes -->
+    <link rel="stylesheet" type="text/css" href="../../css/dx.common.css" />
+    <link rel="stylesheet" type="text/css" href="../../css/dx.light.css" />
+    <!-- A DevExtreme library -->
+    <script type="text/javascript" src="../../scripts/dx.all.js"></script>
+    <!-- Offline HTML JavaScript Bridge-->
+    <script type="text/javascript" src="../../scripts/JSBridge.js"></script>
+    <script type="text/javascript" src="../../scripts/k2aMethods.js"></script>
+    <script type="text/javascript" src="../../enum/Schema.js"></script>
+    <script type="text/javascript" src="../../enum/setupoption.js"></script>
+    <!-- Offline HTML Template Factory-->
+    <script type="text/javascript" src="../../templates/formItem-factory.js"></script>
+    <script type="text/javascript" src="../../templates/toolbar-factory.js"></script>
+    <!-- Offline HTML Styling -->
+    <link rel="stylesheet" type="text/css" href="../../css/k2a.css" />
+    <title>Entity Form</title>
+    <style>
+        .tabForm {
+            background-color: white;
+            padding: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div id="toast"></div>
+    <div class="fixedPosition">
+        <div id="mainScrollView">
+            <div id='tabAccordion'>
+                <div id='options'>
+                    <div id="settingsForm" class="tabForm"></div>
+                </div>
+                <div id='jobSafetyAnalysis'>
+                    <div id="jsaForm" class="tabForm"></div>
+                </div>
+                <div id='timeEntry'>
+                    <div id="unbilledForm" class="tabForm"></div>
+                    <div id="billableForm" class="tabForm"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+        //============== INITIAL SETTINGS ================
+        var entityName = SCHEMA.setupoptionuser.name;
+        var paycodeData = [], defaultPaycodeData = [];
+        const PayCode = {
+            Hourly: "Hourly",
+            Expense: "Expense",
+            Travel: "Travel"
+        }
+        var jsaData = [], hasInspections = false;
+        const JSA = {
+            UseLegacyJSA: "UseLegacyJSA"
+        }
+        //============== SELECTED DATA ================
+        var selected = { employee: null, systemuser: null };
+        //============== FETCH DATA ================
+        var requiredSetupOptions = [SETUPOPTION.UseJobSafetyTasks];
+        var paycodeAttributes = [
+            SCHEMA.paycode.Properties.id,
+            SCHEMA.paycode.Properties.name,
+            SCHEMA.paycode.Properties.billtype,
+            SCHEMA.paycode.Properties.paycodetype,
+            SCHEMA.paycode.Properties.gppaycodeid,
+            SCHEMA.paycode.Properties.description
+        ];
+        var setupoptionuserAttributes = [
+            SCHEMA.setupoptionuser.Properties.id,
+            SCHEMA.setupoptionuser.Properties.name,
+            SCHEMA.setupoptionuser.Properties.optionvalue,
+            SCHEMA.setupoptionuser.Properties.modifiedon
+        ];
+        //============== FORM ITEMS ================
+        var settingsFormItems = [
+            { dataField: SCHEMA.employee.Properties.gptechnicianid, editorType: EditorType.dxTextBox },
+            { dataField: SCHEMA.employee.Properties.gpemployeeid, editorType: EditorType.dxTextBox },
+            { dataField: SCHEMA.employee.Properties.employeename, editorType: EditorType.dxTextBox },
+            { dataField: 'woodford', editorType: EditorType.dxTextBox }
+        ];
+        var settingsFormItemOptions = {};
+
+        var timeEntryFormItems = [
+            { dataField: PayCode.Hourly, editorType: EditorType.dxSelectBox },
+            { dataField: PayCode.Expense, editorType: EditorType.dxSelectBox },
+            { dataField: PayCode.Travel, editorType: EditorType.dxSelectBox }
+        ];
+        var paycodeitemTemplate = function (data, _, element) {
+            return element.append(
+                $("<div>").append(data.gppaycodeid).css('font-size', 'large'),
+                $("<div>").append(data.description)
+            );
+        };
+        var valueClearedSetFormDirty = function (e) {
+            if (e.previousValue && !e.value)
+                MobileCRM.UI.IFrameForm.setDirty();
+        };
+        var timeEntryFormItemOptions = {
+            Hourly: {
+                itemTemplate: paycodeitemTemplate, valueExpr: SCHEMA.paycode.Properties.gppaycodeid,
+                onValueChanged: valueClearedSetFormDirty, onOpened: null, showClearButton: true
+            },
+            Expense: {
+                itemTemplate: paycodeitemTemplate, valueExpr: SCHEMA.paycode.Properties.gppaycodeid,
+                onValueChanged: valueClearedSetFormDirty, onOpened: null, showClearButton: true
+            },
+            Travel: {
+                itemTemplate: paycodeitemTemplate, valueExpr: SCHEMA.paycode.Properties.gppaycodeid,
+                onValueChanged: valueClearedSetFormDirty, onOpened: null, showClearButton: true
+            }
+        };
+
+        var jsaFormItems = [
+            { dataField: JSA.UseLegacyJSA, editorType: EditorType.dxSwitch }
+        ];
+        var jsaFormItemOptions = {
+            UseLegacyJSA: {
+                onValueChanged: valueClearedSetFormDirty, width: "auto",
+                switchedOffText: entityName + "." + JSA.UseLegacyJSA + ".0",
+                switchedOnText: entityName + "." + JSA.UseLegacyJSA + ".1"
+            }
+        };
+
+        $(function () {
+            //============== LOCALIZATION ================
+            MobileCRM.Localization.initialize(function (localization) {
+
+                //============== SCROLLVIEW ================
+                $(window).resize(updateAccordionScrollViewHeight);
+
+                //============== FORM ================
+                settingsForm = $("#settingsForm").dxForm({
+                    readOnly: true
+                }).dxForm('instance');
+
+                unbilledForm = $("#unbilledForm").dxForm({}).dxForm('instance');
+                billableForm = $("#billableForm").dxForm({}).dxForm('instance');
+
+                jsaForm = $("#jsaForm").dxForm({}).dxForm('instance');
+
+                //============== ACCORDION ================
+                tabAccordion = $("#tabAccordion").dxAccordion({
+                    collapsible: false,
+                    multiple: false,
+                    selectedIndex: 2,
+                    dataSource: [
+                        { title: MobileCRM.Localization.get("Setup.Options") },
+                        { title: MobileCRM.Localization.get("Setup.JSA"), visible: hasInspections },
+                        { title: MobileCRM.Localization.get("Setup.TimeEntry") }
+                    ],
+                    itemTitleTemplate: function (data, i, element) {
+                        element.append(data.title);
+                    },
+                    itemTemplate: function (data, i, element) {
+                        if (i === 0) {  // User Settings
+                            element.append(
+                                $("<h2>").text(MobileCRM.Localization.get("Setup.UserSettings")),
+                                settingsForm.element()
+                            ).css('background-color', '#e6e6e6');
+                        }
+                        else if (i === 1) { // JSA Settings
+                            element.append(
+                                $("<h2>").append(MobileCRM.Localization.get("Setup.JSASettings")),
+                                $("<h3>").append(MobileCRM.Localization.get("Setup.JSADescription")),
+                                jsaForm.element()
+                            ).css('background-color', '#e6e6e6');
+                        }
+                        else {  // Time Entry Settings
+                            var scrollView = $("<div>").attr('id', 'scrollView');
+                            scrollView.append(
+                                $("<h2>").text(MobileCRM.Localization.get("Setup.Unbilled")),
+                                unbilledForm.element(),
+                                $("<h2>").text(MobileCRM.Localization.get("Setup.Billable")),
+                                billableForm.element()
+                            );
+
+                            scrollView.dxScrollView({
+                                showScrollbar: 'always',
+                                width: '100%'
+                            });
+                            element.append(scrollView).css('background-color', '#e6e6e6');
+                            updateAccordionScrollViewHeight();
+                        }
+                    }
+                }).dxAccordion('instance');
+
+                //============== EVENT HANDLERS ================
+                MobileCRM.UI.IFrameForm.onSave(btnSaveClicked, true);
+
+                loadSetupOptions(loadFormOptions);
+            }, alertError);
+        });
+
+        //============== LOAD OPTIONS ================
+        function loadFormOptions() {
+            MobileCRM.UI.IFrameForm.requestObject(function (iFrameForm) {
+                iFrameForm.saveBehavior = 2;    // Save And Close
+
+                checkIfHasInspections().then(function (result) {
+                    hasInspections = result;
+                    loadFormItems();
+                });
+            }, MobileCRM.bridge.alert);
+        }
+        function checkIfHasInspections() {
+            var deferred = $.Deferred();
+            MobileCRM.Application.checkUserRoles(["Inspector"], function (roleCount) {
+                if (roleCount !== 1) {
+                    return deferred.resolve(false);
+                }
+                else {
+                    var entity = new MobileCRM.FetchXml.Entity(SCHEMA.resco_questionnaire.name);
+                    entity.addAttribute(SCHEMA.resco_questionnaire.Properties.resco_name);
+                    var fetch = new MobileCRM.FetchXml.Fetch(entity);
+                    fetch.execute("JSON",
+                        function (res) { return deferred.resolve(true); },
+                        function (err) { return deferred.resolve(false); }
+                    );
+                }
+            }, alertError);
+            return deferred.promise();
+        }
+        function loadFormItems() {
+            settingsForm.option("items", (new FormItemFactory()).createAndUpdateItems(settingsFormItems, settingsFormItemOptions));
+
+            $(timeEntryFormItems).each(function (i, item) {
+                item.label = MobileCRM.Localization.get("Setup." + item.dataField);
+            });
+            unbilledForm.option("items", (new FormItemFactory()).createAndUpdateItems(timeEntryFormItems, timeEntryFormItemOptions));
+            billableForm.option("items", (new FormItemFactory()).createAndUpdateItems(timeEntryFormItems, timeEntryFormItemOptions));
+
+            tabAccordion.option('items[1].visible', hasInspections && setupOptions.UseJobSafetyTasks);
+            if (hasInspections && setupOptions.UseJobSafetyTasks) {
+                jsaFormItemOptions.UseLegacyJSA.switchedOffText = MobileCRM.Localization.get(jsaFormItemOptions.UseLegacyJSA.switchedOffText);
+                jsaFormItemOptions.UseLegacyJSA.switchedOnText = MobileCRM.Localization.get(jsaFormItemOptions.UseLegacyJSA.switchedOnText);
+                jsaForm.option("items", (new FormItemFactory().createAndUpdateItems(jsaFormItems, jsaFormItemOptions)));
+            }
+
+            loadFormValues();
+        }
+
+        function updateAccordionScrollViewHeight() {
+            MobileCRM.bridge.getWindowSize(function (obj) {
+                var scrollView = $("#scrollView").dxScrollView('instance');
+                if (scrollView) {
+                    var accordionItemCount = tabAccordion.option('dataSource').length;
+                    var accordionItemTitleHeight = $(".dx-accordion-item-title").outerHeight();
+                    var accordionItemBodyPadding = $(".dx-accordion-item-body").outerHeight() - $(".dx-accordion-item-body").height();
+                    var scrollViewHeight = obj.height - (accordionItemCount * accordionItemTitleHeight) - accordionItemBodyPadding;
+
+                    if (scrollViewHeight > 0) {
+                        scrollView.option('height', scrollViewHeight);
+                    }
+                }
+            }, MobileCRM.bridge.alert);
+        }
+
+        //============== LOAD DATA ================
+        function loadFormValues() {
+            fetchCurrentEmployee()
+                .then(fetchPayCodes, MobileCRM.bridge.alert)
+                .then(loadDataSources, MobileCRM.bridge.alert)
+                .then(fetchSystemUser, MobileCRM.bridge.alert)
+                .then(performDefaultValuesMaintenance, MobileCRM.bridge.alert)
+                .then(loadDefaultValues, MobileCRM.bridge.alert);
+            fetchWoodfordProject();
+        }
+
+        function fetchCurrentEmployee() {
+            var deferred = $.Deferred();
+
+            getEmployeeID(function (gpemployeeid) {
+                var entity = new MobileCRM.FetchXml.Entity(SCHEMA.employee.name);
+                entity.addAttribute(SCHEMA.employee.Properties.id);
+                entity.addAttribute(SCHEMA.employee.Properties.gptechnicianid);
+                entity.addAttribute(SCHEMA.employee.Properties.gpemployeeid);
+                entity.addAttribute(SCHEMA.employee.Properties.employeename);
+                entity.addFilter().where(SCHEMA.employee.Properties.gpemployeeid, 'eq', gpemployeeid);
+
+                var fetch = new MobileCRM.FetchXml.Fetch(entity);
+                fetch.execute("JSON", function (res) {
+                    if (res.length === 1) {
+                        selected.employee = res[0];
+                        settingsForm.updateData(SCHEMA.employee.Properties.gptechnicianid, res[0].gptechnicianid);
+                        settingsForm.updateData(SCHEMA.employee.Properties.gpemployeeid, res[0].gpemployeeid);
+                        settingsForm.updateData(SCHEMA.employee.Properties.employeename, res[0].employeename);
+                        return deferred.resolve(res[0]);
+                    }
+                    else if (res.length > 1)
+                        return deferred.reject("Multiple Employees have the same gpemployeeid");
+                    else
+                        return deferred.reject("Unable to load Current Employee");
+                }, function (err) { return deferred.reject("Get Employee ID error: " + err); });
+            });
+            return deferred.promise();
+        }
+        function fetchPayCodes() {
+            var deferred = $.Deferred();
+            if (!selected.employee)
+                return deferred.reject("Unable to load pay codes: Missing Employee Details");
+
+            var entity = new MobileCRM.FetchXml.Entity(SCHEMA.paycode.name);
+            for (var i in paycodeAttributes) {
+                entity.addAttribute(paycodeAttributes[i]);
+            }
+            entity.orderBy(SCHEMA.paycode.Properties.gppaycodeid);
+            entity.addFilter().where(SCHEMA.paycode.Properties.employeeid, 'eq', selected.employee.id);
+
+            var fetch = new MobileCRM.FetchXml.Fetch(entity);
+            fetch.execute("DynamicEntities", function (res) {
+                // Need billtype and paycodetype as int
+                $(res).each(function (i, paycode) {
+                    paycodeData.push(paycode.properties);
+                });
+
+                return deferred.resolve();
+            }, function (err) { return deferred.reject("Fetch Pay Code Error: " + err); });
+            return deferred.promise();
+        }
+        function loadDataSources() {
+            var deferred = $.Deferred();
+            if (!paycodeData)
+                return deferred.reject("No Pay Codes for Current User");
+
+            try {
+                var unbilled_laborData = new DevExpress.data.DataSource({
+                    store: paycodeData,
+                    filter: [
+                        ['!', [SCHEMA.paycode.Properties.billtype, '=', 1]], 'and',
+                        ['!', [SCHEMA.paycode.Properties.paycodetype, '=', 5]]
+                    ],
+                    paginate: false
+                });
+                var unbilled_nonlaborData = new DevExpress.data.DataSource({
+                    store: paycodeData,
+                    filter: [
+                        ['!', [SCHEMA.paycode.Properties.billtype, '=', 1]], 'and',
+                        [SCHEMA.paycode.Properties.paycodetype, '=', 5]
+                    ],
+                    paginate: false
+                });
+                unbilledForm.getEditor(PayCode.Hourly).option('dataSource', unbilled_laborData);
+                unbilledForm.getEditor(PayCode.Travel).option('dataSource', unbilled_nonlaborData);
+                unbilledForm.getEditor(PayCode.Expense).option('dataSource', unbilled_nonlaborData);
+
+
+                var billable_laborData = new DevExpress.data.DataSource({
+                    store: paycodeData,
+                    filter: [
+                        ['!', [SCHEMA.paycode.Properties.billtype, '=', 2]], 'and',
+                        ['!', [SCHEMA.paycode.Properties.paycodetype, '=', 5]]
+                    ],
+                    paginate: false
+                });
+                var billable_nonlaborData = new DevExpress.data.DataSource({
+                    store: paycodeData,
+                    filter: [
+                        ['!', [SCHEMA.paycode.Properties.billtype, '=', 2]], 'and',
+                        [SCHEMA.paycode.Properties.paycodetype, '=', 5]
+                    ],
+                    paginate: false
+                });
+                billableForm.getEditor(PayCode.Hourly).option('dataSource', billable_laborData);
+                billableForm.getEditor(PayCode.Travel).option('dataSource', billable_nonlaborData);
+                billableForm.getEditor(PayCode.Expense).option('dataSource', billable_nonlaborData);
+                return deferred.resolve();
+            }
+            catch (e) {
+                return deferred.reject("Load Data Source Error: " + e);
+            }
+
+            return deferred.promise();
+        }
+
+        function fetchSystemUser() {
+            var deferred = $.Deferred();
+
+            getEmployeeID(function (gpemployeeid) {
+                var entity = new MobileCRM.FetchXml.Entity(SCHEMA.systemuser.name);
+                entity.addAttribute(SCHEMA.systemuser.Properties.id);
+                entity.addFilter().where(SCHEMA.systemuser.Properties.gpemployeeid, 'eq', gpemployeeid);
+
+                var fetch = new MobileCRM.FetchXml.Fetch(entity);
+                fetch.execute("DynamicEntities", function (res) {
+                    if (res.length === 1) {
+                        selected.systemuser = res[0];
+                        return deferred.resolve(res[0]);
+                    }
+                    else if (res.length > 1)
+                        return deferred.reject("Multiple System Users have the same gpemployeeid");
+                    else
+                        return deferred.reject("Unable to load Current System User");
+                }, function (err) { return deferred.reject("Get System User ID error: " + err); });
+            });
+            return deferred.promise();
+        }
+        function fetchDefaultValues() {
+            var deferred = $.Deferred();
+            if (!selected.systemuser)
+                return deferred.reject("Unable to load default paycodes: Missing System User Details");
+
+            var entity = new MobileCRM.FetchXml.Entity(entityName);
+            for (var i in setupoptionuserAttributes) {
+                entity.addAttribute(setupoptionuserAttributes[i]);
+            }
+            entity.addFilter().where(SCHEMA.setupoptionuser.Properties.ownerid, 'eq', selected.systemuser.id);
+
+            var fetch = new MobileCRM.FetchXml.Fetch(entity);
+            fetch.execute("JSON", function (res) {
+                $(res).each(function (i, setupoptionuser) {
+                    setupoptionuser.modifiedon = new Date(setupoptionuser.modifiedon);
+                    if (setupoptionuser.name && setupoptionuser.name === JSA.UseLegacyJSA) {
+                        jsaData.push(setupoptionuser);
+                    }
+                    else {
+                        defaultPaycodeData.push(setupoptionuser);
+                    }
+                });
+
+                return deferred.resolve();
+            }, function (err) { return deferred.reject("Fetch Default Values Error: " + err); });
+            return deferred.promise();
+        }
+        function performDefaultValuesMaintenance() {
+            var deferred = $.Deferred();
+            fetchDefaultValues().then(function () {
+                var itemsDeferred = [];
+
+                if (jsaData.length > 1) {
+                    itemsDeferred.push(checkForDuplicateDefaultValues(JSA.UseLegacyJSA, jsaData));
+                }
+
+                if (defaultPaycodeData.length > 0) {
+                    itemsDeferred.push(
+                        checkForDuplicateDefaultValues(SETUPOPTION.DefaultUnbilledHourlyPayCode, defaultPaycodeData),
+                        checkForDuplicateDefaultValues(SETUPOPTION.DefaultUnbilledExpensePayCode, defaultPaycodeData),
+                        checkForDuplicateDefaultValues(SETUPOPTION.DefaultUnbilledTravelPayCode, defaultPaycodeData),
+                        checkForDuplicateDefaultValues(SETUPOPTION.DefaultBilledHourlyPayCode, defaultPaycodeData),
+                        checkForDuplicateDefaultValues(SETUPOPTION.DefaultBilledExpensePayCode, defaultPaycodeData),
+                        checkForDuplicateDefaultValues(SETUPOPTION.DefaultBilledTravelPayCode, defaultPaycodeData)
+                    );
+                }
+
+                $.when.apply($, itemsDeferred).then(
+                    function () { return deferred.resolve(); },
+                    function (err) { return deferred.reject(err); }
+                );
+            }, function (err) { return deferred.reject(err); });
+            return deferred.promise();
+        }
+        function checkForDuplicateDefaultValues(name, store) {
+            var deferred = $.Deferred();
+
+            var duplicateCheck = new DevExpress.data.DataSource({
+                store: store,
+                filter: [SCHEMA.setupoptionuser.Properties.name, '=', name],
+                sort: { selector: SCHEMA.setupoptionuser.Properties.modifiedon, desc: true },
+                paginate: false
+            });
+            duplicateCheck.load().done(function (data) {
+                if (data.length < 2)
+                    return deferred.resolve();
+                else {
+                    var itemsDeferred = [];
+
+                    $(data).each(function (i) {
+                        if (i !== 0)    // Keep the last modified value
+                            itemsDeferred.push(deleteSetupOptionUser(data[i].id));
+                    });
+
+                    $.when.apply($, itemsDeferred).then(
+                        function () { return deferred.resolve(); },
+                        function (err) { return deferred.reject(err); }
+                    );
+                }
+            });
+            return deferred.promise();
+        }
+        function loadDefaultValues() {
+            if (defaultPaycodeData.length < 1 && jsaData.length < 1)
+                return;  // No Values to Load
+
+            // Time Entry Data
+            $(defaultPaycodeData).each(function (i, setupoptionuser) {
+                switch (setupoptionuser.name) {
+                    case SETUPOPTION.DefaultUnbilledHourlyPayCode:
+                        unbilledForm.getEditor(PayCode.Hourly).option('value', setupoptionuser.optionvalue);
+                        break;
+                    case SETUPOPTION.DefaultUnbilledExpensePayCode:
+                        unbilledForm.getEditor(PayCode.Expense).option('value', setupoptionuser.optionvalue);
+                        break;
+                    case SETUPOPTION.DefaultUnbilledTravelPayCode:
+                        unbilledForm.getEditor(PayCode.Travel).option('value', setupoptionuser.optionvalue);
+                        break;
+                    case SETUPOPTION.DefaultBilledHourlyPayCode:
+                        billableForm.getEditor(PayCode.Hourly).option('value', setupoptionuser.optionvalue);
+                        break;
+                    case SETUPOPTION.DefaultBilledExpensePayCode:
+                        billableForm.getEditor(PayCode.Expense).option('value', setupoptionuser.optionvalue);
+                        break;
+                    case SETUPOPTION.DefaultBilledTravelPayCode:
+                        billableForm.getEditor(PayCode.Travel).option('value', setupoptionuser.optionvalue);
+                        break;
+                }
+            });
+
+            // JSA Data
+            if (hasInspections && setupOptions.UseJobSafetyTasks) {
+                if (jsaData.length === 0) { // Default Value = true
+                    jsaForm.getEditor(JSA.UseLegacyJSA).option('value', true);
+                }
+                else if (jsaData.length === 1) {
+                    jsaForm.getEditor(JSA.UseLegacyJSA).option('value', JSON.parse(jsaData[0].optionvalue.toLowerCase()));
+                }
+                else {  // Load latest modified value
+                    var sortedData = new DevExpress.data.DataSource({
+                        store: jsaData,
+                        sort: [{ selector: SCHEMA.setupoptionuser.Properties.modifiedon, desc: true }],
+                        paginate: false
+                    });
+                    sortedData.load().done(function (data) {
+                        jsaForm.getEditor(JSA.UseLegacyJSA).option('value', JSON.parse(data[0].optionvalue.toLowerCase()));
+                    })
+                }
+            }
+        }
+
+        function fetchWoodfordProject() {
+            MobileCRM.Configuration.requestObject(function (config) {
+                var projectInfoPath = config.customizationDirectory + "/MobileCrm/GenDate.txt";
+
+                MobileCRM.Application.fileExists(projectInfoPath, function (exists) {
+                    if (exists)
+                        MobileCRM.Application.readFile(projectInfoPath, function (fileString) {
+                            var fileByLine = fileString.split("\n");
+                            if (fileByLine[2])
+                                settingsForm.updateData('woodford', fileByLine[2]);
+
+                        }, function (err) { MobileCRM.bridge.alert("Read File Error: " + projectInfoPath + "\n" + err); });
+                    else
+                        MobileCRM.bridge.alert("Unable to load Woodford Project Name: Missing file " + projectInfoPath);
+                }, function (err) { MobileCRM.bridge.alert("File Exists Error: " + projectInfoPath + "\n" + err); });
+            }, MobileCRM.bridge.alert);
+        }
+
+        //============== TOOLBAR FUNCTIONS ================
+        function btnSaveClicked(iFrameForm) {
+            saveHandler = iFrameForm.suspendSave();
+            var itemsDeferred = [
+                saveDefaultUnbilled(),
+                saveDefaultBillable()
+            ];
+            if (hasInspections && setupOptions.UseJobSafetyTasks) {
+                itemsDeferred.push(saveJSA());
+            }
+
+            $.when.apply($, itemsDeferred).then(function () {
+                saveHandler.resumeSave("#NoMessage#");
+            }, MobileCRM.bridge.alert);
+        }
+
+        //============== FORM EXECUTIONS ================
+        function saveDefaultUnbilled() {
+            var deferred = $.Deferred();
+            var formValues = unbilledForm.option('formData');
+            var itemsDeferred = [
+                saveSetupOptionUser(SETUPOPTION.DefaultUnbilledHourlyPayCode, formValues.Hourly),
+                saveSetupOptionUser(SETUPOPTION.DefaultUnbilledExpensePayCode, formValues.Expense),
+                saveSetupOptionUser(SETUPOPTION.DefaultUnbilledTravelPayCode, formValues.Travel)
+            ];
+
+            $.when.apply($, itemsDeferred).then(
+                function () { return deferred.resolve(); },
+                function (err) { return deferred.reject(err); }
+            );
+            return deferred.promise();
+        }
+        function saveDefaultBillable() {
+            var deferred = $.Deferred();
+            var formValues = billableForm.option('formData');
+            var itemsDeferred = [
+                saveSetupOptionUser(SETUPOPTION.DefaultBilledHourlyPayCode, formValues.Hourly),
+                saveSetupOptionUser(SETUPOPTION.DefaultBilledExpensePayCode, formValues.Expense),
+                saveSetupOptionUser(SETUPOPTION.DefaultBilledTravelPayCode, formValues.Travel)
+            ];
+
+            $.when.apply($, itemsDeferred).then(
+                function () { return deferred.resolve(); },
+                function (err) { return deferred.reject(err); }
+            );
+            return deferred.resolve();
+            return deferred.promise();
+        }
+        function saveJSA() {
+            var deferred = $.Deferred();
+            var formValues = jsaForm.option('formData');
+            var checkExistingData = new DevExpress.data.DataSource({
+                store: jsaData,
+                filter: [SCHEMA.setupoptionuser.Properties.name, '=', JSA.UseLegacyJSA],
+                paginate: false
+            });
+
+            checkExistingData.load().done(function (data) {
+                if (data.length === 0) {         // Create New Entity
+                    if (!selected.systemuser) {
+                        return deferred.reject("Unable to save JSA Settings: Missing System User Details")
+                    }
+
+                    createSetupOptionUser(JSA.UseLegacyJSA, formValues.UseLegacyJSA).then(
+                        function () { return deferred.resolve(); },
+                        function (err) { return deferred.reject(err); }
+                    );
+                }
+                else if (data.length === 1) {    // Update Existing Data
+                    updateSetupOptionUser(data[0].id, formValues.UseLegacyJSA).then(
+                        function () { return deferred.resolve(); },
+                        function (err) { return deferred.reject(err); }
+                    );
+                }
+                else {  // Need to remove duplicate data
+                    var itemsDeferred = [];
+                    $(data).each(function (i) {
+                        if (i === 0) {  // Keep the first entity
+                            itemsDeferred.push(updateSetupOptionUser(data[0].id, formValues.UseLegacyJSA));
+                        }
+                        else {  // Delete the other entities
+                            itemsDeferred.push(deleteSetupOptionUser(data[i].id));
+                        }
+                    })
+
+                    $.when.apply($, itemsDeferred).then(
+                        function () { return deferred.resolve(); },
+                        function (err) { return deferred.reject(err); }
+                    );
+                }
+            });
+            return deferred.promise();
+        }
+
+        function saveSetupOptionUser(name, value) {
+            var deferred = $.Deferred();
+
+            var checkExistingData = new DevExpress.data.DataSource({
+                store: defaultPaycodeData,
+                filter: [SCHEMA.setupoptionuser.Properties.name, '=', name],
+                paginate: false
+            });
+
+            checkExistingData.load().done(function (data) {
+                if (data.length === 1) {
+                    if (!value) { // Delete existing entity - user removed default value
+                        deleteSetupOptionUser(data[0].id).then(
+                            function () { return deferred.resolve(); },
+                            function (err) { return deferred.reject(err); }
+                        );
+                    }
+                    else if (value === data[0].optionvalue) { // Value is same as existing entity, no update needed
+                        return deferred.resolve();
+                    }
+                    else // Update existing entity
+                        updateSetupOptionUser(data[0].id, value).then(
+                            function () { return deferred.resolve(); },
+                            function (err) { return deferred.reject(err); }
+                        );
+                }
+                else if (data.length === 0) {  // Create New entity
+                    if (!value)  // No default paycode value selected
+                        return deferred.resolve();
+
+                    if (!selected.systemuser)
+                        return deferred.reject("Unable to save default paycode: Missing System User Details");
+
+                    createSetupOptionUser(name, value).then(
+                        function () { return deferred.resolve(); },
+                        function (err) { return deferred.reject(err); }
+                    );
+                }
+                else {
+                    var itemsDeferred = [];
+                    $(data).each(function (i) {
+                        if (!value) { // Delete all entities
+                            itemsDeferred.push(deleteSetupOptionUser(data[i].id));
+                        }
+                        else if (i === 0) { // Keep the first entity
+                            if (value !== data[i].optionvalue)
+                                itemsDeferred.push(updateSetupOptionUser(data[i].id, value));
+                        }
+                        else    // Delete the other entities
+                            itemsDeferred.push(deleteSetupOptionUser(data[i].id));
+                    });
+
+                    $.when.apply($, itemsDeferred).then(
+                        function () { return deferred.resolve(); },
+                        function (err) { return deferred.reject(err); }
+                    );
+                }
+            });
+            return deferred.promise();
+        }
+
+        function createSetupOptionUser(name, value) {
+            var deferred = $.Deferred();
+            var entity = new MobileCRM.DynamicEntity(entityName);
+            entity.properties.name = name;
+            entity.properties.optionvalue = value;
+            entity.properties.ownerid = new MobileCRM.DynamicEntity(SCHEMA.systemuser.name, selected.systemuser.id);
+            entity.save(function (err) {
+                if (err)
+                    return deferred.reject("Create Entity Error: " + err);
+                else
+                    return deferred.resolve();
+            });
+            return deferred.promise();
+        }
+        function updateSetupOptionUser(entityID, newValue) {
+            var deferred = $.Deferred();
+            MobileCRM.DynamicEntity.loadById(entityName, entityID, function (entity) {
+                entity.properties.optionvalue = newValue;
+                entity.save(function (err) {
+                    if (err)
+                        return deferred.reject("Update Entity Error: " + err);
+                    else
+                        return deferred.resolve();
+                });
+            }, function (err) { return deferred.reject("Load Entity Error: " + err); });
+            return deferred.promise();
+        }
+        function deleteSetupOptionUser(entityID) {
+            var deferred = $.Deferred();
+            MobileCRM.DynamicEntity.deleteById(entityName, entityID,
+                function () { return deferred.resolve(); },
+                function (err) { return deferred.reject("Delete Entity Error: " + err); }
+            );
+            return deferred.promise();
+        }
+    </script>
+</body>
+</html>

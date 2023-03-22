@@ -1,0 +1,170 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <!-- Activate IE9 document mode, if available -->
+    <meta charset="utf-8" http-equiv="X-UA-Compatible" content="IE=edge" />
+    <!-- Defined iOS viewport -->
+    <meta name="viewport" content="initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=false">
+    <!-- Disable iOS Phone No Detection -->
+    <meta name="format-detection" content="telephone=no" />
+    <!-- DevExtreme dependencies -->
+    <script type="text/javascript" src="../../scripts/jquery-3.3.1.min.js"></script>
+    <!-- A DevExtreme library -->
+    <script type="text/javascript" src="../../scripts/dx.all.js"></script>
+    <!-- Offline HTML JavaScript Bridge-->
+    <script type="text/javascript" src="../../scripts/JSBridge.js"></script>
+    <script type="text/javascript" src="../../scripts/k2aMethods.js"></script>
+    <script type="text/javascript" src="../../enum/Schema.js"></script>
+    <script type="text/javascript" src="../../enum/setupoption.js"></script>
+    <script type="text/javascript" src="laborexpense-form.js"></script>
+    <title>Entity Form</title>
+</head>
+<body>
+    <script>
+        //============== INITIAL SETTINGS ================
+        var entityName = "laborexpense", hasTimelog = false;
+        var isProcessed = true, isRejected = false, isEditable = false;
+        var dateOutOfRangeMsg = " must be in the current or previous work week";
+        //============== SELECTED DATA ================
+        var selected = { 'employee': null, 'appointment': null };
+        //============== FETCH DATA ================
+        var requiredSetupOptions = [
+            SETUPOPTION.DefaultUnbilledExpensePayCode,
+            SETUPOPTION.DefaultUnbilledHourlyPayCode,
+            SETUPOPTION.DefaultUnbilledTravelPayCode,
+            SETUPOPTION.DefaultWeekday,
+            SETUPOPTION.TimeLogAllowTimeOverlap,
+            SETUPOPTION.TimeLogLockLaborTime,
+            SETUPOPTION.TimeLogLockTimeInTimeOut,
+            SETUPOPTION.TimeLogRoundingInterval,
+            SETUPOPTION.UseExpense,
+            SETUPOPTION.UseLabor,
+            SETUPOPTION.UseManagerApproval,
+            SETUPOPTION.UseTechnicianHelper,
+            SETUPOPTION.UseTravel
+        ];
+        //============== ENUM ================
+        const EntryType = {
+            1: "Unbilled Labor",
+            2: "Unbilled Expense",
+            3: "Unbilled Travel"
+        };
+
+        $(function () {
+            //============== ANDROID CHECK ================
+            MobileCRM.Platform.preventBackButton(btnBackClicked);
+
+            loadSetupOptions(loadFormOptions);
+
+            MobileCRM.UI.EntityForm.onChange(formValueChanged, true);
+            MobileCRM.UI.EntityForm.onSave(btnSaveClicked, true);
+            MobileCRM.UI.EntityForm.onCommand("Delete", btnDeleteClicked, true);
+        });
+
+        //============== LOAD OPTIONS ================
+        function loadFormItems_TransactionType() {
+            loadFormValues();
+        }
+
+        //============== LOAD DATA ================
+        function loadFormValues() {
+            MobileCRM.UI.EntityForm.requestObject(function (entityForm) {
+                if (isEditable) {
+                    if (entityForm.entity.isNew) {
+                        if (!entityForm.entity.properties.hoursunits)
+                            entityForm.entity.properties.hoursunits = 0;
+                        entityForm.entity.properties.cost = 0;
+                        entityForm.entity.properties.quantity = 0;
+                        loadCurrentEmployee()
+                            .then(fetchPayCode, MobileCRM.bridge.alert)
+                            .then(setDefaultUnbilledPayCode, MobileCRM.bridge.alert);
+                    }
+                    else
+                        fetchPayCode().then(setDefaultUnbilledPayCode, MobileCRM.bridge.alert);
+
+                    setMinMaxDates();
+                }
+            }, MobileCRM.bridge.alert);
+        }
+
+        //============== FORM ITEM FUNCTIONS ================
+        function entryTypeChanged_TransactionType(entityForm, entryType) {
+            fetchPayCode().then(setDefaultUnbilledPayCode, MobileCRM.bridge.alert);
+        }
+
+        //============== FORM EXECUTIONS ================
+        function createEntity(entityForm) {
+            entityForm.entity.properties.name = "UNBILLED";
+
+            entityForm.entity.save(error_saveLaborexpense);
+        }
+        function updateEntity(entityForm) {
+            if (hasTimelog)
+                entityForm.entity.properties.transactiondate = new Date(entityForm.entity.properties.gptimein);
+
+            entityForm.entity.save(error_saveLaborexpense);
+        }
+
+        function updateAppointment() {
+            fetchAppointmentStatusID("COMPLETE").then(function (completeStatusID) {
+                MobileCRM.UI.EntityForm.requestObject(function (entityForm) {
+                    MobileCRM.DynamicEntity.loadById('appointment', selected.appointment.id, function (appt) {
+
+                        appt.properties.appointmentstatusid = new MobileCRM.DynamicEntity('appointmentstatus', completeStatusID);
+                        appt.properties.actualhours = entityForm.entity.properties.hoursunits;
+                        appt.properties.completiondate = new Date(entityForm.entity.properties.transactiondate);
+                        appt.properties.description = entityForm.entity.properties.description;
+
+                        appt.save(function (err) {
+                            if (err)
+                                alertOnSave(err);
+                            else
+                                setCleanAndClose();
+                        });
+
+                    }, alertOnSave);
+                }, alertOnSave);
+            }, alertOnSave);
+
+        }
+        function checkResetApptStatus() {
+            if (selected.appointment) {
+                fetchAppointmentStatusID("UNASSIGNED").then(function (unassignedStatusID) {
+                    MobileCRM.DynamicEntity.loadById('appointment', selected.appointment.id, function (appt) {
+
+                        appt.properties.appointmentstatusid = new MobileCRM.DynamicEntity('appointmentstatus', unassignedStatusID);
+
+                        appt.save(function (err) {
+                            if (err)
+                                MobileCRM.bridge.alert(err);
+                            else {
+                                MobileCRM.UI.MessageBox.sayText("Appointment Status will be set to UNASSIGNED", setCleanAndClose);
+                            }
+                        });
+
+                    }, MobileCRM.bridge.alert);
+                }, MobileCRM.bridge.alert);
+            }
+            else
+                setCleanAndClose();
+        }
+        function fetchAppointmentStatusID(statusName) {
+            var deferred = $.Deferred();
+
+            var entity = new MobileCRM.FetchXml.Entity(SCHEMA.appointmentstatus.name);
+            entity.addAttribute('id');
+            entity.addFilter().where('name', 'eq', statusName);
+
+            var fetch = new MobileCRM.FetchXml.Fetch(entity);
+            fetch.execute("JSON", function (res) {
+                if (res[0])
+                    return deferred.resolve(res[0].id);
+                else
+                    return deferred.reject(statusName + " Appointment Status Not Found");
+
+            }, function (err) { return deferred.reject(err); });
+            return deferred.promise();
+        }
+    </script>
+</body>
+</html>

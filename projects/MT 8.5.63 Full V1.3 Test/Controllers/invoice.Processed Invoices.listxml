@@ -1,0 +1,167 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<EntityList xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" UseSyncFilter="true">
+  <Attributes>
+    <EntityName>invoice</EntityName>
+    <CamelCase>invoice</CamelCase>
+    <VisualStudioProjectId>00000000-0000-0000-0000-000000000000</VisualStudioProjectId>
+    <ClassBinding />
+  </Attributes>
+  <ComponentId>00000000-0000-0000-0000-000000000000</ComponentId>
+  <Name>Processed Invoices</Name>
+  <Kind>List</Kind>
+  <IsDefault>false</IsDefault>
+  <AutoWideWidth>0</AutoWideWidth>
+  <AutoHeader>0</AutoHeader>
+  <MaxColumns>0</MaxColumns>
+  <Fetch version="1.0">
+    <entity name="invoice">
+      <filter type="and">
+        <condition attribute="ispaymentprocessed" operator="eq" value="1" />
+      </filter>
+    </entity>
+  </Fetch>
+  <Search>
+    <attribute schema="customername" method="Contains" />
+    <attribute schema="gpinvoicenumber" method="Contains" />
+    <attribute schema="gpservicecallid" method="Contains" />
+    <attribute schema="locationname" method="Contains" />
+    <attribute schema="servicecallid" method="Contains" reference="true" />
+  </Search>
+  <OrderBy>!gpinvoicenumber</OrderBy>
+  <SerializedBindings>
+    <string>amount</string>
+    <string>customername</string>
+    <string>email</string>
+    <string>gpinvoicenumber</string>
+    <string>gpservicecallid</string>
+    <string>id</string>
+    <string>locationname</string>
+    <string>name</string>
+    <string>servicecallid</string>
+    <string>tax</string>
+    <string>transactiondate</string>
+    <string>appointmentid.appointment.name</string>
+    <string>paymentid.payment.cashamount</string>
+    <string>paymentid.payment.checkamount</string>
+    <string>paymentid.payment.checknumber</string>
+    <string>paymentid.payment.creditcardamount</string>
+    <string>servicecallid.servicecall.customerid.customer.customername</string>
+    <string>servicecallid.servicecall.customerid.customer.gpcustomernumber</string>
+    <string>servicecallid.servicecall.locationid.location.gplocationnumber</string>
+    <string>servicecallid.servicecall.locationid.location.locationname</string>
+  </SerializedBindings>
+  <SerializedTemplates>
+    <RowTemplate>
+      <DesignWidth>240</DesignWidth>
+      <DesignHeight>40</DesignHeight>
+      <Name>Default</Name>
+      <Width>240</Width>
+      <Height>80</Height>
+      <SerializedBackground>0</SerializedBackground>
+      <SerializedSelectedBackground>0</SerializedSelectedBackground>
+      <SerializedChildren>
+        <CellTemplate SchemaName="gpinvoicenumber">
+          <IsConstant>false</IsConstant>
+          <StyleName>primary</StyleName>
+          <Bounds>2,2,156,20</Bounds>
+          <CellKind>0</CellKind>
+          <Anchor>13</Anchor>
+        </CellTemplate>
+        <CellTemplate SchemaName="customername">
+          <IsConstant>false</IsConstant>
+          <StyleName>gray</StyleName>
+          <Bounds>2,22,118,14</Bounds>
+          <CellKind>0</CellKind>
+          <Anchor>5</Anchor>
+        </CellTemplate>
+        <CellTemplate SchemaName="locationname">
+          <IsConstant>false</IsConstant>
+          <StyleName>gray</StyleName>
+          <Bounds>120,22,118,14</Bounds>
+          <CellKind>0</CellKind>
+          <Anchor>13</Anchor>
+        </CellTemplate>
+        <CellTemplate SchemaName="transactiondate">
+          <IsConstant>false</IsConstant>
+          <StyleName>r_gray_date_only</StyleName>
+          <Bounds>158,4,80,14</Bounds>
+          <CellKind>0</CellKind>
+          <Anchor>13</Anchor>
+        </CellTemplate>
+        <CellTemplate SchemaName="amount">
+          <IsConstant>false</IsConstant>
+          <StyleName>r_gray_currency</StyleName>
+          <Bounds>82,50,60,14</Bounds>
+          <CellKind>0</CellKind>
+          <Anchor>5</Anchor>
+        </CellTemplate>
+        <CellTemplate SchemaName="gpservicecallid">
+          <IsConstant>false</IsConstant>
+          <StyleName>gray</StyleName>
+          <Bounds>2,36,118,14</Bounds>
+          <CellKind>0</CellKind>
+          <Anchor>5</Anchor>
+        </CellTemplate>
+        <CellTemplate SchemaName="Cash:">
+          <IsConstant>true</IsConstant>
+          <StyleName>r_gray_bold_small</StyleName>
+          <Bounds>2,64,34,14</Bounds>
+          <CellKind>0</CellKind>
+          <Anchor>5</Anchor>
+        </CellTemplate>
+        <CellTemplate SchemaName="paymentid.payment.cashamount">
+          <IsConstant>false</IsConstant>
+          <StyleName>r_gray_currency</StyleName>
+          <Bounds>36,64,46,14</Bounds>
+          <CellKind>0</CellKind>
+          <Anchor>5</Anchor>
+        </CellTemplate>
+        <CellTemplate SchemaName="Check:">
+          <IsConstant>true</IsConstant>
+          <StyleName>r_gray_bold_small</StyleName>
+          <Bounds>82,64,38,14</Bounds>
+          <CellKind>0</CellKind>
+          <Anchor>5</Anchor>
+        </CellTemplate>
+        <CellTemplate SchemaName="paymentid.payment.checkamount">
+          <IsConstant>false</IsConstant>
+          <StyleName>r_gray_currency</StyleName>
+          <Bounds>120,64,46,14</Bounds>
+          <CellKind>0</CellKind>
+          <Anchor>5</Anchor>
+        </CellTemplate>
+        <CellTemplate SchemaName="CC:">
+          <IsConstant>true</IsConstant>
+          <StyleName>r_gray_bold_small</StyleName>
+          <Bounds>166,64,26,14</Bounds>
+          <CellKind>0</CellKind>
+          <Anchor>5</Anchor>
+        </CellTemplate>
+        <CellTemplate SchemaName="paymentid.payment.creditcardamount">
+          <IsConstant>false</IsConstant>
+          <StyleName>r_gray_currency</StyleName>
+          <Bounds>192,64,46,14</Bounds>
+          <CellKind>0</CellKind>
+          <Anchor>5</Anchor>
+        </CellTemplate>
+        <CellTemplate SchemaName="appointmentid.appointment.name">
+          <IsConstant>false</IsConstant>
+          <StyleName>gray</StyleName>
+          <Bounds>120,36,118,14</Bounds>
+          <CellKind>0</CellKind>
+          <Anchor>13</Anchor>
+        </CellTemplate>
+        <CellTemplate SchemaName="Invoice Amount:">
+          <IsConstant>true</IsConstant>
+          <StyleName>r_gray_bold_small</StyleName>
+          <Bounds>2,50,80,14</Bounds>
+          <CellKind>0</CellKind>
+          <Anchor>5</Anchor>
+        </CellTemplate>
+      </SerializedChildren>
+    </RowTemplate>
+  </SerializedTemplates>
+  <CustomProperties />
+  <SerializedChildren />
+  <Height>0</Height>
+</EntityList>

@@ -1,0 +1,255 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <!-- Activate IE9 document mode, if available -->
+    <meta charset="utf-8" http-equiv="X-UA-Compatible" content="IE=edge" />
+    <!-- Defined iOS viewport -->
+    <meta name="viewport" content="initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=false">
+    <!-- Disable iOS Phone No Detection -->
+    <meta name="format-detection" content="telephone=no" />
+    <!-- DevExtreme dependencies -->
+    <script type="text/javascript" src="../../scripts/jquery-3.3.1.min.js"></script>
+    <!-- DevExtreme themes -->
+    <link rel="stylesheet" type="text/css" href="../../css/dx.common.css" />
+    <link rel="stylesheet" type="text/css" href="../../css/dx.light.css" />
+    <!-- A DevExtreme library -->
+    <script type="text/javascript" src="../../scripts/dx.all.js"></script>
+    <!-- Offline HTML JavaScript Bridge-->
+    <script type="text/javascript" src="../../scripts/JSBridge.js"></script>
+    <script type="text/javascript" src="../../scripts/k2aMethods.js"></script>
+    <script type="text/javascript" src="../../enum/Schema.js"></script>
+    <script type="text/javascript" src="../../enum/setupoption.js"></script>
+    <!-- Offline HTML Template Factory-->
+    <script type="text/javascript" src="../../templates/listItem-factory.js"></script>
+    <script type="text/javascript" src="../../templates/toolbar-factory.js"></script>
+    <!-- Offline HTML Styling -->
+    <link rel="stylesheet" type="text/css" href="../../css/k2a.css" />
+    <title>Entity List</title>
+</head>
+<body>
+    <div id="toast"></div>
+    <div class="fixedPosition">
+        <div id="mainToolbar"></div><br>
+        <div id="listToolbar"></div>
+        <div id="mainScrollView">
+            <div id='mainList'></div>
+        </div>
+        <div id="actionSheet"></div>
+        <div id="filterPopup"></div>
+    </div>
+
+    <script>
+        //============== INITIAL SETTINGS ================
+        var entityName = SCHEMA.annotation.name;
+        var sortDesc = false, sortSelector = SCHEMA.annotation.Properties.filename;
+        //============== OFFLINE DATA ================
+        var entityListData;
+        //============== SELECTED DATA ================
+        var selected = { lookup: null, appointments: [] };
+        //============== FETCH DATA ================
+        var requiredSetupOptions = [];
+        var entityAttributes = [
+            SCHEMA.annotation.Properties.id,
+            SCHEMA.annotation.Properties.filename,
+            SCHEMA.annotation.Properties.gpservicecallid
+        ];
+        var listSortItems = [
+            SCHEMA.annotation.Properties.filename
+        ];
+        var listSearchItems = [
+            SCHEMA.annotation.Properties.filename,
+            SCHEMA.resco_questionnaire.Properties.resco_description
+        ];
+        var listFilterItems = [
+            { dataField: SCHEMA.annotation.Properties.filename, dataType: FilterDataType.string }
+        ];
+        var listItemTemplate = function (data, _, element) {
+            element.append(
+                $("<div>").append(data.filename),
+                $("<div>").append(data.resco_description)
+            ).css('white-space', 'normal');
+        };
+        //============== TOOLBAR ITEMS ================
+        var mainToolbarItems = [ToolbarItemType.title];
+        var listToolbarItems = [
+            ToolbarItemType.btnSort, ToolbarItemType.selectSort, ToolbarItemType.btnFilter
+        ];
+
+        $(function () {
+            //============== LOCALIZATION ================
+            MobileCRM.Localization.initialize(function (localization) {
+
+                //============== ANDROID CHECK ================
+                MobileCRM.Platform.preventBackButton(btnBackClicked);
+
+                //============== LOADPANEL ================
+                loading = MobileCRM.UI.Form.showPleaseWait(MobileCRM.Localization.get("Msg.Loading"));
+
+                //============== SCROLLVIEW ================
+                mainScrollView = $("#mainScrollView").dxScrollView({
+                    showScrollbar: "always",
+                    height: function () { return window.innerHeight - 80; },
+                    width: '100%'
+                }).dxScrollView("instance");
+                $(window).resize(function () {
+                    repaintScrollView(mainScrollView);
+                });
+
+                //============== TOOLBARS ================
+                mainToolbar = $("#mainToolbar").dxToolbar({
+                    items: (new ToolbarFactory()).addItems(mainToolbarItems)
+                }).dxToolbar("instance");
+                listToolbar = $("#listToolbar").dxToolbar({
+                    items: (new ToolbarFactory()).addItems(listToolbarItems)
+                }).dxToolbar("instance");
+
+                //============== LIST ================
+                mainList = (new ListFactory()).createItem("#mainList", entityName, [
+                    { name: 'searchExpr', value: listSearchItems },
+                    { name: 'itemTemplate', value: listItemTemplate }
+                ]);
+
+                //============== EVENT HANDLERS ================
+                MobileCRM.bridge.onGlobalEvent("IFrameFormClosed", function (closedForm) {
+                    if (closedForm.options && closedForm.options.entityName === entityName)
+                        fetchListEntityData();
+                }, true);
+                MobileCRM.bridge.onGlobalEvent("EntityFormClosed", function (closedForm) {
+                    if (closedForm.entity && closedForm.entity.entityName === entityName)
+                        fetchListEntityData();
+                }, true);
+                MobileCRM.UI.EntityForm.onSelectedViewChanged(function (entityForm) {
+                    if (entityForm.context.selectedView === "report")
+                        loadListItemOptions();
+                }, true);
+
+                loadSetupOptions(loadListOptions);
+            }, alertError);
+        });
+
+        //============== LOAD OPTIONS ================
+        function loadListOptions() {
+            MobileCRM.UI.EntityForm.requestObject(function (entityForm) {
+                selected.lookup = entityForm.entity;
+
+                loadToolbarOptions();
+                loadListItemOptions();
+            }, alertError);
+        }
+        function loadToolbarOptions() {
+            if (typeof listFilterItems !== 'undefined' && listFilterItems.length > 0)
+                (new FilterFactory()).createFilterPopup(mainList, listToolbar);
+
+            var title = MobileCRM.Localization.get("DetailView.InspectionReports");
+            updateToolbarItem(mainToolbar, ToolbarItemType.title, "html", "<b>" + title + "</b>");
+
+            loadSortItemsLocalization(listSortItems).then(function (sortDataSource) {
+                updateToolbarItem(listToolbar, ToolbarItemType.selectSort, "options.dataSource", sortDataSource);
+                updateToolbarItem(listToolbar, ToolbarItemType.selectSort, "options.value", sortSelector);
+            });
+        }
+        function loadListItemOptions() {
+            if (selected.lookup.entityName === SCHEMA.servicecall.name) {
+                fetchAppointmentsOnCall(selected.lookup.id).then(fetchListEntityData, alertError);
+            }
+            else {
+                fetchListEntityData();
+            }
+        }
+
+        //============== LOAD DATA ================
+        function fetchAppointmentsOnCall(servicecallID) {
+            var deferred = $.Deferred();
+            if (!servicecallID)
+                return deferred.reject("Fetch Appointments Error: Missing Service Call ID");
+
+            var entity = new MobileCRM.FetchXml.Entity(SCHEMA.appointment.name);
+            entity.addAttribute(SCHEMA.appointment.Properties.id);
+            entity.addFilter().where(SCHEMA.appointment.Properties.servicecallid, 'eq', servicecallID);
+
+            var fetch = new MobileCRM.FetchXml.Fetch(entity);
+            fetch.execute("JSON", function (res) {
+                selected.appointments = [];
+                $(res).each(function (i, appt) {
+                    selected.appointments.push(appt.id);
+                });
+
+                return deferred.resolve();
+            }, function (err) { return deferred.reject("Fetch Appointments Error: " + err); });
+            return deferred.promise();
+        }
+        function fetchListEntityData() {
+            var entity = new MobileCRM.FetchXml.Entity(entityName);
+            $(entityAttributes).each(function (index, attribute) {
+                entity.addAttribute(attribute);
+            });
+            entity.orderBy(sortSelector, sortDesc);
+            entity.addFilter().where(SCHEMA.annotation.Properties.isdocument, 'eq', true);
+            entity.addFilter().where(SCHEMA.annotation.Properties.filename, 'ne', 'Signature.png');
+
+            var linkEntity = entity.addLink(
+                SCHEMA.resco_questionnaire.name,
+                SCHEMA.resco_questionnaire.Properties.resco_questionnaireid,
+                SCHEMA.annotation.Properties.objectid,
+                "inner");
+            linkEntity.addAttribute(SCHEMA.resco_questionnaire.Properties.resco_description);
+            linkEntity.alias = 'q';
+            linkEntity.addFilter().where(SCHEMA.resco_questionnaire.Properties.resco_regardingid, 'eq', selected.lookup.id);
+
+            if (selected.lookup.entityName === SCHEMA.servicecall.name) {
+                linkEntity.addFilter().isIn(SCHEMA.resco_questionnaire.Properties.resco_regardingid, selected.appointments);
+                linkEntity.filter.type = 'or';
+            }
+
+            var fetch = new MobileCRM.FetchXml.Fetch(entity);
+            fetch.execute("JSON", function (res) {
+                if (selected.lookup.entityName === SCHEMA.servicecall.name) {
+                    // Second Fetch for Completed Appointment Questionnaires
+                    linkEntity.filter = new MobileCRM.FetchXml.Filter();
+                    entity.addFilter().where(SCHEMA.annotation.Properties.gpservicecallid, 'eq', selected.lookup.properties.gpservicecallid);
+
+                    var secondFetch = new MobileCRM.FetchXml.Fetch(entity);
+                    secondFetch.execute("JSON", function (secondRes) {
+                        entityListData = secondRes;
+                        $(res).each(function (i, annotation) {
+                            if (!annotation.gpservicecallid) {
+                                entityListData.push(annotation);
+                            }
+                        })
+
+                        formatAndLoadData(linkEntity.alias);
+                    }, alertError);
+                }
+                else {
+                    entityListData = res;
+                    formatAndLoadData(linkEntity.alias);
+                }
+            }, alertError);
+        }
+        function formatAndLoadData(linkEntity_alias) {
+            $(entityListData).each(function (i, annotation) {
+                if (annotation[linkEntity_alias + "." + SCHEMA.resco_questionnaire.Properties.resco_description]) {
+                    annotation.resco_description =
+                        annotation[linkEntity_alias + "." + SCHEMA.resco_questionnaire.Properties.resco_description];
+                }
+            });
+
+            loadListData(mainList, entityListData);
+            loading.close();
+        }
+
+        //============== TOOLBAR FUNCTIONS ================
+        function btnSortClicked() {
+            loadListData(mainList, entityListData);
+        }
+        function sortSelected() {
+            btnSortClicked();
+        }
+
+        //============== LIST ITEM FUNCTIONS ================
+        function listItemClicked() {
+            MobileCRM.UI.FormManager.showDetailDialog(entityName, selected[entityName].id);
+        }
+    </script>
+</body>
+</html>

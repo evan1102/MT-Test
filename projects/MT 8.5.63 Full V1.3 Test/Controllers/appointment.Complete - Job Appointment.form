@@ -1,0 +1,51 @@
+﻿<EntityForm xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:dummy="0" flexi="0" fleximode="1" fullscreen="0" resize="0" version="2">
+	<IsContactForm>false</IsContactForm>
+	<EntityName>appointment</EntityName>
+	<CamelCase>appointment</CamelCase>
+	<WorkflowLoad>&lt;?xml version="1.0" ?&gt;&lt;Workflow e="true" isvalid="true" syntaxVersion="11" version="0"&gt;&lt;function e="false"&gt;&lt;var&gt;Shared.isinternal&lt;/var&gt;&lt;func&gt;Assign&lt;/func&gt;&lt;arg&gt;Boolean:False&lt;/arg&gt;&lt;/function&gt;&lt;function e="false"&gt;&lt;var&gt;Shared.captureSignature&lt;/var&gt;&lt;func&gt;Assign&lt;/func&gt;&lt;arg&gt;Boolean:False&lt;/arg&gt;&lt;/function&gt;&lt;function e="false"&gt;&lt;var&gt;Tabs.formCommands.IsVisible&lt;/var&gt;&lt;func&gt;Assign&lt;/func&gt;&lt;arg&gt;Boolean:False&lt;/arg&gt;&lt;/function&gt;&lt;definition e="false"&gt;&lt;var&gt;UseLabor&lt;/var&gt;&lt;func&gt;LoadFetch&lt;/func&gt;&lt;type&gt;Entity&lt;/type&gt;&lt;arg&gt;String:setupoption&lt;/arg&gt;&lt;arg&gt;Fetch:&amp;lt;fetch version=&amp;quot;1.0&amp;quot;&amp;gt;&amp;lt;entity name=&amp;quot;setupoption&amp;quot;&amp;gt;&amp;lt;filter type=&amp;quot;and&amp;quot;&amp;gt;&amp;lt;condition attribute=&amp;quot;name&amp;quot; operator=&amp;quot;eq&amp;quot; value=&amp;quot;UseLabor&amp;quot;/&amp;gt;&amp;lt;/filter&amp;gt;&amp;lt;/entity&amp;gt;&amp;lt;/fetch&amp;gt;&lt;/arg&gt;&lt;/definition&gt;&lt;definition e="false"&gt;&lt;var&gt;UseExpense&lt;/var&gt;&lt;func&gt;LoadFetch&lt;/func&gt;&lt;type&gt;Entity&lt;/type&gt;&lt;arg&gt;String:setupoption&lt;/arg&gt;&lt;arg&gt;Fetch:&amp;lt;fetch version=&amp;quot;1.0&amp;quot;&amp;gt;&amp;lt;entity name=&amp;quot;setupoption&amp;quot;&amp;gt;&amp;lt;filter type=&amp;quot;and&amp;quot;&amp;gt;&amp;lt;condition attribute=&amp;quot;name&amp;quot; operator=&amp;quot;eq&amp;quot; value=&amp;quot;UseExpense&amp;quot;/&amp;gt;&amp;lt;/filter&amp;gt;&amp;lt;/entity&amp;gt;&amp;lt;/fetch&amp;gt;&lt;/arg&gt;&lt;/definition&gt;&lt;definition e="false"&gt;&lt;var&gt;UseTravel&lt;/var&gt;&lt;func&gt;LoadFetch&lt;/func&gt;&lt;type&gt;Entity&lt;/type&gt;&lt;arg&gt;String:setupoption&lt;/arg&gt;&lt;arg&gt;Fetch:&amp;lt;fetch version=&amp;quot;1.0&amp;quot;&amp;gt;&amp;lt;entity name=&amp;quot;setupoption&amp;quot;&amp;gt;&amp;lt;filter type=&amp;quot;and&amp;quot;&amp;gt;&amp;lt;condition attribute=&amp;quot;name&amp;quot; operator=&amp;quot;eq&amp;quot; value=&amp;quot;UseTravel&amp;quot;/&amp;gt;&amp;lt;/filter&amp;gt;&amp;lt;/entity&amp;gt;&amp;lt;/fetch&amp;gt;&lt;/arg&gt;&lt;/definition&gt;&lt;branch e="false" info="Time Entries Tab Visibility" &gt;&lt;if e="true"&gt;&lt;conditions e="true" op="And"&gt;&lt;condition e="false"&gt;&lt;var&gt;UseLabor.optionvalue&lt;/var&gt;&lt;op&gt;Equal&lt;/op&gt;&lt;arg&gt;String:False&lt;/arg&gt;&lt;/condition&gt;&lt;condition e="false"&gt;&lt;var&gt;UseExpense.optionvalue&lt;/var&gt;&lt;op&gt;Equal&lt;/op&gt;&lt;arg&gt;String:False&lt;/arg&gt;&lt;/condition&gt;&lt;condition e="false"&gt;&lt;var&gt;UseTravel.optionvalue&lt;/var&gt;&lt;op&gt;Equal&lt;/op&gt;&lt;arg&gt;String:False&lt;/arg&gt;&lt;/condition&gt;&lt;/conditions&gt;&lt;action&gt;&lt;function e="false"&gt;&lt;var&gt;Tabs.laborexpense.IsVisible&lt;/var&gt;&lt;func&gt;Assign&lt;/func&gt;&lt;arg&gt;Boolean:False&lt;/arg&gt;&lt;/function&gt;&lt;/action&gt;&lt;/if&gt;&lt;/branch&gt;&lt;definition e="false"&gt;&lt;var&gt;UseInventory&lt;/var&gt;&lt;func&gt;LoadFetch&lt;/func&gt;&lt;type&gt;Entity&lt;/type&gt;&lt;arg&gt;String:setupoption&lt;/arg&gt;&lt;arg&gt;Fetch:&amp;lt;fetch version=&amp;quot;1.0&amp;quot;&amp;gt;&amp;lt;entity name=&amp;quot;setupoption&amp;quot;&amp;gt;&amp;lt;filter type=&amp;quot;and&amp;quot;&amp;gt;&amp;lt;condition attribute=&amp;quot;name&amp;quot; operator=&amp;quot;eq&amp;quot; value=&amp;quot;UseInventory&amp;quot;/&amp;gt;&amp;lt;/filter&amp;gt;&amp;lt;/entity&amp;gt;&amp;lt;/fetch&amp;gt;&lt;/arg&gt;&lt;/definition&gt;&lt;branch e="false" info="Inventory Tab Visibility" &gt;&lt;if e="true"&gt;&lt;conditions e="true" op="And"&gt;&lt;condition e="false"&gt;&lt;var&gt;UseInventory.optionvalue&lt;/var&gt;&lt;op&gt;Equal&lt;/op&gt;&lt;arg&gt;String:False&lt;/arg&gt;&lt;/condition&gt;&lt;/conditions&gt;&lt;action&gt;&lt;function e="false"&gt;&lt;var&gt;Tabs.consumedinventory.IsVisible&lt;/var&gt;&lt;func&gt;Assign&lt;/func&gt;&lt;arg&gt;Boolean:False&lt;/arg&gt;&lt;/function&gt;&lt;/action&gt;&lt;/if&gt;&lt;/branch&gt;&lt;definition e="false"&gt;&lt;var&gt;UsePurchaseOrderReceipt&lt;/var&gt;&lt;func&gt;LoadFetch&lt;/func&gt;&lt;type&gt;Entity&lt;/type&gt;&lt;arg&gt;String:setupoption&lt;/arg&gt;&lt;arg&gt;Fetch:&amp;lt;fetch version=&amp;quot;1.0&amp;quot;&amp;gt;&amp;lt;entity name=&amp;quot;setupoption&amp;quot;&amp;gt;&amp;lt;filter type=&amp;quot;and&amp;quot;&amp;gt;&amp;lt;condition attribute=&amp;quot;name&amp;quot; operator=&amp;quot;eq&amp;quot; value=&amp;quot;UsePurchaseOrderReceipt&amp;quot;/&amp;gt;&amp;lt;/filter&amp;gt;&amp;lt;/entity&amp;gt;&amp;lt;/fetch&amp;gt;&lt;/arg&gt;&lt;/definition&gt;&lt;branch e="false" info="PO Receipt Tab Visiblity" &gt;&lt;if e="true"&gt;&lt;conditions e="true" op="And"&gt;&lt;condition e="false"&gt;&lt;var&gt;UsePurchaseOrderReceipt.optionvalue&lt;/var&gt;&lt;op&gt;Equal&lt;/op&gt;&lt;arg&gt;String:False&lt;/arg&gt;&lt;/condition&gt;&lt;/conditions&gt;&lt;action&gt;&lt;function e="false"&gt;&lt;var&gt;Tabs.purchaseorderreceipt.IsVisible&lt;/var&gt;&lt;func&gt;Assign&lt;/func&gt;&lt;arg&gt;Boolean:False&lt;/arg&gt;&lt;/function&gt;&lt;/action&gt;&lt;/if&gt;&lt;/branch&gt;&lt;/Workflow&gt;</WorkflowLoad>
+	<WorkflowCommandCanExecute>&lt;?xml version="1.0" ?&gt;&lt;Workflow e="true" isvalid="true" syntaxVersion="11" version="0"&gt;&lt;branch e="true" info="Change Form Primary Command to Complete" &gt;&lt;if e="true"&gt;&lt;conditions e="true" op="And"&gt;&lt;condition e="false"&gt;&lt;var&gt;Command.Name&lt;/var&gt;&lt;op&gt;Contains&lt;/op&gt;&lt;arg&gt;String:Save&lt;/arg&gt;&lt;/condition&gt;&lt;/conditions&gt;&lt;action&gt;&lt;function e="false"&gt;&lt;var&gt;Command.IsEnabled&lt;/var&gt;&lt;func&gt;Assign&lt;/func&gt;&lt;arg&gt;Boolean:False&lt;/arg&gt;&lt;/function&gt;&lt;/action&gt;&lt;/if&gt;&lt;/branch&gt;&lt;/Workflow&gt;</WorkflowCommandCanExecute>
+	<SharedVariables>&lt;SharedVariables&gt;&lt;Variables&gt;&lt;SharedVariable usage="OnLoadEnabled"&gt;&lt;Name&gt;isinternal&lt;/Name&gt;&lt;CrmType&gt;Boolean&lt;/CrmType&gt;&lt;/SharedVariable&gt;&lt;SharedVariable usage="OnLoadEnabled"&gt;&lt;Name&gt;captureSignature&lt;/Name&gt;&lt;CrmType&gt;Boolean&lt;/CrmType&gt;&lt;/SharedVariable&gt;&lt;/Variables&gt;&lt;/SharedVariables&gt;</SharedVariables>
+	<PrimaryCommands>Complete||</PrimaryCommands>
+	<SharedVariableNames>
+		<string>isinternal</string>
+		<string>captureSignature</string>
+	</SharedVariableNames>
+	<EnabledWorkflows>OnLoadEnabled OnChangeEnabled OnSaveEnabled OnExecuteCommand OnCanExecuteCommand OnExecuteButton</EnabledWorkflows>
+	<SerializedChildrenV2>
+		<FormTab xsi:type="DetailTab" flexi="1" flexiHeader="1" flexiMaxLines="0">
+			<Name>Resolution</Name>
+			<SerializedChildren>
+				<DetailItem SchemaName="name"/>
+				<DetailItem SchemaName="jobid"/>
+				<DetailItem SchemaName="completiondate"/>
+				<DetailItem SchemaName="isinternal"/>
+				<DetailItem SchemaName="resolutionnote"/>
+			</SerializedChildren>
+		</FormTab>
+		<FormTab xsi:type="IFrameTab">
+			<Name>locationcontact</Name>
+			<Url>file://entity/locationcontact/locationcontact-list.html</Url>
+		</FormTab>
+		<FormTab xsi:type="IFrameTab">
+			<Name>laborexpense</Name>
+			<Url>file://entity/laborexpense/laborexpense-list.html</Url>
+		</FormTab>
+		<FormTab xsi:type="IFrameTab">
+			<Name>consumedinventory</Name>
+			<Url>file://entity/consumedinventory/consumedinventory-list.html</Url>
+		</FormTab>
+		<FormTab xsi:type="IFrameTab">
+			<Name>purchaseorderreceipt</Name>
+			<Url>file://entity/purchaseorderreceipt/purchaseorderreceipt-list.html</Url>
+		</FormTab>
+		<FormTab xsi:type="IFrameTab" flexi="0" flexiHeight="4" flexiHeader="1" flexiMaxLines="0">
+			<Name>Summary</Name>
+			<Url>file://entity/appointmentcompletion/completion-summary.html</Url>
+		</FormTab>
+		<FormTab xsi:type="IFrameTab">
+			<Name>formCommands</Name>
+			<Url>file://entity/appointment/appointment-form_complete-job.html</Url>
+			<DelayLoad>false</DelayLoad>
+		</FormTab>
+	</SerializedChildrenV2>
+</EntityForm>

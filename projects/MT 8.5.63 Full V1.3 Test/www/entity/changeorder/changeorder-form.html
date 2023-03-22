@@ -1,0 +1,137 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <!-- Activate IE9 document mode, if available -->
+    <meta charset="utf-8" http-equiv="X-UA-Compatible" content="IE=edge" />
+    <!-- Defined iOS viewport -->
+    <meta name="viewport" content="initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=false">
+    <!-- Disable iOS Phone No Detection -->
+    <meta name="format-detection" content="telephone=no" />
+    <!-- DevExtreme dependencies -->
+    <script type="text/javascript" src="../../scripts/jquery-3.3.1.min.js"></script>
+    <!-- Offline HTML JavaScript Bridge-->
+    <script type="text/javascript" src="../../scripts/JSBridge.js"></script>
+    <script type="text/javascript" src="../../scripts/k2aMethods.js"></script>
+    <script type="text/javascript" src="../../enum/Schema.js"></script>
+    <script type="text/javascript" src="../../enum/setupoption.js"></script>
+    <script type="text/javascript" src="./changeorder.js"></script>
+    <title>Entity Form</title>
+</head>
+<body>
+    <script>
+        var isUnPosted = false, entityName = 'changeorder';
+        $(function () {
+            //============== ANDROID CHECK ================
+            MobileCRM.Platform.preventBackButton(btnBackClicked);
+
+            MobileCRM.UI.EntityForm.onItemChange(SCHEMA.changeorder.Properties.changeorderdescription, onChangeOrderDescriptionChange, true, null);
+            MobileCRM.UI.EntityForm.onItemChange(SCHEMA.changeorder.Properties.changeorderamount, onChangeOrderAmountChange, true, null);
+            MobileCRM.UI.EntityForm.onPostSave(function (entityForm) {
+                var saveHandler = entityForm.suspendPostSave();
+                setCleanAndClose();
+            }, true, null);
+
+            MobileCRM.Localization.initialize(function (localization) {
+
+                MobileCRM.UI.EntityForm.requestObject(function (entityForm) {
+
+                    isUnPosted = parseInt(entityForm.entity.properties.postingstatus) === 1 || parseInt(entityForm.entity.properties.postingstatus) === 0;
+
+                    var detailView = entityForm.getDetailView(entityName);
+                    detailView.items.forEach(function (item) {
+                        switch (item.name) {
+                            case SCHEMA.changeorder.Properties.changeorderamount:
+                                item.decimalPlaces = 2;
+                                item.upDownVisible = isUnPosted;
+                                item.increment = 1;
+                                item.minimum = parseInt(item.maximum) * -1;
+                                item.isEnabled = isUnPosted;
+                                item.validate = isUnPosted;
+                                if (item.value === undefined) {
+                                    item.errorMessage = MobileCRM.Localization.get("Alert.FmtFieldNotZero").format(item.label);
+                                }
+                                else {
+                                    item.errorMessage = '';
+                                }
+                                break;
+                            case SCHEMA.changeorder.Properties.changeorderdescription:
+                                item.isEnabled = true;
+                                if (item.value === undefined) {
+                                    item.errorMessage = MobileCRM.Localization.get("Alert.FmtFieldNotEmpty").format(item.label);
+                                    item.validate = true;
+                                }
+                                else {
+                                    item.errorMessage = '';
+                                    item.validate = false;
+                                }
+                                break;
+                            default:
+                                item.isEnabled = false;
+                                item.errorMessage = '';
+                                item.validate = false;
+                        }
+                    });
+
+                    createTextBoxItem(
+                        MobileCRM.Localization.get("changeorder.changeorderstatus"),
+                        'Change_Order_Status',
+                        3,
+                        getChangeOrderStatusDisplayValue(entityForm.entity.properties.changeorderstatus),
+                        false
+                    ).then(function () {
+                        createTextBoxItem(
+                            MobileCRM.Localization.get("changeorder.changeordertype"),
+                            'Contract_Type',
+                            4,
+                            getContractType(entityForm.entity.properties.changeordertype),
+                            false
+                        );
+                    }, MobileCRM.bridge.alert);
+                }, MobileCRM.bridge.alert, null);
+            }, MobileCRM.bridge.alert);
+        });
+
+        function createTextBoxItem(label, name, position, value, isEnabled) {
+            var deferred = $.Deferred();
+            MobileCRM.UI.EntityForm.requestObject(function (entityForm) {
+                var detailView = entityForm.getDetailView(entityName);
+                var textBoxItem = detailView.getItemByName(name);
+
+                if (!textBoxItem)
+                    textBoxItem = new MobileCRM.UI.DetailViewItems.TextBoxItem(name, label);
+
+                textBoxItem.value = value;
+                textBoxItem.isEnabled = isEnabled;
+                detailView.insertItem(textBoxItem, position);
+
+                return deferred.resolve();
+            }, function (err) { return deferred.reject(err); });
+            return deferred.promise();
+        }
+
+        function onChangeOrderAmountChange(entityForm) {
+            var changedItem = entityForm.context.changedItem;
+            var detailView = entityForm.getDetailView(entityName);
+            isUnPosted = parseInt(entityForm.entity.properties.postingstatus) === 1 || parseInt(entityForm.entity.properties.postingstatus) === 0;
+
+            if (entityForm.entity.isNew && entityForm.entity.isDirty && changedItem === SCHEMA.changeorder.Properties.changeorderamount && isUnPosted) {
+                entityForm.entity.properties.changeordertype = 1;
+                detailView.getItemByName('Contract_Type').value = getContractType(1);
+                entityForm.entity.properties.changeorderstatus = 2;
+                detailView.getItemByName('Change_Order_Status').value = getChangeOrderStatusDisplayValue(2);
+            }
+        }
+
+        function onChangeOrderDescriptionChange(entityForm) {
+            var changedItem = entityForm.context.changedItem;
+            var detailView = entityForm.getDetailView(entityName);
+            isUnPosted = parseInt(entityForm.entity.properties.postingstatus) === 1 || parseInt(entityForm.entity.properties.postingstatus) === 0;
+
+            if (entityForm.entity.isNew && changedItem !== null && changedItem === SCHEMA.changeorder.Properties.changeorderdescription && isUnPosted) {
+                entityForm.entity.properties.changeorderstatus = 2;
+                detailView.getItemByName('Change_Order_Status').value = getChangeOrderStatusDisplayValue(2);
+            }
+        }
+    </script>
+</body>
+</html>

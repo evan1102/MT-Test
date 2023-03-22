@@ -1,0 +1,187 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <!-- Activate IE9 document mode, if available -->
+    <meta charset="utf-8" http-equiv="X-UA-Compatible" content="IE=edge" />
+    <!-- Defined iOS viewport -->
+    <meta name="viewport" content="initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=false">
+    <!-- Disable iOS Phone No Detection -->
+    <meta name="format-detection" content="telephone=no" />
+    <!-- DevExtreme dependencies -->
+    <script type="text/javascript" src="../../scripts/jquery-3.3.1.min.js"></script>
+    <!-- DevExtreme themes -->
+    <link rel="stylesheet" type="text/css" href="../../css/dx.common.css" />
+    <link rel="stylesheet" type="text/css" href="../../css/dx.light.css" />
+    <!-- A DevExtreme library -->
+    <script type="text/javascript" src="../../scripts/dx.all.js"></script>
+    <!-- Offline HTML JavaScript Bridge-->
+    <script type="text/javascript" src="../../scripts/JSBridge.js"></script>
+    <script type="text/javascript" src="../../scripts/k2aMethods.js"></script>
+    <!-- jSignature -->
+    <script type="text/javascript" src="../../scripts/flashcanvas.js"></script>
+    <script type="text/javascript" src="../../scripts/jSignature.min.js"></script>
+    <!-- Offline HTML Styling -->
+    <link rel="stylesheet" type="text/css" href="../../css/k2a.css" />
+    <style>
+        .dx-item {
+            padding-left: 5px;
+            padding-right: 5px;
+        }
+    </style>
+    <title>Capture Signature</title>
+</head>
+<body>
+    <div id="toolbar"></div><br>
+    <div id="form"></div><br>
+    <div style='background-color: lightgrey'>
+        <div id='signaturePad' style='border:dotted #5174FA'></div>
+    </div>
+    <div id="toast"></div>
+
+    <script>
+        //============== TOOLBAR ITEMS ================
+        var btnBack = {
+            location: 'before',
+            locateInMenu: 'never',
+            widget: 'dxButton',
+            options: {
+                type: 'back',
+                text: 'Back',
+                onClick: btnBackClicked
+            }
+        };
+        var titleSignature = {
+            location: 'center',
+            locateInMenu: 'never',
+            template: function () {
+                return $("<div><b>Please Sign</b></div>");
+            }
+        };
+        var btnClear = {
+            location: 'after',
+            locateInMenu: 'auto',
+            widget: 'dxButton',
+            options: {
+                type: 'normal',
+                icon: 'revert',
+                onClick: btnClearClicked
+            }
+        };
+        var btnSave = {
+            location: 'after',
+            locateInMenu: 'auto',
+            widget: 'dxButton',
+            options: {
+                type: 'normal',
+                icon: 'save',
+                onClick: btnSaveClicked
+            }
+        };
+
+        window.onload = function () {
+            //============== ANDROID BACK BUTTON ================
+            MobileCRM.Platform.preventBackButton(btnBackClicked);
+
+            //============== LOAD OPTIONS ================
+            MobileCRM.UI.IFrameForm.requestObject(function (iFrame) {
+                iFrame.form.showTitle = false;
+                signaturetype = iFrame.options.type;
+                reports = iFrame.options.reports;
+
+                //============== FORMS ================
+                form = $("#form").dxForm({
+                    items: [{
+                        dataField: "name",
+                        editorType: "dxTextBox",
+                        editorOptions: {
+                            onInput: MobileCRM.UI.IFrameForm.setDirty,
+                            showClearButton: true,
+                            disabled: signaturetype === "Technician" ? true : false,
+                            value: iFrame.options.name ? iFrame.options.name : ""
+                        },
+                        label: { text: signaturetype + " Name" },
+                        isRequired: true
+                    }]
+                }).dxForm("instance");
+
+            }, MobileCRM.bridge.alert, null);
+
+            //============== MAXIMIZE FORM ================
+            $(window).resize(function () {
+                checkIfMaximized_Multipanel();
+            });
+            function checkIfMaximized_Multipanel() {
+                MobileCRM.UI.Form.requestObject(function (form) {
+                    MobileCRM.Platform.requestObject(function (platform) {
+                        if (platform.isMultiPanel && !form.isMaximized)
+                            maximizeForm();
+                    }, MobileCRM.bridge.alert, null);
+                }, MobileCRM.bridge.alert, null);
+            }
+            function maximizeForm() {
+                MobileCRM.UI.Form.requestObject(function (form) {
+                    form.isMaximized = true;
+                }, MobileCRM.bridge.alert, null);
+            }
+
+            //============== TOOLBARS ================
+            $("#toolbar").dxToolbar({
+                items: [btnBack, titleSignature, btnClear, btnSave]
+            }).dxToolbar("instance");
+
+
+            //============== SIGNATURE ================
+            $("#signaturePad").jSignature({ 'lineWidth': 4 });
+            $("#signaturePad").bind('change', function (e) {
+                var hasSignature = $("#signaturePad").jSignature('getData', 'base30')[1].length > 1;
+                var hasName = form.getEditor('name').option("value").trim() !== '';
+
+                MobileCRM.UI.IFrameForm.requestObject(function (iFrameForm) {
+                    iFrameForm.isDirty = signaturetype === "Customer" ? hasSignature || hasName : hasSignature;
+                }, MobileCRM.bridge.alert);
+            });
+        };
+
+        //============== TOOLBAR FUNCTIONS ================
+        function btnClearClicked() {
+            $("#signaturePad").jSignature('reset');
+        }
+        function btnSaveClicked() {
+            if ($("#signaturePad").jSignature('getData', 'base30')[1].length <= 1)
+                showToast("Missing Signature", "error");
+            else if (!form.getEditor('name').option("value")) {
+                form.validate();
+                form.getEditor('name').focus();
+            }
+            else
+                saveReportSignatures();
+        }
+
+        //============== OFFLINE HTML FUNCTIONS ================
+        function saveReportSignatures() {
+            if (reports[0] && reports[0].length > 0)
+                updateReport(reports[0], function (err0) {
+                    if (err0) alert("Save0 Error: \n" + err0);
+                    else if (reports[1] && reports[1].length > 0) {
+                        updateReport(reports[1], function (err1) {
+                            if (err1) alert("Save1 Error: \n" + err1);
+                            else setCleanAndClose();
+                        });
+                    }
+                    else setCleanAndClose();
+                });
+        }
+        function updateReport(reportID, callback) {
+            MobileCRM.DynamicEntity.loadById("report", reportID,
+                function (report) {
+                    var isCustomer = signaturetype === "Customer";
+                    report.properties[isCustomer ? "customername" : "technicianname"]
+                        = form.getEditor('name').option("value");
+                    report.properties[isCustomer ? "customersignature" : "techniciansignature"]
+                        = $("#signaturePad").jSignature('getData', 'svgbase64')[1];
+                    report.save(callback);
+                }, MobileCRM.bridge.alert, null);
+        }
+    </script>
+</body>
+</html>

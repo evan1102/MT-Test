@@ -1,0 +1,165 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <!-- Activate IE9 document mode, if available -->
+    <meta charset="utf-8" http-equiv="X-UA-Compatible" content="IE=edge" />
+    <!-- Defined iOS viewport -->
+    <meta name="viewport" content="initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=false">
+    <!-- Disable iOS Phone No Detection -->
+    <meta name="format-detection" content="telephone=no" />
+    <!-- DevExtreme dependencies -->
+    <script type="text/javascript" src="../../scripts/jquery-3.3.1.min.js"></script>
+    <!-- Offline HTML JavaScript Bridge-->
+    <script type="text/javascript" src="../../scripts/JSBridge.js"></script>
+    <script type="text/javascript" src="../../scripts/k2aMethods.js"></script>
+    <script type="text/javascript" src="../../enum/Schema.js"></script>
+    <script type="text/javascript" src="../../enum/setupoption.js"></script>
+    <title>Entity Form</title>
+</head>
+<body>
+    <script>
+        // Array of file extensions that will not be allowed as attachments
+        // Default is Executable, Script, and Batch Files: 'exe', 'dll', 'ocx', 'js', 'wsf', 'bat', 'cmd', 'btm'
+        var invalidFileExtensions = ['exe', 'dll', 'ocx', 'js', 'wsf', 'bat', 'cmd', 'btm'];
+
+        //============== INITIAL SETTINGS ================
+        var loading, entityName = SCHEMA.annotation.name;
+        var detailViewName = "details";
+        var requiredSetupOptions = [];
+
+        $(function () {
+            //============== ANDROID CHECK ================
+            MobileCRM.Platform.preventBackButton(btnBackClicked);
+
+            loading = MobileCRM.UI.Form.showPleaseWait("Loading");
+            MobileCRM.UI.EntityForm.onSave(onSave, true, null);
+
+            loadSetupOptions(loadFormOptions);
+        });
+
+        //============== LOAD OPTIONS ================
+        function loadFormOptions() {
+            MobileCRM.Localization.initialize(function (localization) {
+                MobileCRM.UI.EntityForm.requestObject(function (entityForm) {
+                    var properties = entityForm.entity.properties;
+                    var detailView = entityForm.getDetailView("details");
+
+                    if (entityForm.entity.properties.isdocument) {
+                        addExtentionValidation();
+                    }
+
+                    entityForm.form.caption = MobileCRM.Localization.get("attachment");
+                    detailView.getItemByName(SCHEMA.annotation.Properties.notetext).label = "Description";
+                    detailView.getItemByName(SCHEMA.annotation.Properties.notetext).isEnabled =
+                        !(properties.objectid && properties.objectid.entityName === SCHEMA.report.name);
+
+                    switch (properties.gpnotetype) {
+                        case "S":
+                            detailView.getItemByName(SCHEMA.annotation.Properties.objectid).label = MobileCRM.Localization.get(SCHEMA.servicecall.name);
+                            break;
+                        case "E":
+                            detailView.getItemByName(SCHEMA.annotation.Properties.objectid).label = MobileCRM.Localization.get(SCHEMA.equipment.name);
+                            break;
+                        case "T":
+                            detailView.getItemByName(SCHEMA.annotation.Properties.objectid).label = MobileCRM.Localization.get(SCHEMA.task.name);
+                            break;
+                        case "W":
+                            detailView.getItemByName(SCHEMA.annotation.Properties.objectid).label = MobileCRM.Localization.get(SCHEMA.additionalwork.name);
+                            break;
+                        default:
+                            if (properties.objectid) {
+                                detailView.getItemByName(SCHEMA.annotation.Properties.objectid).label = MobileCRM.Localization.get(properties.objectid.entityName);
+                            }
+                    }
+
+                    detailView.getItemByName(SCHEMA.annotation.Properties.objectid).isEnabled = false;
+                    detailView.getItemByName(SCHEMA.annotation.Properties.modifieddate).isEnabled = false;
+                    detailView.getItemByName(SCHEMA.annotation.Properties.modifieddate).parts = 1;
+                    if (entityForm.entity.isNew) {
+                        detailView.startEditItem(detailView.getItemIndex(SCHEMA.annotation.Properties.notetext));
+                    }
+                    else {
+                        MobileCRM.UI.EntityForm.onCanExecuteCommand("DocAction.Clear", function (entityForm) { return false }, true);
+                    }
+
+                    // Change Objectid form item from link to text
+                    var objectidFormItem = detailView.getItemByName(SCHEMA.annotation.Properties.objectid);
+                    objectidFormItem.isVisible = false;
+                    createTextBoxItem(
+                        objectidFormItem.label,
+                        objectidFormItem.name + "text",
+                        detailView.getItemIndex('objectid') + 1,
+                        objectidFormItem.value ? objectidFormItem.value.primaryName : "Unknown",
+                        false
+                    ).then(function () {
+                        loading.close();
+                    }, alertError);
+                }, MobileCRM.bridge.alert);
+            }, function (error) {
+                MobileCRM.bridge.alert(error);
+                resolve(false);
+            })
+        }
+
+        function createTextBoxItem(label, name, position, value, isEnabled) {
+            var deferred = $.Deferred();
+            MobileCRM.UI.EntityForm.requestObject(function (entityForm) {
+                var detailView = entityForm.getDetailView(detailViewName);
+                var textBoxItem = detailView.getItemByName(name);
+
+                if (!textBoxItem)
+                    textBoxItem = new MobileCRM.UI.DetailViewItems.TextBoxItem(name, label);
+
+                textBoxItem.value = value;
+                textBoxItem.isEnabled = isEnabled;
+                detailView.insertItem(textBoxItem, position);
+                return deferred.resolve();
+            }, function (err) { return deferred.reject(err); });
+            return deferred.promise();
+        }
+
+        //============== FORM EXECUTIONS ================
+        function onSave(entityForm) {
+            var saveHander = entityForm.suspendSave();
+            if (!entityForm.entity.properties.filename) {
+                saveHander.resumeSave("Attachment cannot be empty.");
+                return;
+            }
+
+            var notetext = entityForm.entity.properties.notetext ? entityForm.entity.properties.notetext : "";
+            switch (entityForm.entity.properties.gpnotetype) {
+                case 'E':
+                    entityForm.entity.properties.subject = entityForm.entity.properties.gpequipment + ' - ' + notetext;
+                    break;
+                default:
+                    entityForm.entity.properties.subject = entityForm.entity.properties.gpreferenceid + ' - ' + notetext;
+                    break;
+            }
+
+            saveHander.resumeSave();
+        }
+
+        function addExtentionValidation() {
+            MobileCRM.UI.EntityForm.onPostSave(function (entityForm) {
+                var saveHandler = entityForm.suspendPostSave();
+                var entityProps = entityForm.entity.properties;
+                var invalidFileType = null;
+
+                invalidFileExtensions.forEach(function (extension) {
+                    if (entityProps.filename.toUpperCase().indexOf('.' + extension.toUpperCase()) > -1)
+                        invalidFileType = extension;
+                });
+
+                if (invalidFileType) {
+                    MobileCRM.DynamicEntity.deleteById("annotation", entityProps.id, function () {
+                        MobileCRM.UI.MessageBox.sayText("Invalid File Type (." + invalidFileType + ")");
+                        saveHandler.resumePostSave();
+                    }, MobileCRM.bridge.alert, null);
+                }
+                else
+                    saveHandler.resumePostSave();
+            }, true, null);
+        }
+    </script>
+</body>
+</html>

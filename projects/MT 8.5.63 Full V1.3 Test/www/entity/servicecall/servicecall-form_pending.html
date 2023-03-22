@@ -1,0 +1,248 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <!-- Activate IE9 document mode, if available -->
+    <meta charset="utf-8" http-equiv="X-UA-Compatible" content="IE=edge" />
+    <!-- Defined iOS viewport -->
+    <meta name="viewport" content="initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=false">
+    <!-- Disable iOS Phone No Detection -->
+    <meta name="format-detection" content="telephone=no" />
+    <!-- DevExtreme dependencies -->
+    <script type="text/javascript" src="../../scripts/jquery-3.3.1.min.js"></script>
+    <!-- A DevExtreme library -->
+    <script type="text/javascript" src="../../scripts/dx.all.js"></script>
+    <!-- Offline HTML JavaScript Bridge-->
+    <script type="text/javascript" src="../../scripts/JSBridge.js"></script>
+    <script type="text/javascript" src="../../scripts/k2aMethods.js"></script>
+    <script type="text/javascript" src="../../enum/Schema.js"></script>
+    <script type="text/javascript" src="../../enum/setupoption.js"></script>
+    <title>Entity Form</title>
+</head>
+<body>
+    <script>
+        //============== INITIAL SETTINGS ================
+        var entityName = SCHEMA.servicecall.name, poRequired = false;
+        var isServerLocation = false;
+        //============== SELECTED DATA ================
+        var selected = { 'location': null, 'calltype': null };
+        //============== FETCH DATA ================
+        var requiredSetupOptions = [
+            // SETUPOPTION.UseBarcoding // Note: Can't add barcode button to Equipment lookup
+        ];
+
+        $(function () {
+            //============== ANDROID CHECK ================
+            MobileCRM.Platform.preventBackButton(btnBackClicked);
+
+            loadSetupOptions(loadFormOptions);
+
+            MobileCRM.UI.EntityForm.onChange(formValueChanged, true);
+            MobileCRM.UI.EntityForm.onSave(btnSaveClicked, true, null);
+        });
+
+        //============== LOAD OPTIONS ================
+        function loadFormOptions() {
+            MobileCRM.UI.EntityForm.requestObject(function (entityForm) {
+                selected[entityName] = entityForm.entity.properties;
+                selected.calltype = entityForm.entity.properties.calltypeid ?
+                    entityForm.entity.properties.calltypeid : null;
+                selected.location = entityForm.entity.properties.locationid ?
+                    entityForm.entity.properties.locationid : null;
+
+                if (selected.location)
+                    isServerLocation = selected.location.primaryName.toUpperCase() === 'UNKNOWN';
+
+                loadFormItems(entityForm);
+            }, alertError, null);
+        }
+        function loadFormItems(entityForm) {
+            // Load Form Items
+            var detailView = entityForm.getDetailView(entityName);
+            var formItems = [];
+            $(detailView.items).each(function (index, item) {
+                formItems[item.name] = item;
+            });
+
+            // Set Form Item Visibility
+            formItems.customerid.isVisible = !isServerLocation;
+            formItems.locationid.isVisible = !isServerLocation;
+            formItems.equipmentid.isVisible = !isServerLocation;
+
+            // Set Form Item Required
+            formItems.problemtypeid.errorMessage = null;
+            formItems.description.errorMessage = null;
+            if (selected.location && !isServerLocation)
+                checkLocationPurchaseOrderRequired(
+                    selected.location.id,
+                    selected.calltype ? selected.calltype.primaryName : ""
+                );
+
+            // Set Form Item Options
+            formItems.customerid.isEnabled = false;
+            formItems.locationid.isEnabled = false;
+            formItems.dateofcall.isEnabled = false;
+            // Note: Can't add barcode button to Equipment lookup
+            formItems.purchaseorder.maxLength = 15;
+            formItems.description.maxLength = 32767;
+
+            loadFormValues();
+        }
+
+        function checkLocationPurchaseOrderRequired(locationid, calltypeName) {
+            MobileCRM.DynamicEntity.loadById("location", locationid, function (location) {
+                poRequired = JSON.parse(location.properties.purchaseorderrequired);
+                poRequired = poRequired && calltypeName !== 'MC';
+
+                setPurchaseOrderRequired(selected[entityName].purchaseorder);
+            }, MobileCRM.bridge.alert);
+        }
+        function setPurchaseOrderRequired(poValue) {
+            var trimmedPoValue = poValue ? poValue.toString().trim() : null;
+            MobileCRM.UI.EntityForm.requestObject(function (entityForm) {
+                entityForm.getDetailView(entityName).getItemByName("purchaseorder").errorMessage =
+                    poRequired && !trimmedPoValue ? "Location requires PO" : null;
+            }, MobileCRM.bridge.alert);
+        }
+
+        //============== LOAD DATA ================
+        function loadFormValues() {
+            MobileCRM.UI.EntityForm.requestObject(function (entityForm) {
+                if (isServerLocation) {
+                    // Add Customer, Location, and Equipment Text Box Items
+                    var detailView = entityForm.getDetailView(entityName);
+                    var servercustomer = detailView.getItemByName("servercustomer");
+                    var serverlocation = detailView.getItemByName("serverlocation");
+                    var serverequipment = detailView.getItemByName("serverequipment");
+
+                    if (!servercustomer)
+                        servercustomer = new MobileCRM.UI.DetailViewItems.TextBoxItem("servercustomer", "Customer");
+                    servercustomer.isEnabled = false;
+                    detailView.insertItem(servercustomer, 0);
+                    fetchCustomer();
+
+                    if (!serverlocation)
+                        serverlocation = new MobileCRM.UI.DetailViewItems.TextBoxItem("serverlocation", "Location");
+                    serverlocation.isEnabled = false;
+                    detailView.insertItem(serverlocation, 1);
+
+                    if (selected[entityName].equipmentid) {
+                        if (!serverequipment)
+                            serverequipment = new MobileCRM.UI.DetailViewItems.TextBoxItem("serverequipment", "Equipment");
+                        serverequipment.isEnabled = false;
+                        detailView.insertItem(serverequipment, detailView.getItemIndex("equipmentid") + 1);
+                    }
+                }
+
+                fetchDropDowns();
+            }, MobileCRM.bridge.alert);
+        }
+        function fetchDropDowns() {
+            fetchCallType();
+            if (isServerLocation) {
+                connectionCheck(true, function () {
+                    fetchCustomer();
+                    fetchLocation();
+                    if (selected[entityName].equipmentid)
+                        fetchEquipment();
+                });
+            }
+        }
+        function fetchCallType() {
+            var fetch = "<fetch verion='1.0'><entity name='calltype'><filter type='and'>" +
+                "<condition attribute='name' operator='not-in'>" +
+                "<value>MCC</value>" +
+                "<value>CAS</value>" +
+                "<value>EQR</value>" +
+                "<value>KIT</value>" +
+                "<value>PRE</value>" +
+                "<value>QTE</value>" +
+                "<value>REL</value>" +
+                "<value>SAL</value>" +
+                "<value>WTY</value>" +
+                "</condition></filter></entity></fetch>";
+
+            addFetchFilter(SCHEMA.servicecall.Properties.calltypeid, SCHEMA.calltype.name, fetch, entityName);
+        }
+        function fetchCustomer() {
+            loadServerItem(
+                SCHEMA.customer.name,
+                selected[entityName].customerid.id,
+                "servercustomer",
+                selected[entityName].gpcustomernumber
+            );
+        }
+        function fetchLocation() {
+            loadServerItem(
+                SCHEMA.location.name,
+                selected[entityName].locationid.id,
+                "serverlocation",
+                selected[entityName].gplocationnumber
+            );
+        }
+        function fetchEquipment() {
+            loadServerItem(
+                SCHEMA.equipment.name,
+                selected[entityName].equipmentid.id,
+                "serverequipment",
+                selected[entityName].gpequipmentid
+            );
+        }
+
+        function loadServerItem(fetchEntity, entityID, formItemName, errValue) {
+            var entity = new MobileCRM.FetchXml.Entity(fetchEntity);
+            entity.addAttribute('name');
+            entity.addFilter().where('id', 'eq', entityID);
+
+            var fetch = new MobileCRM.FetchXml.Fetch(entity);
+            fetch.executeOnline("JSON", function (res) {
+                MobileCRM.UI.EntityForm.requestObject(function (entityForm) {
+                    entityForm.getDetailView(entityName)
+                        .getItemByName(formItemName).value = res[0] ? res[0].name : errValue;
+                }, MobileCRM.bridge.alert);
+            }, MobileCRM.bridge.alert);
+        }
+
+        //============== TOOLBAR FUNCTIONS ================
+        function btnSaveClicked(entityForm) {
+            saveHandler = entityForm.suspendSave();
+            updatePendingEntity(entityForm);
+        }
+
+        //============== FORM ITEM FUNCTIONS ================
+        function formValueChanged(entityForm) {
+            var entityProps = entityForm.entity.properties;
+            switch (entityForm.context.changedItem) {
+                case "calltypeid":
+                    entityProps.calltypeid ? selected.calltype = entityProps.calltypeid : null;
+                    break;
+                case "purchaseorder":
+                    if (poRequired)
+                        setPurchaseOrderRequired(entityProps.purchaseorder);
+                    break;
+                default:
+                    entityForm.getDetailView(entityName)
+                        .getItemByName(entityForm.context.changedItem).errorMessage = null;
+            }
+        }
+
+        //============== FORM EXECUTIONS ================
+        function updatePendingEntity(entityForm) {
+            var entityProps = entityForm.entity.properties;
+
+            entityForm.entity.properties.gpcalltype =
+                entityProps.calltypeid ? entityProps.calltypeid.primaryName : "";
+
+            entityForm.entity.properties.gpproblemtype =
+                entityProps.problemtypeid ? entityProps.problemtypeid.primaryName : "";
+
+            entityForm.entity.save(error_updatePendingEntity);
+        }
+        function error_updatePendingEntity(err) {
+            if (err)
+                saveHandler.resumeSave(err);
+            else
+                setCleanAndClose();
+        }
+    </script>
+</body>
+</html>

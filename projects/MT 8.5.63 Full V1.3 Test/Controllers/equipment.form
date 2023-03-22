@@ -1,0 +1,81 @@
+﻿<EntityForm xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:dummy="0" flexi="2" fleximode="0" fullscreen="0" resize="0" version="2">
+  <IsContactForm>false</IsContactForm>
+  <EntityName>equipment</EntityName>
+  <CamelCase>equipment</CamelCase>
+  <WorkflowLoad>&lt;?xml version="1.0" ?&gt;&lt;Workflow e="true" isvalid="true" syntaxVersion="11" version="0"&gt;&lt;branch e="true" info="Set Lat/Long to 0 on a new record" &gt;&lt;if e="false"&gt;&lt;conditions e="false" op="And"&gt;&lt;condition e="false"&gt;&lt;var&gt;Entity.IsNew&lt;/var&gt;&lt;op&gt;Equal&lt;/op&gt;&lt;arg&gt;Boolean:True&lt;/arg&gt;&lt;/condition&gt;&lt;/conditions&gt;&lt;action&gt;&lt;function e="false"&gt;&lt;var&gt;Entity.latitude&lt;/var&gt;&lt;func&gt;Assign&lt;/func&gt;&lt;arg&gt;Float:0&lt;/arg&gt;&lt;/function&gt;&lt;function e="false"&gt;&lt;var&gt;Entity.longitude&lt;/var&gt;&lt;func&gt;Assign&lt;/func&gt;&lt;arg&gt;Float:0&lt;/arg&gt;&lt;/function&gt;&lt;/action&gt;&lt;/if&gt;&lt;/branch&gt;&lt;function e="false"&gt;&lt;var&gt;Form.latitude.IsVisible&lt;/var&gt;&lt;func&gt;Assign&lt;/func&gt;&lt;arg&gt;Boolean:False&lt;/arg&gt;&lt;/function&gt;&lt;function e="false"&gt;&lt;var&gt;Form.longitude.IsVisible&lt;/var&gt;&lt;func&gt;Assign&lt;/func&gt;&lt;arg&gt;Boolean:False&lt;/arg&gt;&lt;/function&gt;&lt;function e="false"&gt;&lt;var&gt;Tabs.formCommands.IsVisible&lt;/var&gt;&lt;func&gt;Assign&lt;/func&gt;&lt;arg&gt;Boolean:False&lt;/arg&gt;&lt;/function&gt;&lt;definition e="false"&gt;&lt;var&gt;UseBOBIntegration&lt;/var&gt;&lt;func&gt;LoadFetch&lt;/func&gt;&lt;type&gt;Entity&lt;/type&gt;&lt;arg&gt;String:setupoption&lt;/arg&gt;&lt;arg&gt;Fetch:&amp;lt;fetch version=&amp;quot;1.0&amp;quot;&amp;gt;&amp;lt;entity name=&amp;quot;setupoption&amp;quot;&amp;gt;&amp;lt;filter type=&amp;quot;and&amp;quot;&amp;gt;&amp;lt;condition attribute=&amp;quot;name&amp;quot; operator=&amp;quot;eq&amp;quot; value=&amp;quot;UseBOBIntegration&amp;quot;/&amp;gt;&amp;lt;/filter&amp;gt;&amp;lt;/entity&amp;gt;&amp;lt;/fetch&amp;gt;&lt;/arg&gt;&lt;/definition&gt;&lt;definition e="false"&gt;&lt;var&gt;UseRefrigerantTracking&lt;/var&gt;&lt;func&gt;LoadFetch&lt;/func&gt;&lt;type&gt;Entity&lt;/type&gt;&lt;arg&gt;String:setupoption&lt;/arg&gt;&lt;arg&gt;Fetch:&amp;lt;fetch version=&amp;quot;1.0&amp;quot;&amp;gt;&amp;lt;entity name=&amp;quot;setupoption&amp;quot;&amp;gt;&amp;lt;filter type=&amp;quot;and&amp;quot;&amp;gt;&amp;lt;condition attribute=&amp;quot;name&amp;quot; operator=&amp;quot;eq&amp;quot; value=&amp;quot;UseRefrigerantTracking&amp;quot;/&amp;gt;&amp;lt;/filter&amp;gt;&amp;lt;/entity&amp;gt;&amp;lt;/fetch&amp;gt;&lt;/arg&gt;&lt;/definition&gt;&lt;branch e="false" info="BOB Tab Visibility" &gt;&lt;if e="true"&gt;&lt;conditions e="true" op="And"&gt;&lt;condition e="false"&gt;&lt;var&gt;UseBOBIntegration.@this&lt;/var&gt;&lt;op&gt;ContainsData&lt;/op&gt;&lt;/condition&gt;&lt;condition e="false"&gt;&lt;var&gt;UseBOBIntegration.optionvalue&lt;/var&gt;&lt;op&gt;Equal&lt;/op&gt;&lt;arg&gt;String:True&lt;/arg&gt;&lt;/condition&gt;&lt;/conditions&gt;&lt;action&gt;&lt;function e="false"&gt;&lt;var&gt;Tabs.bobdata.IsVisible&lt;/var&gt;&lt;func&gt;Assign&lt;/func&gt;&lt;arg&gt;Boolean:True&lt;/arg&gt;&lt;/function&gt;&lt;/action&gt;&lt;/if&gt;&lt;if e="true"&gt;&lt;conditions e="true" op="And"&gt;&lt;/conditions&gt;&lt;action&gt;&lt;function e="false"&gt;&lt;var&gt;Tabs.bobdata.IsVisible&lt;/var&gt;&lt;func&gt;Assign&lt;/func&gt;&lt;arg&gt;Boolean:False&lt;/arg&gt;&lt;/function&gt;&lt;/action&gt;&lt;/if&gt;&lt;/branch&gt;&lt;branch e="false" info="Refrigerant Tracking Tab Visibility" &gt;&lt;if e="false"&gt;&lt;conditions e="false" op="And"&gt;&lt;condition e="false"&gt;&lt;var&gt;UseRefrigerantTracking.optionvalue&lt;/var&gt;&lt;op&gt;Equal&lt;/op&gt;&lt;arg&gt;String:False&lt;/arg&gt;&lt;/condition&gt;&lt;/conditions&gt;&lt;action&gt;&lt;function e="false"&gt;&lt;var&gt;Tabs.refrigeranttracking.IsVisible&lt;/var&gt;&lt;func&gt;Assign&lt;/func&gt;&lt;arg&gt;Boolean:False&lt;/arg&gt;&lt;/function&gt;&lt;/action&gt;&lt;/if&gt;&lt;if e="true"&gt;&lt;conditions e="true" op="And"&gt;&lt;/conditions&gt;&lt;action&gt;&lt;definition e="false"&gt;&lt;var&gt;tasksForEquipment&lt;/var&gt;&lt;func&gt;LoadFetch&lt;/func&gt;&lt;type&gt;Entity&lt;/type&gt;&lt;arg&gt;String:task&lt;/arg&gt;&lt;arg&gt;Fetch:&amp;lt;fetch version=&amp;quot;1.0&amp;quot;&amp;gt;&amp;lt;entity name=&amp;quot;task&amp;quot;&amp;gt;&amp;lt;filter type=&amp;quot;and&amp;quot;&amp;gt;&amp;lt;condition attribute=&amp;quot;gpequipmentid&amp;quot; operator=&amp;quot;eq&amp;quot; value=&amp;quot;{{Entity.gpequipmentid}}&amp;quot;/&amp;gt;&amp;lt;/filter&amp;gt;&amp;lt;/entity&amp;gt;&amp;lt;/fetch&amp;gt;&lt;/arg&gt;&lt;/definition&gt;&lt;branch e="true" info="Has Tasks for Equipment" &gt;&lt;if e="false"&gt;&lt;conditions e="false" op="And"&gt;&lt;condition e="false"&gt;&lt;var&gt;tasksForEquipment.@this&lt;/var&gt;&lt;op&gt;DoesNotContainData&lt;/op&gt;&lt;/condition&gt;&lt;/conditions&gt;&lt;action&gt;&lt;function e="false"&gt;&lt;var&gt;Tabs.refrigeranttracking.IsVisible&lt;/var&gt;&lt;func&gt;Assign&lt;/func&gt;&lt;arg&gt;Boolean:False&lt;/arg&gt;&lt;/function&gt;&lt;/action&gt;&lt;/if&gt;&lt;if e="true"&gt;&lt;conditions e="true" op="And"&gt;&lt;/conditions&gt;&lt;action&gt;&lt;branch e="true" info="" &gt;&lt;if e="false"&gt;&lt;conditions e="false" op="Or"&gt;&lt;condition e="false"&gt;&lt;var&gt;Entity.gpequipmentid&lt;/var&gt;&lt;op&gt;Equal&lt;/op&gt;&lt;arg&gt;String:PENDING&lt;/arg&gt;&lt;/condition&gt;&lt;condition e="false"&gt;&lt;var&gt;Entity.IsNew&lt;/var&gt;&lt;op&gt;Equal&lt;/op&gt;&lt;arg&gt;Boolean:True&lt;/arg&gt;&lt;/condition&gt;&lt;/conditions&gt;&lt;action&gt;&lt;function e="false"&gt;&lt;var&gt;Tabs.refrigeranttracking.IsVisible&lt;/var&gt;&lt;func&gt;Assign&lt;/func&gt;&lt;arg&gt;Boolean:False&lt;/arg&gt;&lt;/function&gt;&lt;/action&gt;&lt;/if&gt;&lt;if e="true"&gt;&lt;conditions e="true" op="And"&gt;&lt;/conditions&gt;&lt;action&gt;&lt;function e="false"&gt;&lt;var&gt;Tabs.refrigeranttracking.IsVisible&lt;/var&gt;&lt;func&gt;Assign&lt;/func&gt;&lt;arg&gt;Boolean:True&lt;/arg&gt;&lt;/function&gt;&lt;/action&gt;&lt;/if&gt;&lt;/branch&gt;&lt;/action&gt;&lt;/if&gt;&lt;/branch&gt;&lt;/action&gt;&lt;/if&gt;&lt;/branch&gt;&lt;branch e="false" info="New/Pending Equipment" &gt;&lt;if e="true"&gt;&lt;conditions e="true" op="Or"&gt;&lt;condition e="false"&gt;&lt;var&gt;Entity.gpequipmentid&lt;/var&gt;&lt;op&gt;Equal&lt;/op&gt;&lt;arg&gt;String:PENDING&lt;/arg&gt;&lt;/condition&gt;&lt;condition e="false"&gt;&lt;var&gt;Entity.IsNew&lt;/var&gt;&lt;op&gt;Equal&lt;/op&gt;&lt;arg&gt;Boolean:True&lt;/arg&gt;&lt;/condition&gt;&lt;/conditions&gt;&lt;action&gt;&lt;function e="false"&gt;&lt;var&gt;Tabs.contractequipment.IsVisible&lt;/var&gt;&lt;func&gt;Assign&lt;/func&gt;&lt;arg&gt;Boolean:False&lt;/arg&gt;&lt;/function&gt;&lt;function e="false"&gt;&lt;var&gt;Tabs.meterreading.IsVisible&lt;/var&gt;&lt;func&gt;Assign&lt;/func&gt;&lt;arg&gt;Boolean:False&lt;/arg&gt;&lt;/function&gt;&lt;function e="false"&gt;&lt;var&gt;Tabs.history.IsVisible&lt;/var&gt;&lt;func&gt;Assign&lt;/func&gt;&lt;arg&gt;Boolean:False&lt;/arg&gt;&lt;/function&gt;&lt;function e="false"&gt;&lt;var&gt;Tabs.attachment.IsVisible&lt;/var&gt;&lt;func&gt;Assign&lt;/func&gt;&lt;arg&gt;Boolean:False&lt;/arg&gt;&lt;/function&gt;&lt;function e="false"&gt;&lt;var&gt;Tabs.annotation.IsVisible&lt;/var&gt;&lt;func&gt;Assign&lt;/func&gt;&lt;arg&gt;Boolean:False&lt;/arg&gt;&lt;/function&gt;&lt;/action&gt;&lt;/if&gt;&lt;if e="true"&gt;&lt;conditions e="true" op="And"&gt;&lt;/conditions&gt;&lt;action&gt;&lt;function e="false"&gt;&lt;var&gt;Tabs.contractequipment.IsVisible&lt;/var&gt;&lt;func&gt;Assign&lt;/func&gt;&lt;arg&gt;Boolean:True&lt;/arg&gt;&lt;/function&gt;&lt;function e="false"&gt;&lt;var&gt;Tabs.meterreading.IsVisible&lt;/var&gt;&lt;func&gt;Assign&lt;/func&gt;&lt;arg&gt;Boolean:True&lt;/arg&gt;&lt;/function&gt;&lt;function e="false"&gt;&lt;var&gt;Tabs.history.IsVisible&lt;/var&gt;&lt;func&gt;Assign&lt;/func&gt;&lt;arg&gt;Boolean:True&lt;/arg&gt;&lt;/function&gt;&lt;function e="false"&gt;&lt;var&gt;Tabs.attachment.IsVisible&lt;/var&gt;&lt;func&gt;Assign&lt;/func&gt;&lt;arg&gt;Boolean:True&lt;/arg&gt;&lt;/function&gt;&lt;function e="false"&gt;&lt;var&gt;Tabs.annotation.IsVisible&lt;/var&gt;&lt;func&gt;Assign&lt;/func&gt;&lt;arg&gt;Boolean:True&lt;/arg&gt;&lt;/function&gt;&lt;/action&gt;&lt;/if&gt;&lt;/branch&gt;&lt;branch e="true" info="Questionnaire Report Tab Visibility" &gt;&lt;if e="true"&gt;&lt;conditions e="true" op="And"&gt;&lt;condition e="false"&gt;&lt;var&gt;Configuration.roles&lt;/var&gt;&lt;op&gt;Contains&lt;/op&gt;&lt;arg&gt;String:Inspector&lt;/arg&gt;&lt;/condition&gt;&lt;/conditions&gt;&lt;action&gt;&lt;function e="false"&gt;&lt;var&gt;Tabs.report.IsVisible&lt;/var&gt;&lt;func&gt;Assign&lt;/func&gt;&lt;arg&gt;Boolean:True&lt;/arg&gt;&lt;/function&gt;&lt;/action&gt;&lt;/if&gt;&lt;if e="true"&gt;&lt;conditions e="true" op="And"&gt;&lt;/conditions&gt;&lt;action&gt;&lt;function e="false"&gt;&lt;var&gt;Tabs.report.IsVisible&lt;/var&gt;&lt;func&gt;Assign&lt;/func&gt;&lt;arg&gt;Boolean:False&lt;/arg&gt;&lt;/function&gt;&lt;/action&gt;&lt;/if&gt;&lt;/branch&gt;&lt;/Workflow&gt;</WorkflowLoad>
+  <SharedVariables>&lt;SharedVariables&gt;&lt;Variables&gt;&lt;/Variables&gt;&lt;/SharedVariables&gt;</SharedVariables>
+  <PrimaryCommands>custom_getGPS|Update GPS||custom_navigateTo|Navigate To|</PrimaryCommands>
+  <SharedVariableNames/>
+  <ClassBinding/>
+  <EnabledWorkflows>OnLoadEnabled OnChangeEnabled OnSaveEnabled OnExecuteCommand OnCanExecuteCommand</EnabledWorkflows>
+  <SerializedChildrenV2>
+    <FormTab xsi:type="DetailTab" NameModified="0" IconModified="0" EntityIconName="MobileCrm\Images.MonoTouch\Tabs\equipment@2x.png" IsIconNameReadOnly="0">
+      <Name>equipment</Name>
+      <SerializedChildren>
+        <DetailItem SchemaName="name"/>
+        <DetailItem SchemaName="gpcustomernumber"/>
+        <DetailItem SchemaName="locationid"/>
+        <DetailItem SchemaName="gplocationnumber"/>
+        <DetailItem SchemaName="id"/>
+        <DetailItem SchemaName="iscomponent"/>
+        <DetailItem SchemaName="componentquantity"/>
+        <DetailItem SchemaName="gpequipmentid"/>
+        <DetailItem SchemaName="equipmentdescription2"/>
+        <DetailItem SchemaName="equipmenttypeid"/>
+        <DetailItem SchemaName="manufacturerid"/>
+        <DetailItem SchemaName="modelnumber"/>
+        <DetailItem SchemaName="latitude"/>
+        <DetailItem SchemaName="longitude"/>
+        <DetailItem SchemaName="serialnumber"/>
+        <DetailItem SchemaName="barcode"/>
+        <DetailItem SchemaName="buildingid"/>
+        <DetailItem SchemaName="buildingroom"/>
+        <DetailItem SchemaName="sublocationid"/>
+        <DetailItem SchemaName="gpsublocationid"/>
+        <DetailItem SchemaName="installationdate"/>
+        <DetailItem SchemaName="installationbyid"/>
+        <DetailItem SchemaName="warrantyexpiration"/>
+        <DetailItem SchemaName="extendedwarrantytypeid"/>
+        <DetailItem SchemaName="extendedwarrantyexpiration"/>
+        <DetailItem SchemaName="servicelevel"/>
+      </SerializedChildren>
+    </FormTab>
+    <FormTab xsi:type="IFrameTab" NameModified="0" IconModified="0" EntityIconName="MobileCrm\Images.MonoTouch\Tabs\bobdata@2x.png" IsIconNameReadOnly="0">
+      <Name>bobdata</Name>
+      <Url>file://entity/bobdata/fault-list.html</Url>
+    </FormTab>
+    <FormTab xsi:type="IFrameTab" NameModified="0" IconModified="0" EntityIconName="MobileCrm\Images.MonoTouch\Tabs\contractequipment@2x.png" IsIconNameReadOnly="0">
+      <Name>contractequipment</Name>
+      <Url>file://entity/contractequipment/contractequipment-list.html</Url>
+    </FormTab>
+    <FormTab xsi:type="IFrameTab" NameModified="0" IconModified="0" EntityIconName="MobileCrm\Images.MonoTouch\Tabs\refrigeranttracking@2x.png" IsIconNameReadOnly="0">
+      <Name>refrigeranttracking</Name>
+      <Url>file://entity/refrigeranttracking/refrigeranttracking-list.html</Url>
+    </FormTab>
+    <FormTab xsi:type="IFrameTab" NameModified="0" IconModified="0" EntityIconName="MobileCrm\Images.MonoTouch\Tabs\history@2x.png" IsIconNameReadOnly="0">
+      <Name>history</Name>
+      <Url>file://entity/servicecallhistory/servicecallhistory-list.html</Url>
+    </FormTab>
+    <FormTab xsi:type="IFrameTab" NameModified="0" IconModified="0" EntityIconName="MobileCrm\Images.MonoTouch\Tabs\annotation@2x.png" IsIconNameReadOnly="0">
+      <Name>annotation</Name>
+      <Url>file://entity/notes/notes-list.html</Url>
+    </FormTab>
+    <FormTab xsi:type="MapTab" NameModified="0" IconModified="0" EntityIconName="MobileCrm\Images.MonoTouch\Tabs\Map@2x.png" IsIconNameReadOnly="0">
+      <Name>Map</Name>
+      <CoordinatesBinding>latitude;longitude</CoordinatesBinding>
+    </FormTab>
+    <FormTab xsi:type="IFrameTab" NameModified="0" IconModified="0" EntityIconName="MobileCrm\Images.MonoTouch\Tabs\attachment@2x.png" IsIconNameReadOnly="0">
+      <Name>attachment</Name>
+      <Url>file://entity/attachment/attachment-list.html</Url>
+    </FormTab>
+    <FormTab xsi:type="IFrameTab" NameModified="0" IconModified="0" EntityIconName="MobileCrm\Images.MonoTouch\Tabs\report@2x.png" IsIconNameReadOnly="0">
+      <Name>report</Name>
+      <Url>file://utility/questionnaire/report-list_questionnaire.html</Url>
+    </FormTab>
+    <FormTab xsi:type="IFrameTab" NameModified="0" IconModified="0" EntityIconName="MobileCrm\Images.MonoTouch\Tabs\General@2x.png" IsIconNameReadOnly="0">
+      <Name>formCommands</Name>
+      <Url>file://entity/equipment/equipment-form.html</Url>
+      <DelayLoad>false</DelayLoad>
+    </FormTab>
+  </SerializedChildrenV2>
+</EntityForm>

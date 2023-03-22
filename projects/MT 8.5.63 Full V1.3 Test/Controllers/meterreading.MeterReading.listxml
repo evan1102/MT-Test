@@ -1,0 +1,83 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<EntityList xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" UseSyncFilter="true">
+  <Attributes>
+    <EntityName>meterreading</EntityName>
+    <CamelCase>meterreading</CamelCase>
+    <VisualStudioProjectId>00000000-0000-0000-0000-000000000000</VisualStudioProjectId>
+    <ClassBinding />
+  </Attributes>
+  <ComponentId>00000000-0000-0000-0000-000000000000</ComponentId>
+  <Name>MeterReading</Name>
+  <Kind>AssociatedList</Kind>
+  <IsDefault>true</IsDefault>
+  <Search>
+    <attribute schema="name" method="Contains" />
+  </Search>
+  <OrderBy>!gpmeterreadingdate</OrderBy>
+  <SerializedBindings>
+    <string>dexrowid</string>
+    <string>equipmentid</string>
+    <string>equipmentmeter1</string>
+    <string>equipmentmeter10</string>
+    <string>equipmentmeter11</string>
+    <string>equipmentmeter12</string>
+    <string>equipmentmeter13</string>
+    <string>equipmentmeter14</string>
+    <string>equipmentmeter15</string>
+    <string>equipmentmeter16</string>
+    <string>equipmentmeter17</string>
+    <string>equipmentmeter18</string>
+    <string>equipmentmeter19</string>
+    <string>equipmentmeter2</string>
+    <string>equipmentmeter20</string>
+    <string>equipmentmeter21</string>
+    <string>equipmentmeter22</string>
+    <string>equipmentmeter23</string>
+    <string>equipmentmeter24</string>
+    <string>equipmentmeter25</string>
+    <string>equipmentmeter3</string>
+    <string>equipmentmeter4</string>
+    <string>equipmentmeter5</string>
+    <string>equipmentmeter6</string>
+    <string>equipmentmeter7</string>
+    <string>equipmentmeter8</string>
+    <string>equipmentmeter9</string>
+    <string>gpcustomernumber</string>
+    <string>gpequipmentid</string>
+    <string>gplocationnumber</string>
+    <string>gpmeterreadingdate</string>
+    <string>id</string>
+    <string>name</string>
+    <string>equipmentid.equipment.name</string>
+  </SerializedBindings>
+  <SerializedTemplates>
+    <RowTemplate>
+      <DesignWidth>240</DesignWidth>
+      <DesignHeight>40</DesignHeight>
+      <Name>Default</Name>
+      <Width>240</Width>
+      <Height>40</Height>
+      <SerializedBackground>0</SerializedBackground>
+      <SerializedSelectedBackground>0</SerializedSelectedBackground>
+      <SerializedChildren>
+        <CellTemplate SchemaName="gpmeterreadingdate">
+          <IsConstant>false</IsConstant>
+          <StyleName>date_only</StyleName>
+          <Bounds>2,2,236,20</Bounds>
+          <CellKind>0</CellKind>
+          <Anchor>13</Anchor>
+        </CellTemplate>
+        <CellTemplate SchemaName="equipmentid.equipment.name">
+          <IsConstant>false</IsConstant>
+          <StyleName>gray9</StyleName>
+          <Bounds>2,22,236,16</Bounds>
+          <CellKind>0</CellKind>
+          <Anchor>5</Anchor>
+        </CellTemplate>
+      </SerializedChildren>
+    </RowTemplate>
+  </SerializedTemplates>
+  <CustomProperties />
+  <SerializedChildren />
+  <Height>0</Height>
+</EntityList>

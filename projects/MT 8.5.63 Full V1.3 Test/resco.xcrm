@@ -1,0 +1,4760 @@
+﻿<model version="7" publish="28">
+  <entities>
+    <entity schema="activity">
+      <properties>
+        <property schema="activitytypecode"/>
+        <property schema="createdby"/>
+        <property schema="createdon"/>
+        <property schema="id"/>
+        <property schema="modifiedby"/>
+        <property schema="modifiedon"/>
+        <property schema="name"/>
+        <property schema="ownerid"/>
+        <property schema="regardingobjectid"/>
+        <property schema="scheduledend"/>
+        <property schema="scheduledstart"/>
+        <property schema="statecode"/>
+        <property schema="statuscode"/>
+      </properties>
+      <indexes>
+        <index schema="idx_activity_createdby" issystem="true">
+          <fields>
+            <field schema="createdby"/>
+          </fields>
+        </index>
+        <index schema="idx_activity_modifiedby" issystem="true">
+          <fields>
+            <field schema="modifiedby"/>
+          </fields>
+        </index>
+        <index schema="idx_activity_ownerid" issystem="true">
+          <fields>
+            <field schema="ownerid"/>
+          </fields>
+        </index>
+        <index schema="idx_activity_regardingobjectid" issystem="true">
+          <fields>
+            <field schema="regardingobjectid"/>
+          </fields>
+        </index>
+        <index schema="idx_activity_name" issystem="true">
+          <fields>
+            <field schema="name"/>
+          </fields>
+        </index>
+      </indexes>
+    </entity>
+    <entity schema="activityparty">
+      <properties>
+        <property schema="activityid"/>
+        <property schema="addressused"/>
+        <property schema="id"/>
+        <property schema="participationtypemask"/>
+        <property schema="partyid"/>
+      </properties>
+      <indexes>
+        <index schema="idx_activityparty_activityid" issystem="true">
+          <fields>
+            <field schema="activityid"/>
+          </fields>
+        </index>
+        <index schema="idx_activityparty_partyid" issystem="true">
+          <fields>
+            <field schema="partyid"/>
+          </fields>
+        </index>
+      </indexes>
+    </entity>
+    <entity schema="additionalwork">
+      <properties>
+        <property schema="appointmentid" fieldpermissions="Read Create"/>
+        <property schema="contactname" fieldpermissions="Read Create"/>
+        <property schema="contactphone" fieldpermissions="Read Create"/>
+        <property schema="createdby"/>
+        <property schema="createdon"/>
+        <property schema="description" fieldpermissions="Read Create"/>
+        <property schema="employeeid" fieldpermissions="Read Create"/>
+        <property schema="equipmentamount" fieldpermissions="Read Create"/>
+        <property schema="gpappointmentid" fieldpermissions="Read Create"/>
+        <property schema="gpservicecallid" fieldpermissions="Read Create"/>
+        <property schema="gptransactiondate" fieldpermissions="Read Create"/>
+        <property schema="id"/>
+        <property schema="laboramount" fieldpermissions="Read Create"/>
+        <property schema="materialamount" fieldpermissions="Read Create"/>
+        <property schema="modifiedby" fieldpermissions="Read Create"/>
+        <property schema="modifiedon" fieldpermissions="Read Create"/>
+        <property schema="name" fieldpermissions="Read Create"/>
+        <property schema="otheramount" fieldpermissions="Read Create"/>
+        <property schema="servicecallid" fieldpermissions="Read Create"/>
+        <property schema="subcontractoramount" fieldpermissions="Read Create"/>
+      </properties>
+      <indexes>
+        <index schema="idx_additionalwork_appointmentid" issystem="true">
+          <fields>
+            <field schema="appointmentid"/>
+          </fields>
+        </index>
+        <index schema="idx_additionalwork_createdby" issystem="true">
+          <fields>
+            <field schema="createdby"/>
+          </fields>
+        </index>
+        <index schema="idx_additionalwork_employeeid" issystem="true">
+          <fields>
+            <field schema="employeeid"/>
+          </fields>
+        </index>
+        <index schema="idx_additionalwork_modifiedby" issystem="true">
+          <fields>
+            <field schema="modifiedby"/>
+          </fields>
+        </index>
+        <index schema="idx_additionalwork_servicecallid" issystem="true">
+          <fields>
+            <field schema="servicecallid"/>
+          </fields>
+        </index>
+        <index schema="idx_additionalwork_name" issystem="true">
+          <fields>
+            <field schema="name"/>
+          </fields>
+        </index>
+      </indexes>
+    </entity>
+    <entity schema="annotation" conflict="16384" xattr="16384">
+      <properties>
+        <property schema="createdby"/>
+        <property schema="createdon"/>
+        <property schema="documentbody"/>
+        <property schema="documenttype"/>
+        <property schema="filename"/>
+        <property schema="filesize"/>
+        <property schema="gpcostcodenumber1"/>
+        <property schema="gpcostcodenumber2"/>
+        <property schema="gpcostcodenumber3"/>
+        <property schema="gpcostcodenumber4"/>
+        <property schema="gpcustomernumber"/>
+        <property schema="gpequipmentid"/>
+        <property schema="gpjobnumber"/>
+        <property schema="gplocationnumber"/>
+        <property schema="gpnotetype"/>
+        <property schema="gpreferenceid"/>
+        <property schema="gpservicecallid"/>
+        <property schema="gptechnicianid"/>
+        <property schema="gptransactionnumber"/>
+        <property schema="id"/>
+        <property schema="isdocument"/>
+        <property schema="isinternal"/>
+        <property schema="isreadonly"/>
+        <property schema="mimetype"/>
+        <property schema="modifiedby"/>
+        <property schema="modifieddate"/>
+        <property schema="modifiedon"/>
+        <property schema="modifieduser"/>
+        <property schema="name"/>
+        <property schema="notehistory" fieldpermissions="Read"/>
+        <property schema="notetext"/>
+        <property schema="objectid"/>
+        <property schema="ownerid"/>
+        <property schema="priority"/>
+        <property schema="subject"/>
+      </properties>
+      <indexes>
+        <index schema="idx_annotation_createdby" issystem="true">
+          <fields>
+            <field schema="createdby"/>
+          </fields>
+        </index>
+        <index schema="idx_annotation_modifiedby" issystem="true">
+          <fields>
+            <field schema="modifiedby"/>
+          </fields>
+        </index>
+        <index schema="idx_annotation_objectid" issystem="true">
+          <fields>
+            <field schema="objectid"/>
+          </fields>
+        </index>
+        <index schema="idx_annotation_ownerid" issystem="true">
+          <fields>
+            <field schema="ownerid"/>
+          </fields>
+        </index>
+        <index schema="idx_annotation_subject" issystem="true">
+          <fields>
+            <field schema="subject"/>
+          </fields>
+        </index>
+      </indexes>
+    </entity>
+    <entity schema="appointment" conflict="65536" xattr="65536">
+      <properties>
+        <property schema="actualdurationminutes"/>
+        <property schema="actualhours"/>
+        <property schema="appointmentstatusid"/>
+        <property schema="completiondate"/>
+        <property schema="createdby"/>
+        <property schema="createdon"/>
+        <property schema="description"/>
+        <property schema="employeeid"/>
+        <property schema="estimatehours"/>
+        <property schema="gpactivityid"/>
+        <property schema="gpappointmentid"/>
+        <property schema="gpappointmenttype"/>
+        <property schema="gpcostcodealias"/>
+        <property schema="gpjobnumber"/>
+        <property schema="gpservicecallid"/>
+        <property schema="gptechnicianid"/>
+        <property schema="id"/>
+        <property schema="isjsareportrequested"/>
+        <property schema="jobcostcodeid"/>
+        <property schema="jobid"/>
+        <property schema="jobsafetydate"/>
+        <property schema="latitude"/>
+        <property schema="location"/>
+        <property schema="locationid"/>
+        <property schema="longitude"/>
+        <property schema="modifiedby"/>
+        <property schema="modifiedon"/>
+        <property schema="name"/>
+        <property schema="ownerid" fieldpermissions="Read"/>
+        <property schema="prioritycode"/>
+        <property schema="regardingobjectid"/>
+        <property schema="resolutionnote"/>
+        <property schema="scheduledend"/>
+        <property schema="scheduledstart"/>
+        <property schema="servicecallid"/>
+        <property schema="startdate"/>
+        <property schema="statecode"/>
+        <property schema="statuscode"/>
+        <property schema="subject"/>
+        <property schema="technicianactivityid"/>
+      </properties>
+      <indexes>
+        <index schema="idx_appointment_appointmentstatusid" issystem="true">
+          <fields>
+            <field schema="appointmentstatusid"/>
+          </fields>
+        </index>
+        <index schema="idx_appointment_createdby" issystem="true">
+          <fields>
+            <field schema="createdby"/>
+          </fields>
+        </index>
+        <index schema="idx_appointment_employeeid" issystem="true">
+          <fields>
+            <field schema="employeeid"/>
+          </fields>
+        </index>
+        <index schema="idx_appointment_jobcostcodeid" issystem="true">
+          <fields>
+            <field schema="jobcostcodeid"/>
+          </fields>
+        </index>
+        <index schema="idx_appointment_jobid" issystem="true">
+          <fields>
+            <field schema="jobid"/>
+          </fields>
+        </index>
+        <index schema="idx_appointment_locationid" issystem="true">
+          <fields>
+            <field schema="locationid"/>
+          </fields>
+        </index>
+        <index schema="idx_appointment_modifiedby" issystem="true">
+          <fields>
+            <field schema="modifiedby"/>
+          </fields>
+        </index>
+        <index schema="idx_appointment_ownerid" issystem="true">
+          <fields>
+            <field schema="ownerid"/>
+          </fields>
+        </index>
+        <index schema="idx_appointment_regardingobjectid" issystem="true">
+          <fields>
+            <field schema="regardingobjectid"/>
+          </fields>
+        </index>
+        <index schema="idx_appointment_servicecallid" issystem="true">
+          <fields>
+            <field schema="servicecallid"/>
+          </fields>
+        </index>
+        <index schema="idx_appointment_technicianactivityid" issystem="true">
+          <fields>
+            <field schema="technicianactivityid"/>
+          </fields>
+        </index>
+        <index schema="idx_appointment_name" issystem="true">
+          <fields>
+            <field schema="name"/>
+          </fields>
+        </index>
+        <index schema="idx_appointment_scheduledend" issystem="true">
+          <fields>
+            <field schema="scheduledend"/>
+          </fields>
+        </index>
+      </indexes>
+    </entity>
+    <entity schema="appointmentcompletion" permissions="896" xattr="896">
+      <properties>
+        <property schema="actualdurationminutes"/>
+        <property schema="actualhours"/>
+        <property schema="appointmentstatusid"/>
+        <property schema="completiondate"/>
+        <property schema="createdby"/>
+        <property schema="createdon"/>
+        <property schema="description"/>
+        <property schema="employeeid"/>
+        <property schema="estimatehours"/>
+        <property schema="gpactivityid"/>
+        <property schema="gpappointmentid"/>
+        <property schema="gpappointmenttype"/>
+        <property schema="gpcostcodealias"/>
+        <property schema="gpjobnumber"/>
+        <property schema="gpservicecallid"/>
+        <property schema="gptechnicianid"/>
+        <property schema="id"/>
+        <property schema="jobid"/>
+        <property schema="jobsafetydate"/>
+        <property schema="latitude"/>
+        <property schema="location"/>
+        <property schema="longitude"/>
+        <property schema="modifiedby"/>
+        <property schema="modifiedon"/>
+        <property schema="name"/>
+        <property schema="ownerid"/>
+        <property schema="prioritycode"/>
+        <property schema="regardingobjectid"/>
+        <property schema="resolutionnote"/>
+        <property schema="scheduledend"/>
+        <property schema="scheduledstart"/>
+        <property schema="servicecallid"/>
+        <property schema="startdate"/>
+        <property schema="statecode"/>
+        <property schema="statuscode"/>
+        <property schema="subject"/>
+        <property schema="technicianactivityid"/>
+      </properties>
+      <indexes>
+        <index schema="idx_appointmentcompletion_appointmentstatusid" issystem="true">
+          <fields>
+            <field schema="appointmentstatusid"/>
+          </fields>
+        </index>
+        <index schema="idx_appointmentcompletion_createdby" issystem="true">
+          <fields>
+            <field schema="createdby"/>
+          </fields>
+        </index>
+        <index schema="idx_appointmentcompletion_employeeid" issystem="true">
+          <fields>
+            <field schema="employeeid"/>
+          </fields>
+        </index>
+        <index schema="idx_appointmentcompletion_jobid" issystem="true">
+          <fields>
+            <field schema="jobid"/>
+          </fields>
+        </index>
+        <index schema="idx_appointmentcompletion_modifiedby" issystem="true">
+          <fields>
+            <field schema="modifiedby"/>
+          </fields>
+        </index>
+        <index schema="idx_appointmentcompletion_ownerid" issystem="true">
+          <fields>
+            <field schema="ownerid"/>
+          </fields>
+        </index>
+        <index schema="idx_appointmentcompletion_regardingobjectid" issystem="true">
+          <fields>
+            <field schema="regardingobjectid"/>
+          </fields>
+        </index>
+        <index schema="idx_appointmentcompletion_servicecallid" issystem="true">
+          <fields>
+            <field schema="servicecallid"/>
+          </fields>
+        </index>
+        <index schema="idx_appointmentcompletion_technicianactivityid" issystem="true">
+          <fields>
+            <field schema="technicianactivityid"/>
+          </fields>
+        </index>
+        <index schema="idx_appointmentcompletion_name" issystem="true">
+          <fields>
+            <field schema="name"/>
+          </fields>
+        </index>
+        <index schema="idx_appointmentcompletion_scheduledend" issystem="true">
+          <fields>
+            <field schema="scheduledend"/>
+          </fields>
+        </index>
+      </indexes>
+    </entity>
+    <entity schema="appointmentstatus">
+      <properties>
+        <property schema="createdby"/>
+        <property schema="createdon"/>
+        <property schema="id"/>
+        <property schema="modifiedby"/>
+        <property schema="modifiedon"/>
+        <property schema="name" fieldpermissions="Read"/>
+      </properties>
+      <indexes>
+        <index schema="idx_appointmentstatus_createdby" issystem="true">
+          <fields>
+            <field schema="createdby"/>
+          </fields>
+        </index>
+        <index schema="idx_appointmentstatus_modifiedby" issystem="true">
+          <fields>
+            <field schema="modifiedby"/>
+          </fields>
+        </index>
+        <index schema="idx_appointmentstatus_name" issystem="true">
+          <fields>
+            <field schema="name"/>
+          </fields>
+        </index>
+      </indexes>
+    </entity>
+    <entity schema="appointmentstatustimestamp">
+      <properties>
+        <property schema="appointmentid"/>
+        <property schema="appointmentstatus"/>
+        <property schema="appointmentstatusdate"/>
+        <property schema="createdby"/>
+        <property schema="createdon"/>
+        <property schema="gpappointmentid"/>
+        <property schema="gpservicecallid"/>
+        <property schema="id"/>
+        <property schema="modifiedby"/>
+        <property schema="modifiedon"/>
+        <property schema="name"/>
+      </properties>
+      <indexes>
+        <index schema="idx_appointmentstatustimestamp_appointmentid" issystem="true">
+          <fields>
+            <field schema="appointmentid"/>
+          </fields>
+        </index>
+        <index schema="idx_appointmentstatustimestamp_createdby" issystem="true">
+          <fields>
+            <field schema="createdby"/>
+          </fields>
+        </index>
+        <index schema="idx_appointmentstatustimestamp_modifiedby" issystem="true">
+          <fields>
+            <field schema="modifiedby"/>
+          </fields>
+        </index>
+        <index schema="idx_appointmentstatustimestamp_name" issystem="true">
+          <fields>
+            <field schema="name"/>
+          </fields>
+        </index>
+      </indexes>
+    </entity>
+    <entity schema="bobdata">
+      <properties>
+        <property schema="createdby"/>
+        <property schema="createdon"/>
+        <property schema="id"/>
+        <property schema="jsonrequest"/>
+        <property schema="jsonresponse"/>
+        <property schema="modifiedby"/>
+        <property schema="modifiedon"/>
+        <property schema="name"/>
+        <property schema="requeststatus"/>
+        <property schema="requesttype"/>
+      </properties>
+      <indexes>
+        <index schema="idx_bobdata_createdby" issystem="true">
+          <fields>
+            <field schema="createdby"/>
+          </fields>
+        </index>
+        <index schema="idx_bobdata_modifiedby" issystem="true">
+          <fields>
+            <field schema="modifiedby"/>
+          </fields>
+        </index>
+        <index schema="idx_bobdata_name" issystem="true">
+          <fields>
+            <field schema="name"/>
+          </fields>
+        </index>
+      </indexes>
+    </entity>
+    <entity schema="building">
+      <properties>
+        <property schema="createdby"/>
+        <property schema="createdon"/>
+        <property schema="description" fieldpermissions="Read"/>
+        <property schema="gpbuildingid" fieldpermissions="Read"/>
+        <property schema="id"/>
+        <property schema="modifiedby"/>
+        <property schema="modifiedon"/>
+        <property schema="name"/>
+      </properties>
+      <indexes>
+        <index schema="idx_building_createdby" issystem="true">
+          <fields>
+            <field schema="createdby"/>
+          </fields>
+        </index>
+        <index schema="idx_building_modifiedby" issystem="true">
+          <fields>
+            <field schema="modifiedby"/>
+          </fields>
+        </index>
+        <index schema="idx_building_name" issystem="true">
+          <fields>
+            <field schema="name"/>
+          </fields>
+        </index>
+      </indexes>
+    </entity>
+    <entity schema="callresolution" permissions="896" conflict="32768" xattr="33664">
+      <properties>
+        <property schema="createdby"/>
+        <property schema="createdon"/>
+        <property schema="description"/>
+        <property schema="id"/>
+        <property schema="modifiedby"/>
+        <property schema="modifiedon"/>
+        <property schema="name"/>
+      </properties>
+      <indexes>
+        <index schema="idx_callresolution_createdby" issystem="true">
+          <fields>
+            <field schema="createdby"/>
+          </fields>
+        </index>
+        <index schema="idx_callresolution_modifiedby" issystem="true">
+          <fields>
+            <field schema="modifiedby"/>
+          </fields>
+        </index>
+        <index schema="idx_callresolution_name" issystem="true">
+          <fields>
+            <field schema="name"/>
+          </fields>
+        </index>
+      </indexes>
+    </entity>
+    <entity schema="calltype" permissions="896" xattr="896">
+      <properties>
+        <property schema="createdby"/>
+        <property schema="createdon"/>
+        <property schema="description" fieldpermissions="Read"/>
+        <property schema="id"/>
+        <property schema="modifiedby"/>
+        <property schema="modifiedon"/>
+        <property schema="name" fieldpermissions="Read"/>
+      </properties>
+      <indexes>
+        <index schema="idx_calltype_createdby" issystem="true">
+          <fields>
+            <field schema="createdby"/>
+          </fields>
+        </index>
+        <index schema="idx_calltype_modifiedby" issystem="true">
+          <fields>
+            <field schema="modifiedby"/>
+          </fields>
+        </index>
+        <index schema="idx_calltype_name" issystem="true">
+          <fields>
+            <field schema="name"/>
+          </fields>
+        </index>
+      </indexes>
+    </entity>
+    <entity schema="cardname">
+      <properties>
+        <property schema="createdby"/>
+        <property schema="createdon"/>
+        <property schema="id"/>
+        <property schema="modifiedby"/>
+        <property schema="modifiedon"/>
+        <property schema="name"/>
+      </properties>
+      <indexes>
+        <index schema="idx_cardname_createdby" issystem="true">
+          <fields>
+            <field schema="createdby"/>
+          </fields>
+        </index>
+        <index schema="idx_cardname_modifiedby" issystem="true">
+          <fields>
+            <field schema="modifiedby"/>
+          </fields>
+        </index>
+        <index schema="idx_cardname_name" issystem="true">
+          <fields>
+            <field schema="name"/>
+          </fields>
+        </index>
+      </indexes>
+    </entity>
+    <entity schema="changeorder">
+      <properties>
+        <property schema="changeorderamount"/>
+        <property schema="changeorderdescription"/>
+        <property schema="changeorderstatus"/>
+        <property schema="changeordertype"/>
+        <property schema="createdby"/>
+        <property schema="createdon"/>
+        <property schema="gpchangeordernumber"/>
+        <property schema="gpjobnumber"/>
+        <property schema="gptechnicianid"/>
+        <property schema="id"/>
+        <property schema="isprocessed"/>
+        <property schema="jobcostcodeid"/>
+        <property schema="jobid"/>
+        <property schema="modifiedby"/>
+        <property schema="modifiedon"/>
+        <property schema="name"/>
+        <property schema="postingstatus"/>
+        <property schema="transactiondate"/>
+        <property schema="userdefine1"/>
+        <property schema="userdefine2"/>
+        <property schema="userdefine3"/>
+        <property schema="userdefine4"/>
+        <property schema="userdefinedate1"/>
+        <property schema="userdefinedate2"/>
+        <property schema="userdefinedate3"/>
+        <property schema="userdefinedate4"/>
+      </properties>
+      <indexes>
+        <index schema="idx_changeorder_createdby" issystem="true">
+          <fields>
+            <field schema="createdby"/>
+          </fields>
+        </index>
+        <index schema="idx_changeorder_jobcostcodeid" issystem="true">
+          <fields>
+            <field schema="jobcostcodeid"/>
+          </fields>
+        </index>
+        <index schema="idx_changeorder_jobid" issystem="true">
+          <fields>
+            <field schema="jobid"/>
+          </fields>
+        </index>
+        <index schema="idx_changeorder_modifiedby" issystem="true">
+          <fields>
+            <field schema="modifiedby"/>
+          </fields>
+        </index>
+        <index schema="idx_changeorder_name" issystem="true">
+          <fields>
+            <field schema="name"/>
+          </fields>
+        </index>
+      </indexes>
+    </entity>
+    <entity schema="changeorderdetail">
+      <properties>
+        <property schema="changeorderid"/>
+        <property schema="costcodealias"/>
+        <property schema="costcodedescription"/>
+        <property schema="costelementid"/>
+        <property schema="createdby"/>
+        <property schema="createdon"/>
+        <property schema="estimatedamount"/>
+        <property schema="estimatedamountperunit"/>
+        <property schema="estimatedunits"/>
+        <property schema="gpchangeordernumber"/>
+        <property schema="gpcostcodenumber1"/>
+        <property schema="gpcostcodenumber2"/>
+        <property schema="gpcostcodenumber3"/>
+        <property schema="gpcostcodenumber4"/>
+        <property schema="gpcostelement"/>
+        <property schema="gpjobnumber"/>
+        <property schema="gptechnicianid"/>
+        <property schema="id"/>
+        <property schema="isprocessed"/>
+        <property schema="jobcostcodeid"/>
+        <property schema="measurecodeid"/>
+        <property schema="modifiedby"/>
+        <property schema="modifiedon"/>
+        <property schema="name"/>
+      </properties>
+      <indexes>
+        <index schema="idx_changeorderdetail_changeorderid" issystem="true">
+          <fields>
+            <field schema="changeorderid"/>
+          </fields>
+        </index>
+        <index schema="idx_changeorderdetail_costelementid" issystem="true">
+          <fields>
+            <field schema="costelementid"/>
+          </fields>
+        </index>
+        <index schema="idx_changeorderdetail_createdby" issystem="true">
+          <fields>
+            <field schema="createdby"/>
+          </fields>
+        </index>
+        <index schema="idx_changeorderdetail_jobcostcodeid" issystem="true">
+          <fields>
+            <field schema="jobcostcodeid"/>
+          </fields>
+        </index>
+        <index schema="idx_changeorderdetail_measurecodeid" issystem="true">
+          <fields>
+            <field schema="measurecodeid"/>
+          </fields>
+        </index>
+        <index schema="idx_changeorderdetail_modifiedby" issystem="true">
+          <fields>
+            <field schema="modifiedby"/>
+          </fields>
+        </index>
+        <index schema="idx_changeorderdetail_name" issystem="true">
+          <fields>
+            <field schema="name"/>
+          </fields>
+        </index>
+      </indexes>
+    </entity>
+    <entity schema="company">
+      <properties>
+        <property schema="code"/>
+        <property schema="createdby"/>
+        <property schema="createdon"/>
+        <property schema="description"/>
+        <property schema="id"/>
+        <property schema="modifiedby"/>
+        <property schema="modifiedon"/>
+        <property schema="name"/>
+      </properties>
+      <indexes>
+        <index schema="idx_company_createdby" issystem="true">
+          <fields>
+            <field schema="createdby"/>
+          </fields>
+        </index>
+        <index schema="idx_company_modifiedby" issystem="true">
+          <fields>
+            <field schema="modifiedby"/>
+          </fields>
+        </index>
+        <index schema="idx_company_name" issystem="true">
+          <fields>
+            <field schema="name"/>
+          </fields>
+        </index>
+      </indexes>
+    </entity>
+    <entity schema="consumedinventory">
+      <properties>
+        <property schema="appointmentid"/>
+        <property schema="costcodeid"/>
+        <property schema="createdby"/>
+        <property schema="createdon"/>
+        <property schema="employeeid"/>
+        <property schema="equipmentid"/>
+        <property schema="gptechnicianid"/>
+        <property schema="id"/>
+        <property schema="isprocessed"/>
+        <property schema="itemdescription"/>
+        <property schema="itemnumber"/>
+        <property schema="jobcostcodeid"/>
+        <property schema="jobnumber"/>
+        <property schema="listprice"/>
+        <property schema="modifiedby" fieldpermissions="Read Create"/>
+        <property schema="modifiedon" fieldpermissions="Read Create"/>
+        <property schema="name" fieldpermissions="Read Create"/>
+        <property schema="productindicator"/>
+        <property schema="quantity"/>
+        <property schema="siteinventoryid"/>
+        <property schema="transactiondate"/>
+        <property schema="unitcost"/>
+        <property schema="unitofmeasureid"/>
+      </properties>
+      <indexes>
+        <index schema="idx_consumedinventory_appointmentid" issystem="true">
+          <fields>
+            <field schema="appointmentid"/>
+          </fields>
+        </index>
+        <index schema="idx_consumedinventory_costcodeid" issystem="true">
+          <fields>
+            <field schema="costcodeid"/>
+          </fields>
+        </index>
+        <index schema="idx_consumedinventory_createdby" issystem="true">
+          <fields>
+            <field schema="createdby"/>
+          </fields>
+        </index>
+        <index schema="idx_consumedinventory_employeeid" issystem="true">
+          <fields>
+            <field schema="employeeid"/>
+          </fields>
+        </index>
+        <index schema="idx_consumedinventory_equipmentid" issystem="true">
+          <fields>
+            <field schema="equipmentid"/>
+          </fields>
+        </index>
+        <index schema="idx_consumedinventory_jobcostcodeid" issystem="true">
+          <fields>
+            <field schema="jobcostcodeid"/>
+          </fields>
+        </index>
+        <index schema="idx_consumedinventory_modifiedby" issystem="true">
+          <fields>
+            <field schema="modifiedby"/>
+          </fields>
+        </index>
+        <index schema="idx_consumedinventory_siteinventoryid" issystem="true">
+          <fields>
+            <field schema="siteinventoryid"/>
+          </fields>
+        </index>
+        <index schema="idx_consumedinventory_unitofmeasureid" issystem="true">
+          <fields>
+            <field schema="unitofmeasureid"/>
+          </fields>
+        </index>
+        <index schema="idx_consumedinventory_name" issystem="true">
+          <fields>
+            <field schema="name"/>
+          </fields>
+        </index>
+      </indexes>
+    </entity>
+    <entity schema="contactphonetype">
+      <properties>
+        <property schema="createdby"/>
+        <property schema="createdon"/>
+        <property schema="description"/>
+        <property schema="id"/>
+        <property schema="modifiedby"/>
+        <property schema="modifiedon"/>
+        <property schema="name"/>
+      </properties>
+      <indexes>
+        <index schema="idx_contactphonetype_createdby" issystem="true">
+          <fields>
+            <field schema="createdby"/>
+          </fields>
+        </index>
+        <index schema="idx_contactphonetype_modifiedby" issystem="true">
+          <fields>
+            <field schema="modifiedby"/>
+          </fields>
+        </index>
+        <index schema="idx_contactphonetype_name" issystem="true">
+          <fields>
+            <field schema="name"/>
+          </fields>
+        </index>
+      </indexes>
+    </entity>
+    <entity schema="contactroletype">
+      <properties>
+        <property schema="createdby"/>
+        <property schema="createdon"/>
+        <property schema="description"/>
+        <property schema="id"/>
+        <property schema="modifiedby"/>
+        <property schema="modifiedon"/>
+        <property schema="name"/>
+      </properties>
+      <indexes>
+        <index schema="idx_contactroletype_createdby" issystem="true">
+          <fields>
+            <field schema="createdby"/>
+          </fields>
+        </index>
+        <index schema="idx_contactroletype_modifiedby" issystem="true">
+          <fields>
+            <field schema="modifiedby"/>
+          </fields>
+        </index>
+        <index schema="idx_contactroletype_name" issystem="true">
+          <fields>
+            <field schema="name"/>
+          </fields>
+        </index>
+      </indexes>
+    </entity>
+    <entity schema="contract" permissions="896" xattr="896">
+      <properties>
+        <property schema="contracttype"/>
+        <property schema="createdby"/>
+        <property schema="createdon"/>
+        <property schema="enddate" displayformat="DateOnly"/>
+        <property schema="gpcontractnumber"/>
+        <property schema="gpcustomernumber"/>
+        <property schema="gplocationnumber"/>
+        <property schema="gpsequencenumber"/>
+        <property schema="id"/>
+        <property schema="locationid"/>
+        <property schema="modifiedby"/>
+        <property schema="modifiedon"/>
+        <property schema="name"/>
+        <property schema="startdate" displayformat="DateOnly"/>
+      </properties>
+      <indexes>
+        <index schema="idx_contract_createdby" issystem="true">
+          <fields>
+            <field schema="createdby"/>
+          </fields>
+        </index>
+        <index schema="idx_contract_locationid" issystem="true">
+          <fields>
+            <field schema="locationid"/>
+          </fields>
+        </index>
+        <index schema="idx_contract_modifiedby" issystem="true">
+          <fields>
+            <field schema="modifiedby"/>
+          </fields>
+        </index>
+        <index schema="idx_contract_name" issystem="true">
+          <fields>
+            <field schema="name"/>
+          </fields>
+        </index>
+      </indexes>
+    </entity>
+    <entity schema="contractcontact">
+      <properties>
+        <property schema="contractid"/>
+        <property schema="createdby"/>
+        <property schema="createdon"/>
+        <property schema="gpcontactname"/>
+        <property schema="gpcontractnumber"/>
+        <property schema="gpcustomernumber"/>
+        <property schema="gpemail"/>
+        <property schema="gplocationnumber"/>
+        <property schema="gpphone"/>
+        <property schema="id"/>
+        <property schema="modifiedby"/>
+        <property schema="modifiedon"/>
+        <property schema="name"/>
+      </properties>
+      <indexes>
+        <index schema="idx_contractcontact_contractid" issystem="true">
+          <fields>
+            <field schema="contractid"/>
+          </fields>
+        </index>
+        <index schema="idx_contractcontact_createdby" issystem="true">
+          <fields>
+            <field schema="createdby"/>
+          </fields>
+        </index>
+        <index schema="idx_contractcontact_modifiedby" issystem="true">
+          <fields>
+            <field schema="modifiedby"/>
+          </fields>
+        </index>
+        <index schema="idx_contractcontact_name" issystem="true">
+          <fields>
+            <field schema="name"/>
+          </fields>
+        </index>
+      </indexes>
+    </entity>
+    <entity schema="contractequipment" permissions="896" xattr="896">
+      <properties>
+        <property schema="contractid"/>
+        <property schema="createdby"/>
+        <property schema="createdon"/>
+        <property schema="equipmentid"/>
+        <property schema="gpcontractnumber"/>
+        <property schema="gpcustomernumber"/>
+        <property schema="gpequipmentid"/>
+        <property schema="gplocationnumber"/>
+        <property schema="gpsequencenumber"/>
+        <property schema="id"/>
+        <property schema="modifiedby"/>
+        <property schema="modifiedon"/>
+        <property schema="name"/>
+      </properties>
+      <indexes>
+        <index schema="idx_contractequipment_contractid" issystem="true">
+          <fields>
+            <field schema="contractid"/>
+          </fields>
+        </index>
+        <index schema="idx_contractequipment_createdby" issystem="true">
+          <fields>
+            <field schema="createdby"/>
+          </fields>
+        </index>
+        <index schema="idx_contractequipment_equipmentid" issystem="true">
+          <fields>
+            <field schema="equipmentid"/>
+          </fields>
+        </index>
+        <index schema="idx_contractequipment_modifiedby" issystem="true">
+          <fields>
+            <field schema="modifiedby"/>
+          </fields>
+        </index>
+        <index schema="idx_contractequipment_name" issystem="true">
+          <fields>
+            <field schema="name"/>
+          </fields>
+        </index>
+      </indexes>
+    </entity>
+    <entity schema="costcode">
+      <properties>
+        <property schema="code"/>
+        <property schema="createdby"/>
+        <property schema="createdon"/>
+        <property schema="description"/>
+        <property schema="id"/>
+        <property schema="modifiedby"/>
+        <property schema="modifiedon"/>
+        <property schema="name"/>
+      </properties>
+      <indexes>
+        <index schema="idx_costcode_createdby" issystem="true">
+          <fields>
+            <field schema="createdby"/>
+          </fields>
+        </index>
+        <index schema="idx_costcode_modifiedby" issystem="true">
+          <fields>
+            <field schema="modifiedby"/>
+          </fields>
+        </index>
+        <index schema="idx_costcode_name" issystem="true">
+          <fields>
+            <field schema="name"/>
+          </fields>
+        </index>
+      </indexes>
+    </entity>
+    <entity schema="costelement">
+      <properties>
+        <property schema="code"/>
+        <property schema="createdby"/>
+        <property schema="createdon"/>
+        <property schema="description"/>
+        <property schema="id"/>
+        <property schema="modifiedby"/>
+        <property schema="modifiedon"/>
+        <property schema="name"/>
+      </properties>
+      <indexes>
+        <index schema="idx_costelement_createdby" issystem="true">
+          <fields>
+            <field schema="createdby"/>
+          </fields>
+        </index>
+        <index schema="idx_costelement_modifiedby" issystem="true">
+          <fields>
+            <field schema="modifiedby"/>
+          </fields>
+        </index>
+        <index schema="idx_costelement_name" issystem="true">
+          <fields>
+            <field schema="name"/>
+          </fields>
+        </index>
+      </indexes>
+    </entity>
+    <entity schema="customer" permissions="896" xattr="896">
+      <properties>
+        <property schema="createdby" fieldpermissions="Read"/>
+        <property schema="createdon" fieldpermissions="Read"/>
+        <property schema="customername" fieldpermissions="Read"/>
+        <property schema="disablefieldinvoicing"/>
+        <property schema="gpcustomernumber" fieldpermissions="Read"/>
+        <property schema="id" fieldpermissions="Read"/>
+        <property schema="modifiedby" fieldpermissions="Read"/>
+        <property schema="modifiedon" fieldpermissions="Read"/>
+        <property schema="name" fieldpermissions="Read"/>
+      </properties>
+      <indexes>
+        <index schema="idx_customer_createdby" issystem="true">
+          <fields>
+            <field schema="createdby"/>
+          </fields>
+        </index>
+        <index schema="idx_customer_modifiedby" issystem="true">
+          <fields>
+            <field schema="modifiedby"/>
+          </fields>
+        </index>
+        <index schema="idx_customer_name" issystem="true">
+          <fields>
+            <field schema="name"/>
+          </fields>
+        </index>
+      </indexes>
+    </entity>
+    <entity schema="department">
+      <properties>
+        <property schema="createdby"/>
+        <property schema="createdon"/>
+        <property schema="description"/>
+        <property schema="id"/>
+        <property schema="modifiedby"/>
+        <property schema="modifiedon"/>
+        <property schema="name"/>
+      </properties>
+      <indexes>
+        <index schema="idx_department_createdby" issystem="true">
+          <fields>
+            <field schema="createdby"/>
+          </fields>
+        </index>
+        <index schema="idx_department_modifiedby" issystem="true">
+          <fields>
+            <field schema="modifiedby"/>
+          </fields>
+        </index>
+        <index schema="idx_department_name" issystem="true">
+          <fields>
+            <field schema="name"/>
+          </fields>
+        </index>
+      </indexes>
+    </entity>
+    <entity schema="employee" permissions="896" xattr="896">
+      <properties>
+        <property schema="createdby"/>
+        <property schema="createdon"/>
+        <property schema="departmentid"/>
+        <property schema="employeename"/>
+        <property schema="epacertification"/>
+        <property schema="gpemployeeid"/>
+        <property schema="gptechnicianid"/>
+        <property schema="id"/>
+        <property schema="modifiedby"/>
+        <property schema="modifiedon"/>
+        <property schema="name"/>
+        <property schema="positionid"/>
+      </properties>
+      <indexes>
+        <index schema="idx_employee_createdby" issystem="true">
+          <fields>
+            <field schema="createdby"/>
+          </fields>
+        </index>
+        <index schema="idx_employee_departmentid" issystem="true">
+          <fields>
+            <field schema="departmentid"/>
+          </fields>
+        </index>
+        <index schema="idx_employee_modifiedby" issystem="true">
+          <fields>
+            <field schema="modifiedby"/>
+          </fields>
+        </index>
+        <index schema="idx_employee_positionid" issystem="true">
+          <fields>
+            <field schema="positionid"/>
+          </fields>
+        </index>
+        <index schema="idx_employee_name" issystem="true">
+          <fields>
+            <field schema="name"/>
+          </fields>
+        </index>
+      </indexes>
+    </entity>
+    <entity schema="equipment" permissions="256" xattr="256">
+      <properties>
+        <property schema="barcode"/>
+        <property schema="buildingid" fieldpermissions="Read"/>
+        <property schema="buildingroom" fieldpermissions="Read"/>
+        <property schema="componentquantity"/>
+        <property schema="createdby"/>
+        <property schema="createdon"/>
+        <property schema="equipmentdescription2"/>
+        <property schema="equipmenttypeid"/>
+        <property schema="extendedwarrantyexpiration" displayformat="DateOnly"/>
+        <property schema="extendedwarrantytypeid"/>
+        <property schema="gpcustomernumber"/>
+        <property schema="gpequipmentid"/>
+        <property schema="gplocationnumber"/>
+        <property schema="gpmasterequipmentnumber"/>
+        <property schema="gpsublocationid"/>
+        <property schema="id" fieldpermissions="Read"/>
+        <property schema="installationbyid"/>
+        <property schema="installationdate" displayformat="DateOnly"/>
+        <property schema="iscomponent"/>
+        <property schema="isgroupitem"/>
+        <property schema="isprocessed"/>
+        <property schema="latitude"/>
+        <property schema="locationid"/>
+        <property schema="longitude"/>
+        <property schema="manufacturerid"/>
+        <property schema="modelnumber"/>
+        <property schema="modifiedby"/>
+        <property schema="modifiedon"/>
+        <property schema="name"/>
+        <property schema="optimalcharge"/>
+        <property schema="refrigerantequipmenttypeid"/>
+        <property schema="refrigeranttypeid"/>
+        <property schema="serialnumber"/>
+        <property schema="servicelevel"/>
+        <property schema="sublocationid"/>
+        <property schema="warrantyexpiration" displayformat="DateOnly"/>
+      </properties>
+      <indexes>
+        <index schema="idx_equipment_buildingid" issystem="true">
+          <fields>
+            <field schema="buildingid"/>
+          </fields>
+        </index>
+        <index schema="idx_equipment_createdby" issystem="true">
+          <fields>
+            <field schema="createdby"/>
+          </fields>
+        </index>
+        <index schema="idx_equipment_equipmenttypeid" issystem="true">
+          <fields>
+            <field schema="equipmenttypeid"/>
+          </fields>
+        </index>
+        <index schema="idx_equipment_extendedwarrantytypeid" issystem="true">
+          <fields>
+            <field schema="extendedwarrantytypeid"/>
+          </fields>
+        </index>
+        <index schema="idx_equipment_installationbyid" issystem="true">
+          <fields>
+            <field schema="installationbyid"/>
+          </fields>
+        </index>
+        <index schema="idx_equipment_locationid" issystem="true">
+          <fields>
+            <field schema="locationid"/>
+          </fields>
+        </index>
+        <index schema="idx_equipment_manufacturerid" issystem="true">
+          <fields>
+            <field schema="manufacturerid"/>
+          </fields>
+        </index>
+        <index schema="idx_equipment_modifiedby" issystem="true">
+          <fields>
+            <field schema="modifiedby"/>
+          </fields>
+        </index>
+        <index schema="idx_equipment_refrigerantequipmenttypeid" issystem="true">
+          <fields>
+            <field schema="refrigerantequipmenttypeid"/>
+          </fields>
+        </index>
+        <index schema="idx_equipment_sublocationid" issystem="true">
+          <fields>
+            <field schema="sublocationid"/>
+          </fields>
+        </index>
+        <index schema="idx_equipment_name" issystem="true">
+          <fields>
+            <field schema="name"/>
+          </fields>
+        </index>
+      </indexes>
+    </entity>
+    <entity schema="equipmenttype">
+      <properties>
+        <property schema="createdby"/>
+        <property schema="createdon"/>
+        <property schema="id"/>
+        <property schema="modifiedby"/>
+        <property schema="modifiedon"/>
+        <property schema="name"/>
+      </properties>
+      <indexes>
+        <index schema="idx_equipmenttype_createdby" issystem="true">
+          <fields>
+            <field schema="createdby"/>
+          </fields>
+        </index>
+        <index schema="idx_equipmenttype_modifiedby" issystem="true">
+          <fields>
+            <field schema="modifiedby"/>
+          </fields>
+        </index>
+        <index schema="idx_equipmenttype_name" issystem="true">
+          <fields>
+            <field schema="name"/>
+          </fields>
+        </index>
+      </indexes>
+    </entity>
+    <entity schema="extendedwarrantytype">
+      <properties>
+        <property schema="createdby"/>
+        <property schema="createdon"/>
+        <property schema="id"/>
+        <property schema="modifiedby"/>
+        <property schema="modifiedon"/>
+        <property schema="name"/>
+      </properties>
+      <indexes>
+        <index schema="idx_extendedwarrantytype_createdby" issystem="true">
+          <fields>
+            <field schema="createdby"/>
+          </fields>
+        </index>
+        <index schema="idx_extendedwarrantytype_modifiedby" issystem="true">
+          <fields>
+            <field schema="modifiedby"/>
+          </fields>
+        </index>
+        <index schema="idx_extendedwarrantytype_name" issystem="true">
+          <fields>
+            <field schema="name"/>
+          </fields>
+        </index>
+      </indexes>
+    </entity>
+    <entity schema="installationby">
+      <properties>
+        <property schema="createdby"/>
+        <property schema="createdon"/>
+        <property schema="description"/>
+        <property schema="id"/>
+        <property schema="modifiedby"/>
+        <property schema="modifiedon"/>
+        <property schema="name"/>
+      </properties>
+      <indexes>
+        <index schema="idx_installationby_createdby" issystem="true">
+          <fields>
+            <field schema="createdby"/>
+          </fields>
+        </index>
+        <index schema="idx_installationby_modifiedby" issystem="true">
+          <fields>
+            <field schema="modifiedby"/>
+          </fields>
+        </index>
+        <index schema="idx_installationby_name" issystem="true">
+          <fields>
+            <field schema="name"/>
+          </fields>
+        </index>
+      </indexes>
+    </entity>
+    <entity schema="invoice">
+      <properties>
+        <property schema="amount"/>
+        <property schema="appointmentid"/>
+        <property schema="createdby"/>
+        <property schema="createdon"/>
+        <property schema="customername"/>
+        <property schema="email"/>
+        <property schema="gpbatchnumber"/>
+        <property schema="gpinvoicenumber"/>
+        <property schema="gpservicecallid"/>
+        <property schema="id"/>
+        <property schema="ispaymentnotified"/>
+        <property schema="ispaymentprocessed"/>
+        <property schema="ispreview"/>
+        <property schema="locationname"/>
+        <property schema="modifiedby"/>
+        <property schema="modifiedon"/>
+        <property schema="name"/>
+        <property schema="ownerid"/>
+        <property schema="paymentid"/>
+        <property schema="servicecallid"/>
+        <property schema="statecode"/>
+        <property schema="statuscode"/>
+        <property schema="tax"/>
+        <property schema="transactiondate"/>
+      </properties>
+      <indexes>
+        <index schema="idx_invoice_appointmentid" issystem="true">
+          <fields>
+            <field schema="appointmentid"/>
+          </fields>
+        </index>
+        <index schema="idx_invoice_createdby" issystem="true">
+          <fields>
+            <field schema="createdby"/>
+          </fields>
+        </index>
+        <index schema="idx_invoice_modifiedby" issystem="true">
+          <fields>
+            <field schema="modifiedby"/>
+          </fields>
+        </index>
+        <index schema="idx_invoice_ownerid" issystem="true">
+          <fields>
+            <field schema="ownerid"/>
+          </fields>
+        </index>
+        <index schema="idx_invoice_paymentid" issystem="true">
+          <fields>
+            <field schema="paymentid"/>
+          </fields>
+        </index>
+        <index schema="idx_invoice_servicecallid" issystem="true">
+          <fields>
+            <field schema="servicecallid"/>
+          </fields>
+        </index>
+        <index schema="idx_invoice_name" issystem="true">
+          <fields>
+            <field schema="name"/>
+          </fields>
+        </index>
+      </indexes>
+    </entity>
+    <entity schema="job">
+      <properties>
+        <property schema="createdby"/>
+        <property schema="createdon"/>
+        <property schema="customerid"/>
+        <property schema="description"/>
+        <property schema="gpcustomernumber"/>
+        <property schema="gpjobnumber"/>
+        <property schema="gplocationnumber"/>
+        <property schema="id"/>
+        <property schema="locationid"/>
+        <property schema="modifiedby"/>
+        <property schema="modifiedon"/>
+        <property schema="name"/>
+      </properties>
+      <indexes>
+        <index schema="idx_job_createdby" issystem="true">
+          <fields>
+            <field schema="createdby"/>
+          </fields>
+        </index>
+        <index schema="idx_job_customerid" issystem="true">
+          <fields>
+            <field schema="customerid"/>
+          </fields>
+        </index>
+        <index schema="idx_job_locationid" issystem="true">
+          <fields>
+            <field schema="locationid"/>
+          </fields>
+        </index>
+        <index schema="idx_job_modifiedby" issystem="true">
+          <fields>
+            <field schema="modifiedby"/>
+          </fields>
+        </index>
+        <index schema="idx_job_name" issystem="true">
+          <fields>
+            <field schema="name"/>
+          </fields>
+        </index>
+      </indexes>
+    </entity>
+    <entity schema="jobcostcode">
+      <properties>
+        <property schema="costcodealias"/>
+        <property schema="costelementid"/>
+        <property schema="createdby"/>
+        <property schema="createdon"/>
+        <property schema="description"/>
+        <property schema="gpcostcodenumber1"/>
+        <property schema="gpcostcodenumber2"/>
+        <property schema="gpcostcodenumber3"/>
+        <property schema="gpcostcodenumber4"/>
+        <property schema="gpcostelement"/>
+        <property schema="gpjobnumber"/>
+        <property schema="id"/>
+        <property schema="jobid"/>
+        <property schema="managerid"/>
+        <property schema="measurecodeid"/>
+        <property schema="modifiedby"/>
+        <property schema="modifiedon"/>
+        <property schema="name"/>
+        <property schema="projectnumber"/>
+      </properties>
+      <indexes>
+        <index schema="idx_jobcostcode_costelementid" issystem="true">
+          <fields>
+            <field schema="costelementid"/>
+          </fields>
+        </index>
+        <index schema="idx_jobcostcode_createdby" issystem="true">
+          <fields>
+            <field schema="createdby"/>
+          </fields>
+        </index>
+        <index schema="idx_jobcostcode_jobid" issystem="true">
+          <fields>
+            <field schema="jobid"/>
+          </fields>
+        </index>
+        <index schema="idx_jobcostcode_measurecodeid" issystem="true">
+          <fields>
+            <field schema="measurecodeid"/>
+          </fields>
+        </index>
+        <index schema="idx_jobcostcode_modifiedby" issystem="true">
+          <fields>
+            <field schema="modifiedby"/>
+          </fields>
+        </index>
+        <index schema="idx_jobcostcode_name" issystem="true">
+          <fields>
+            <field schema="name"/>
+          </fields>
+        </index>
+      </indexes>
+    </entity>
+    <entity schema="jobsafetytask">
+      <properties>
+        <property schema="appointmentid"/>
+        <property schema="booleanresponse"/>
+        <property schema="completiondate"/>
+        <property schema="createdby"/>
+        <property schema="createdon"/>
+        <property schema="dropdownresponse"/>
+        <property schema="equipmentid"/>
+        <property schema="estimatehours"/>
+        <property schema="gpappointmentid"/>
+        <property schema="gpservicecallid"/>
+        <property schema="gptaskcode"/>
+        <property schema="gptasklinenumber"/>
+        <property schema="id"/>
+        <property schema="modifiedby"/>
+        <property schema="modifiedon"/>
+        <property schema="name"/>
+        <property schema="numericresponse1"/>
+        <property schema="numericresponse2"/>
+        <property schema="numericresponse3"/>
+        <property schema="sequencenumber"/>
+        <property schema="sublocationid"/>
+        <property schema="taskdescription"/>
+        <property schema="tasklistid"/>
+        <property schema="tasklisttype"/>
+        <property schema="taskresponseid"/>
+        <property schema="taskresponsetype"/>
+        <property schema="taskstatusid"/>
+        <property schema="textresponse"/>
+      </properties>
+      <indexes>
+        <index schema="idx_jobsafetytask_appointmentid" issystem="true">
+          <fields>
+            <field schema="appointmentid"/>
+          </fields>
+        </index>
+        <index schema="idx_jobsafetytask_createdby" issystem="true">
+          <fields>
+            <field schema="createdby"/>
+          </fields>
+        </index>
+        <index schema="idx_jobsafetytask_equipmentid" issystem="true">
+          <fields>
+            <field schema="equipmentid"/>
+          </fields>
+        </index>
+        <index schema="idx_jobsafetytask_modifiedby" issystem="true">
+          <fields>
+            <field schema="modifiedby"/>
+          </fields>
+        </index>
+        <index schema="idx_jobsafetytask_sublocationid" issystem="true">
+          <fields>
+            <field schema="sublocationid"/>
+          </fields>
+        </index>
+        <index schema="idx_jobsafetytask_taskresponseid" issystem="true">
+          <fields>
+            <field schema="taskresponseid"/>
+          </fields>
+        </index>
+        <index schema="idx_jobsafetytask_taskstatusid" issystem="true">
+          <fields>
+            <field schema="taskstatusid"/>
+          </fields>
+        </index>
+        <index schema="idx_jobsafetytask_name" issystem="true">
+          <fields>
+            <field schema="name"/>
+          </fields>
+        </index>
+      </indexes>
+    </entity>
+    <entity schema="jobsafetytasklisttemplate">
+      <properties>
+        <property schema="booleanresponse"/>
+        <property schema="completiondate"/>
+        <property schema="createdby"/>
+        <property schema="createdon"/>
+        <property schema="dropdownresponse"/>
+        <property schema="estimatedhours"/>
+        <property schema="gptaskcode"/>
+        <property schema="gptasklinenumber"/>
+        <property schema="gptasklisttype"/>
+        <property schema="id"/>
+        <property schema="modifiedby"/>
+        <property schema="modifiedon"/>
+        <property schema="name"/>
+        <property schema="numericresponse1"/>
+        <property schema="numericresponse2"/>
+        <property schema="numericresponse3"/>
+        <property schema="recordtype"/>
+        <property schema="responselabel"/>
+        <property schema="responselistid"/>
+        <property schema="responsetype"/>
+        <property schema="taskdescription"/>
+        <property schema="tasklistid"/>
+        <property schema="taskstatusid"/>
+        <property schema="textresponse"/>
+      </properties>
+      <indexes>
+        <index schema="idx_jobsafetytasklisttemplate_createdby" issystem="true">
+          <fields>
+            <field schema="createdby"/>
+          </fields>
+        </index>
+        <index schema="idx_jobsafetytasklisttemplate_modifiedby" issystem="true">
+          <fields>
+            <field schema="modifiedby"/>
+          </fields>
+        </index>
+        <index schema="idx_jobsafetytasklisttemplate_taskstatusid" issystem="true">
+          <fields>
+            <field schema="taskstatusid"/>
+          </fields>
+        </index>
+        <index schema="idx_jobsafetytasklisttemplate_name" issystem="true">
+          <fields>
+            <field schema="name"/>
+          </fields>
+        </index>
+      </indexes>
+    </entity>
+    <entity schema="jobsafetytaskresponse">
+      <properties>
+        <property schema="createdby"/>
+        <property schema="createdon"/>
+        <property schema="gpappointmentid"/>
+        <property schema="gpservicecallid"/>
+        <property schema="gptaskcode"/>
+        <property schema="gptasklinenumber"/>
+        <property schema="id"/>
+        <property schema="jobsafetytaskid"/>
+        <property schema="modifiedby"/>
+        <property schema="modifiedon"/>
+        <property schema="name"/>
+        <property schema="responselabel"/>
+        <property schema="responselistid"/>
+        <property schema="responsetype"/>
+        <property schema="responsevalue"/>
+        <property schema="seqnumber"/>
+        <property schema="tasklistid"/>
+        <property schema="textresponse"/>
+      </properties>
+      <indexes>
+        <index schema="idx_jobsafetytaskresponse_createdby" issystem="true">
+          <fields>
+            <field schema="createdby"/>
+          </fields>
+        </index>
+        <index schema="idx_jobsafetytaskresponse_jobsafetytaskid" issystem="true">
+          <fields>
+            <field schema="jobsafetytaskid"/>
+          </fields>
+        </index>
+        <index schema="idx_jobsafetytaskresponse_modifiedby" issystem="true">
+          <fields>
+            <field schema="modifiedby"/>
+          </fields>
+        </index>
+        <index schema="idx_jobsafetytaskresponse_name" issystem="true">
+          <fields>
+            <field schema="name"/>
+          </fields>
+        </index>
+      </indexes>
+    </entity>
+    <entity schema="laborexpense">
+      <properties>
+        <property schema="appointmentid"/>
+        <property schema="cost"/>
+        <property schema="costcodealias"/>
+        <property schema="costcodeid"/>
+        <property schema="costtype"/>
+        <property schema="createdby"/>
+        <property schema="createdon"/>
+        <property schema="description"/>
+        <property schema="employeeid"/>
+        <property schema="equipmentid"/>
+        <property schema="gpappointmentid"/>
+        <property schema="gpbatchnumber"/>
+        <property schema="gpcomptrxno"/>
+        <property schema="gpequipmentid"/>
+        <property schema="gpgrpcomptrxno"/>
+        <property schema="gpjobnumber"/>
+        <property schema="gptimein"/>
+        <property schema="gptimeout"/>
+        <property schema="hoursunits"/>
+        <property schema="id"/>
+        <property schema="isprocessed"/>
+        <property schema="jobcostcodeid"/>
+        <property schema="managercomment"/>
+        <property schema="modifiedby"/>
+        <property schema="modifiedon"/>
+        <property schema="name"/>
+        <property schema="ownerid"/>
+        <property schema="paycodeid"/>
+        <property schema="quantity"/>
+        <property schema="transactionbegindate"/>
+        <property schema="transactiondate"/>
+        <property schema="transactionenddate"/>
+        <property schema="transactionstatus"/>
+        <property schema="transactiontype"/>
+        <property schema="userdefine1"/>
+        <property schema="workcrewid"/>
+      </properties>
+      <indexes>
+        <index schema="idx_laborexpense_appointmentid" issystem="true">
+          <fields>
+            <field schema="appointmentid"/>
+          </fields>
+        </index>
+        <index schema="idx_laborexpense_costcodeid" issystem="true">
+          <fields>
+            <field schema="costcodeid"/>
+          </fields>
+        </index>
+        <index schema="idx_laborexpense_createdby" issystem="true">
+          <fields>
+            <field schema="createdby"/>
+          </fields>
+        </index>
+        <index schema="idx_laborexpense_employeeid" issystem="true">
+          <fields>
+            <field schema="employeeid"/>
+          </fields>
+        </index>
+        <index schema="idx_laborexpense_equipmentid" issystem="true">
+          <fields>
+            <field schema="equipmentid"/>
+          </fields>
+        </index>
+        <index schema="idx_laborexpense_jobcostcodeid" issystem="true">
+          <fields>
+            <field schema="jobcostcodeid"/>
+          </fields>
+        </index>
+        <index schema="idx_laborexpense_modifiedby" issystem="true">
+          <fields>
+            <field schema="modifiedby"/>
+          </fields>
+        </index>
+        <index schema="idx_laborexpense_ownerid" issystem="true">
+          <fields>
+            <field schema="ownerid"/>
+          </fields>
+        </index>
+        <index schema="idx_laborexpense_paycodeid" issystem="true">
+          <fields>
+            <field schema="paycodeid"/>
+          </fields>
+        </index>
+        <index schema="idx_laborexpense_workcrewid" issystem="true">
+          <fields>
+            <field schema="workcrewid"/>
+          </fields>
+        </index>
+        <index schema="idx_laborexpense_name" issystem="true">
+          <fields>
+            <field schema="name"/>
+          </fields>
+        </index>
+      </indexes>
+    </entity>
+    <entity schema="location" permissions="768" xattr="768">
+      <properties>
+        <property schema="address1" fieldpermissions="Read"/>
+        <property schema="address2" fieldpermissions="Read"/>
+        <property schema="affiliate" fieldpermissions="Read"/>
+        <property schema="branch" fieldpermissions="Read"/>
+        <property schema="city" fieldpermissions="Read"/>
+        <property schema="createdby" fieldpermissions="Read"/>
+        <property schema="createdon" fieldpermissions="Read"/>
+        <property schema="customerid" fieldpermissions="Read"/>
+        <property schema="gpcustomernumber" fieldpermissions="Read"/>
+        <property schema="gplocationnumber" fieldpermissions="Read"/>
+        <property schema="id" fieldpermissions="Read"/>
+        <property schema="isservicelocation"/>
+        <property schema="laborgroup" fieldpermissions="Read"/>
+        <property schema="latitude" fieldpermissions="Read Update"/>
+        <property schema="locationname" fieldpermissions="Read"/>
+        <property schema="longitude" fieldpermissions="Read Update"/>
+        <property schema="modifiedby" fieldpermissions="Read"/>
+        <property schema="modifiedon" fieldpermissions="Read"/>
+        <property schema="name" fieldpermissions="Read"/>
+        <property schema="pricingmatrix" fieldpermissions="Read"/>
+        <property schema="purchaseorderrequired" fieldpermissions="Read"/>
+        <property schema="region" fieldpermissions="Read"/>
+        <property schema="salespersonnumber" fieldpermissions="Read"/>
+        <property schema="state" fieldpermissions="Read"/>
+        <property schema="zip" fieldpermissions="Read"/>
+      </properties>
+      <indexes>
+        <index schema="idx_location_createdby" issystem="true">
+          <fields>
+            <field schema="createdby"/>
+          </fields>
+        </index>
+        <index schema="idx_location_customerid" issystem="true">
+          <fields>
+            <field schema="customerid"/>
+          </fields>
+        </index>
+        <index schema="idx_location_modifiedby" issystem="true">
+          <fields>
+            <field schema="modifiedby"/>
+          </fields>
+        </index>
+        <index schema="idx_location_name" issystem="true">
+          <fields>
+            <field schema="name"/>
+          </fields>
+        </index>
+      </indexes>
+    </entity>
+    <entity schema="locationcontact" xattr="2097152">
+      <properties>
+        <property schema="createdby"/>
+        <property schema="createdon"/>
+        <property schema="gpcontactid"/>
+        <property schema="gpcontactname"/>
+        <property schema="gpcontactphonetype"/>
+        <property schema="gpcontactroletype"/>
+        <property schema="gpcontacttype"/>
+        <property schema="gpcustomernumber"/>
+        <property schema="gpemail" displayformat="Email"/>
+        <property schema="gplocationnumber"/>
+        <property schema="gpphone" displayformat="PhoneNumber"/>
+        <property schema="gpphoneid"/>
+        <property schema="id"/>
+        <property schema="locationid"/>
+        <property schema="modifiedby"/>
+        <property schema="modifiedon"/>
+        <property schema="name"/>
+      </properties>
+      <indexes>
+        <index schema="idx_locationcontact_createdby" issystem="true">
+          <fields>
+            <field schema="createdby"/>
+          </fields>
+        </index>
+        <index schema="idx_locationcontact_locationid" issystem="true">
+          <fields>
+            <field schema="locationid"/>
+          </fields>
+        </index>
+        <index schema="idx_locationcontact_modifiedby" issystem="true">
+          <fields>
+            <field schema="modifiedby"/>
+          </fields>
+        </index>
+        <index schema="idx_locationcontact_name" issystem="true">
+          <fields>
+            <field schema="name"/>
+          </fields>
+        </index>
+      </indexes>
+    </entity>
+    <entity schema="manufacturer" permissions="896" xattr="896">
+      <properties>
+        <property schema="createdby"/>
+        <property schema="createdon"/>
+        <property schema="description"/>
+        <property schema="id"/>
+        <property schema="modifiedby"/>
+        <property schema="modifiedon"/>
+        <property schema="name"/>
+      </properties>
+      <indexes>
+        <index schema="idx_manufacturer_createdby" issystem="true">
+          <fields>
+            <field schema="createdby"/>
+          </fields>
+        </index>
+        <index schema="idx_manufacturer_modifiedby" issystem="true">
+          <fields>
+            <field schema="modifiedby"/>
+          </fields>
+        </index>
+        <index schema="idx_manufacturer_name" issystem="true">
+          <fields>
+            <field schema="name"/>
+          </fields>
+        </index>
+      </indexes>
+    </entity>
+    <entity schema="measurecode">
+      <properties>
+        <property schema="createdby"/>
+        <property schema="createdon"/>
+        <property schema="description"/>
+        <property schema="id"/>
+        <property schema="modifiedby"/>
+        <property schema="modifiedon"/>
+        <property schema="name"/>
+      </properties>
+      <indexes>
+        <index schema="idx_measurecode_createdby" issystem="true">
+          <fields>
+            <field schema="createdby"/>
+          </fields>
+        </index>
+        <index schema="idx_measurecode_modifiedby" issystem="true">
+          <fields>
+            <field schema="modifiedby"/>
+          </fields>
+        </index>
+        <index schema="idx_measurecode_name" issystem="true">
+          <fields>
+            <field schema="name"/>
+          </fields>
+        </index>
+      </indexes>
+    </entity>
+    <entity schema="meterreading">
+      <properties>
+        <property schema="createdby"/>
+        <property schema="createdon"/>
+        <property schema="dexrowid"/>
+        <property schema="equipmentid"/>
+        <property schema="equipmentmeter1"/>
+        <property schema="equipmentmeter10"/>
+        <property schema="equipmentmeter11"/>
+        <property schema="equipmentmeter12"/>
+        <property schema="equipmentmeter13"/>
+        <property schema="equipmentmeter14"/>
+        <property schema="equipmentmeter15"/>
+        <property schema="equipmentmeter16"/>
+        <property schema="equipmentmeter17"/>
+        <property schema="equipmentmeter18"/>
+        <property schema="equipmentmeter19"/>
+        <property schema="equipmentmeter2"/>
+        <property schema="equipmentmeter20"/>
+        <property schema="equipmentmeter21" displayformat="DateOnly"/>
+        <property schema="equipmentmeter22" displayformat="DateOnly"/>
+        <property schema="equipmentmeter23" displayformat="DateOnly"/>
+        <property schema="equipmentmeter24"/>
+        <property schema="equipmentmeter25"/>
+        <property schema="equipmentmeter3"/>
+        <property schema="equipmentmeter4"/>
+        <property schema="equipmentmeter5"/>
+        <property schema="equipmentmeter6"/>
+        <property schema="equipmentmeter7"/>
+        <property schema="equipmentmeter8"/>
+        <property schema="equipmentmeter9"/>
+        <property schema="gpcustomernumber"/>
+        <property schema="gpequipmentid"/>
+        <property schema="gplocationnumber"/>
+        <property schema="gpmeterreadingdate" displayformat="DateOnly"/>
+        <property schema="gptechnicianid"/>
+        <property schema="id"/>
+        <property schema="modifiedby"/>
+        <property schema="modifiedon"/>
+        <property schema="name"/>
+      </properties>
+      <indexes>
+        <index schema="idx_meterreading_createdby" issystem="true">
+          <fields>
+            <field schema="createdby"/>
+          </fields>
+        </index>
+        <index schema="idx_meterreading_equipmentid" issystem="true">
+          <fields>
+            <field schema="equipmentid"/>
+          </fields>
+        </index>
+        <index schema="idx_meterreading_modifiedby" issystem="true">
+          <fields>
+            <field schema="modifiedby"/>
+          </fields>
+        </index>
+        <index schema="idx_meterreading_name" issystem="true">
+          <fields>
+            <field schema="name"/>
+          </fields>
+        </index>
+      </indexes>
+    </entity>
+    <entity schema="meterreadingudflabel">
+      <properties>
+        <property schema="createdby"/>
+        <property schema="createdon"/>
+        <property schema="gprowid"/>
+        <property schema="id"/>
+        <property schema="modifiedby"/>
+        <property schema="modifiedon"/>
+        <property schema="name"/>
+        <property schema="userdefine1"/>
+        <property schema="userdefine10"/>
+        <property schema="userdefine11"/>
+        <property schema="userdefine12"/>
+        <property schema="userdefine13"/>
+        <property schema="userdefine14"/>
+        <property schema="userdefine15"/>
+        <property schema="userdefine16"/>
+        <property schema="userdefine17"/>
+        <property schema="userdefine18"/>
+        <property schema="userdefine19"/>
+        <property schema="userdefine2"/>
+        <property schema="userdefine20"/>
+        <property schema="userdefine21"/>
+        <property schema="userdefine22"/>
+        <property schema="userdefine23"/>
+        <property schema="userdefine24"/>
+        <property schema="userdefine25"/>
+        <property schema="userdefine3"/>
+        <property schema="userdefine4"/>
+        <property schema="userdefine5"/>
+        <property schema="userdefine6"/>
+        <property schema="userdefine7"/>
+        <property schema="userdefine8"/>
+        <property schema="userdefine9"/>
+      </properties>
+      <indexes>
+        <index schema="idx_meterreadingudflabel_createdby" issystem="true">
+          <fields>
+            <field schema="createdby"/>
+          </fields>
+        </index>
+        <index schema="idx_meterreadingudflabel_modifiedby" issystem="true">
+          <fields>
+            <field schema="modifiedby"/>
+          </fields>
+        </index>
+        <index schema="idx_meterreadingudflabel_name" issystem="true">
+          <fields>
+            <field schema="name"/>
+          </fields>
+        </index>
+      </indexes>
+    </entity>
+    <entity schema="mfq_recommendationtemplate">
+      <properties>
+        <property schema="benefits"/>
+        <property schema="createdby"/>
+        <property schema="createdon"/>
+        <property schema="description"/>
+        <property schema="id"/>
+        <property schema="modifiedby"/>
+        <property schema="modifiedon"/>
+        <property schema="name"/>
+        <property schema="recommendationtemplateid"/>
+      </properties>
+      <indexes>
+        <index schema="idx_mfq_recommendationtemplate_createdby" issystem="true">
+          <fields>
+            <field schema="createdby"/>
+          </fields>
+        </index>
+        <index schema="idx_mfq_recommendationtemplate_modifiedby" issystem="true">
+          <fields>
+            <field schema="modifiedby"/>
+          </fields>
+        </index>
+        <index schema="idx_mfq_recommendationtemplate_name" issystem="true">
+          <fields>
+            <field schema="name"/>
+          </fields>
+        </index>
+      </indexes>
+    </entity>
+    <entity schema="paycode">
+      <properties>
+        <property schema="billtype"/>
+        <property schema="createdby"/>
+        <property schema="createdon"/>
+        <property schema="description"/>
+        <property schema="employeeid"/>
+        <property schema="gpemployeeid"/>
+        <property schema="gppaycodeid"/>
+        <property schema="id"/>
+        <property schema="modifiedby"/>
+        <property schema="modifiedon"/>
+        <property schema="name"/>
+        <property schema="paycodetype"/>
+      </properties>
+      <indexes>
+        <index schema="idx_paycode_createdby" issystem="true">
+          <fields>
+            <field schema="createdby"/>
+          </fields>
+        </index>
+        <index schema="idx_paycode_employeeid" issystem="true">
+          <fields>
+            <field schema="employeeid"/>
+          </fields>
+        </index>
+        <index schema="idx_paycode_modifiedby" issystem="true">
+          <fields>
+            <field schema="modifiedby"/>
+          </fields>
+        </index>
+        <index schema="idx_paycode_name" issystem="true">
+          <fields>
+            <field schema="name"/>
+          </fields>
+        </index>
+      </indexes>
+    </entity>
+    <entity schema="payment">
+      <properties>
+        <property schema="appointmentid"/>
+        <property schema="authorizationcode"/>
+        <property schema="cardnameid"/>
+        <property schema="cashamount"/>
+        <property schema="checkamount"/>
+        <property schema="checknumber"/>
+        <property schema="createdby"/>
+        <property schema="createdon"/>
+        <property schema="creditcardamount"/>
+        <property schema="employeeid"/>
+        <property schema="gpinvoicenumber"/>
+        <property schema="id"/>
+        <property schema="invoiceid"/>
+        <property schema="isprocessed"/>
+        <property schema="modifiedby"/>
+        <property schema="modifiedon"/>
+        <property schema="name"/>
+        <property schema="servicecallid"/>
+        <property schema="transactiondate"/>
+      </properties>
+      <indexes>
+        <index schema="idx_payment_appointmentid" issystem="true">
+          <fields>
+            <field schema="appointmentid"/>
+          </fields>
+        </index>
+        <index schema="idx_payment_cardnameid" issystem="true">
+          <fields>
+            <field schema="cardnameid"/>
+          </fields>
+        </index>
+        <index schema="idx_payment_createdby" issystem="true">
+          <fields>
+            <field schema="createdby"/>
+          </fields>
+        </index>
+        <index schema="idx_payment_employeeid" issystem="true">
+          <fields>
+            <field schema="employeeid"/>
+          </fields>
+        </index>
+        <index schema="idx_payment_invoiceid" issystem="true">
+          <fields>
+            <field schema="invoiceid"/>
+          </fields>
+        </index>
+        <index schema="idx_payment_modifiedby" issystem="true">
+          <fields>
+            <field schema="modifiedby"/>
+          </fields>
+        </index>
+        <index schema="idx_payment_servicecallid" issystem="true">
+          <fields>
+            <field schema="servicecallid"/>
+          </fields>
+        </index>
+        <index schema="idx_payment_name" issystem="true">
+          <fields>
+            <field schema="name"/>
+          </fields>
+        </index>
+      </indexes>
+    </entity>
+    <entity schema="position">
+      <properties>
+        <property schema="createdby"/>
+        <property schema="createdon"/>
+        <property schema="description"/>
+        <property schema="id"/>
+        <property schema="modifiedby"/>
+        <property schema="modifiedon"/>
+        <property schema="name"/>
+      </properties>
+      <indexes>
+        <index schema="idx_position_createdby" issystem="true">
+          <fields>
+            <field schema="createdby"/>
+          </fields>
+        </index>
+        <index schema="idx_position_modifiedby" issystem="true">
+          <fields>
+            <field schema="modifiedby"/>
+          </fields>
+        </index>
+        <index schema="idx_position_name" issystem="true">
+          <fields>
+            <field schema="name"/>
+          </fields>
+        </index>
+      </indexes>
+    </entity>
+    <entity schema="problemtype">
+      <properties>
+        <property schema="createdby"/>
+        <property schema="createdon"/>
+        <property schema="id"/>
+        <property schema="modifiedby"/>
+        <property schema="modifiedon"/>
+        <property schema="name"/>
+      </properties>
+      <indexes>
+        <index schema="idx_problemtype_createdby" issystem="true">
+          <fields>
+            <field schema="createdby"/>
+          </fields>
+        </index>
+        <index schema="idx_problemtype_modifiedby" issystem="true">
+          <fields>
+            <field schema="modifiedby"/>
+          </fields>
+        </index>
+        <index schema="idx_problemtype_name" issystem="true">
+          <fields>
+            <field schema="name"/>
+          </fields>
+        </index>
+      </indexes>
+    </entity>
+    <entity schema="purchaseorder">
+      <properties>
+        <property schema="createdby"/>
+        <property schema="createdon"/>
+        <property schema="gpjobnumber"/>
+        <property schema="gppurchaseordernumber"/>
+        <property schema="gpvendorid"/>
+        <property schema="gpvendorname"/>
+        <property schema="id"/>
+        <property schema="isprocessed"/>
+        <property schema="modifiedby"/>
+        <property schema="modifiedon"/>
+        <property schema="name"/>
+        <property schema="transactiondate"/>
+        <property schema="vendorid"/>
+      </properties>
+      <indexes>
+        <index schema="idx_purchaseorder_createdby" issystem="true">
+          <fields>
+            <field schema="createdby"/>
+          </fields>
+        </index>
+        <index schema="idx_purchaseorder_modifiedby" issystem="true">
+          <fields>
+            <field schema="modifiedby"/>
+          </fields>
+        </index>
+        <index schema="idx_purchaseorder_vendorid" issystem="true">
+          <fields>
+            <field schema="vendorid"/>
+          </fields>
+        </index>
+        <index schema="idx_purchaseorder_name" issystem="true">
+          <fields>
+            <field schema="name"/>
+          </fields>
+        </index>
+      </indexes>
+    </entity>
+    <entity schema="purchaseorderdetail">
+      <properties>
+        <property schema="appointmentid"/>
+        <property schema="consumedinventoryid"/>
+        <property schema="costcodeid"/>
+        <property schema="createdby"/>
+        <property schema="createdon"/>
+        <property schema="gpappointmentid"/>
+        <property schema="gplinenumber"/>
+        <property schema="gppurchaseordernumber"/>
+        <property schema="id"/>
+        <property schema="isprocessed"/>
+        <property schema="itemdescription"/>
+        <property schema="itemnumber"/>
+        <property schema="jobcostcodeid"/>
+        <property schema="jobid"/>
+        <property schema="modifiedby"/>
+        <property schema="modifiedon"/>
+        <property schema="name"/>
+        <property schema="productindicator"/>
+        <property schema="purchaseorderid"/>
+        <property schema="quantity"/>
+        <property schema="servicecallid"/>
+        <property schema="siteid"/>
+        <property schema="siteinventoryid"/>
+        <property schema="techniciansiteid"/>
+        <property schema="transactiondate"/>
+        <property schema="unitcost"/>
+        <property schema="unitofmeasureid"/>
+      </properties>
+      <indexes>
+        <index schema="idx_purchaseorderdetail_appointmentid" issystem="true">
+          <fields>
+            <field schema="appointmentid"/>
+          </fields>
+        </index>
+        <index schema="idx_purchaseorderdetail_consumedinventoryid" issystem="true">
+          <fields>
+            <field schema="consumedinventoryid"/>
+          </fields>
+        </index>
+        <index schema="idx_purchaseorderdetail_costcodeid" issystem="true">
+          <fields>
+            <field schema="costcodeid"/>
+          </fields>
+        </index>
+        <index schema="idx_purchaseorderdetail_createdby" issystem="true">
+          <fields>
+            <field schema="createdby"/>
+          </fields>
+        </index>
+        <index schema="idx_purchaseorderdetail_jobcostcodeid" issystem="true">
+          <fields>
+            <field schema="jobcostcodeid"/>
+          </fields>
+        </index>
+        <index schema="idx_purchaseorderdetail_jobid" issystem="true">
+          <fields>
+            <field schema="jobid"/>
+          </fields>
+        </index>
+        <index schema="idx_purchaseorderdetail_modifiedby" issystem="true">
+          <fields>
+            <field schema="modifiedby"/>
+          </fields>
+        </index>
+        <index schema="idx_purchaseorderdetail_purchaseorderid" issystem="true">
+          <fields>
+            <field schema="purchaseorderid"/>
+          </fields>
+        </index>
+        <index schema="idx_purchaseorderdetail_servicecallid" issystem="true">
+          <fields>
+            <field schema="servicecallid"/>
+          </fields>
+        </index>
+        <index schema="idx_purchaseorderdetail_siteinventoryid" issystem="true">
+          <fields>
+            <field schema="siteinventoryid"/>
+          </fields>
+        </index>
+        <index schema="idx_purchaseorderdetail_techniciansiteid" issystem="true">
+          <fields>
+            <field schema="techniciansiteid"/>
+          </fields>
+        </index>
+        <index schema="idx_purchaseorderdetail_unitofmeasureid" issystem="true">
+          <fields>
+            <field schema="unitofmeasureid"/>
+          </fields>
+        </index>
+        <index schema="idx_purchaseorderdetail_name" issystem="true">
+          <fields>
+            <field schema="name"/>
+          </fields>
+        </index>
+      </indexes>
+    </entity>
+    <entity schema="purchaseorderreceipt">
+      <properties>
+        <property schema="appointmentid"/>
+        <property schema="createdby"/>
+        <property schema="createdon"/>
+        <property schema="freightamount"/>
+        <property schema="gpjobnumber"/>
+        <property schema="gpproductindicator"/>
+        <property schema="gppurchaseordernumber"/>
+        <property schema="id"/>
+        <property schema="isprocessed"/>
+        <property schema="miscellaneousamount"/>
+        <property schema="modifiedby"/>
+        <property schema="modifiedon"/>
+        <property schema="name"/>
+        <property schema="purchaseorderstatus"/>
+        <property schema="purchaseordertype"/>
+        <property schema="transactiondate"/>
+        <property schema="vendordocumentnumber"/>
+        <property schema="vendorid"/>
+      </properties>
+      <indexes>
+        <index schema="idx_purchaseorderreceipt_appointmentid" issystem="true">
+          <fields>
+            <field schema="appointmentid"/>
+          </fields>
+        </index>
+        <index schema="idx_purchaseorderreceipt_createdby" issystem="true">
+          <fields>
+            <field schema="createdby"/>
+          </fields>
+        </index>
+        <index schema="idx_purchaseorderreceipt_modifiedby" issystem="true">
+          <fields>
+            <field schema="modifiedby"/>
+          </fields>
+        </index>
+        <index schema="idx_purchaseorderreceipt_vendorid" issystem="true">
+          <fields>
+            <field schema="vendorid"/>
+          </fields>
+        </index>
+        <index schema="idx_purchaseorderreceipt_name" issystem="true">
+          <fields>
+            <field schema="name"/>
+          </fields>
+        </index>
+      </indexes>
+    </entity>
+    <entity schema="purchaseorderreceiptdetail">
+      <properties>
+        <property schema="costcodealias"/>
+        <property schema="costtype"/>
+        <property schema="createdby"/>
+        <property schema="createdon"/>
+        <property schema="gpjobnumber"/>
+        <property schema="gpproductindicator"/>
+        <property schema="gppurchaseordernumber"/>
+        <property schema="gppurchaseorderord"/>
+        <property schema="id"/>
+        <property schema="isselected"/>
+        <property schema="itemdescription"/>
+        <property schema="itemnumber"/>
+        <property schema="modifiedby"/>
+        <property schema="modifiedon"/>
+        <property schema="name"/>
+        <property schema="noninventory"/>
+        <property schema="purchaseorderreceiptid"/>
+        <property schema="quantity"/>
+        <property schema="unitcost"/>
+        <property schema="unitofmeasureid"/>
+        <property schema="vendoritemdescription"/>
+        <property schema="vendoritemnumber"/>
+      </properties>
+      <indexes>
+        <index schema="idx_purchaseorderreceiptdetail_createdby" issystem="true">
+          <fields>
+            <field schema="createdby"/>
+          </fields>
+        </index>
+        <index schema="idx_purchaseorderreceiptdetail_modifiedby" issystem="true">
+          <fields>
+            <field schema="modifiedby"/>
+          </fields>
+        </index>
+        <index schema="idx_purchaseorderreceiptdetail_purchaseorderreceiptid" issystem="true">
+          <fields>
+            <field schema="purchaseorderreceiptid"/>
+          </fields>
+        </index>
+        <index schema="idx_purchaseorderreceiptdetail_name" issystem="true">
+          <fields>
+            <field schema="name"/>
+          </fields>
+        </index>
+      </indexes>
+    </entity>
+    <entity schema="refrigerantcode">
+      <properties>
+        <property schema="codetype"/>
+        <property schema="createdby"/>
+        <property schema="createdon"/>
+        <property schema="gpcodeid"/>
+        <property schema="id"/>
+        <property schema="modifiedby"/>
+        <property schema="modifiedon"/>
+        <property schema="name"/>
+        <property schema="sequencenumber"/>
+      </properties>
+      <indexes>
+        <index schema="idx_refrigerantcode_createdby" issystem="true">
+          <fields>
+            <field schema="createdby"/>
+          </fields>
+        </index>
+        <index schema="idx_refrigerantcode_modifiedby" issystem="true">
+          <fields>
+            <field schema="modifiedby"/>
+          </fields>
+        </index>
+        <index schema="idx_refrigerantcode_name" issystem="true">
+          <fields>
+            <field schema="name"/>
+          </fields>
+        </index>
+      </indexes>
+    </entity>
+    <entity schema="refrigerantequipmenttype">
+      <properties>
+        <property schema="createdby"/>
+        <property schema="createdon"/>
+        <property schema="description"/>
+        <property schema="epaleakratemaxpercent"/>
+        <property schema="epaleaktestinterval"/>
+        <property schema="gprefrigerantequipmenttype"/>
+        <property schema="id"/>
+        <property schema="modifiedby"/>
+        <property schema="modifiedon"/>
+        <property schema="name"/>
+      </properties>
+      <indexes>
+        <index schema="idx_refrigerantequipmenttype_createdby" issystem="true">
+          <fields>
+            <field schema="createdby"/>
+          </fields>
+        </index>
+        <index schema="idx_refrigerantequipmenttype_modifiedby" issystem="true">
+          <fields>
+            <field schema="modifiedby"/>
+          </fields>
+        </index>
+        <index schema="idx_refrigerantequipmenttype_name" issystem="true">
+          <fields>
+            <field schema="name"/>
+          </fields>
+        </index>
+      </indexes>
+    </entity>
+    <entity schema="refrigerantleaklocation">
+      <properties>
+        <property schema="createdby"/>
+        <property schema="createdon"/>
+        <property schema="id"/>
+        <property schema="modifiedby"/>
+        <property schema="modifiedon"/>
+        <property schema="name"/>
+        <property schema="sequencenumber"/>
+      </properties>
+      <indexes>
+        <index schema="idx_refrigerantleaklocation_createdby" issystem="true">
+          <fields>
+            <field schema="createdby"/>
+          </fields>
+        </index>
+        <index schema="idx_refrigerantleaklocation_modifiedby" issystem="true">
+          <fields>
+            <field schema="modifiedby"/>
+          </fields>
+        </index>
+        <index schema="idx_refrigerantleaklocation_name" issystem="true">
+          <fields>
+            <field schema="name"/>
+          </fields>
+        </index>
+      </indexes>
+    </entity>
+    <entity schema="refrigerantleaksublocation">
+      <properties>
+        <property schema="createdby"/>
+        <property schema="createdon"/>
+        <property schema="gpleakid"/>
+        <property schema="id"/>
+        <property schema="modifiedby"/>
+        <property schema="modifiedon"/>
+        <property schema="name"/>
+        <property schema="refrigerantleaklocationid"/>
+        <property schema="sequencenumber"/>
+      </properties>
+      <indexes>
+        <index schema="idx_refrigerantleaksublocation_createdby" issystem="true">
+          <fields>
+            <field schema="createdby"/>
+          </fields>
+        </index>
+        <index schema="idx_refrigerantleaksublocation_modifiedby" issystem="true">
+          <fields>
+            <field schema="modifiedby"/>
+          </fields>
+        </index>
+        <index schema="idx_refrigerantleaksublocation_refrigerantleaklocationid" issystem="true">
+          <fields>
+            <field schema="refrigerantleaklocationid"/>
+          </fields>
+        </index>
+        <index schema="idx_refrigerantleaksublocation_name" issystem="true">
+          <fields>
+            <field schema="name"/>
+          </fields>
+        </index>
+      </indexes>
+    </entity>
+    <entity schema="refrigeranttracking">
+      <properties>
+        <property schema="actioncodeid"/>
+        <property schema="added"/>
+        <property schema="assettagnumber"/>
+        <property schema="circuitcodeid"/>
+        <property schema="comments"/>
+        <property schema="createdby"/>
+        <property schema="createddatetime"/>
+        <property schema="createdon"/>
+        <property schema="createdtechnicianid"/>
+        <property schema="currentleakrate" fieldpermissions="Read"/>
+        <property schema="cylindernumber"/>
+        <property schema="disposed"/>
+        <property schema="employeeid"/>
+        <property schema="epacertification"/>
+        <property schema="epaleakratemaxpercent" fieldpermissions="Read"/>
+        <property schema="equipmentid"/>
+        <property schema="faultcodeid"/>
+        <property schema="followupleaktestcodeid"/>
+        <property schema="followupleaktestdate" displayformat="DateOnly"/>
+        <property schema="followupleaktestmethod"/>
+        <property schema="gpvoid"/>
+        <property schema="id"/>
+        <property schema="initialleaktestcodeid"/>
+        <property schema="initialleaktestdate" displayformat="DateOnly"/>
+        <property schema="initialleaktestmethod"/>
+        <property schema="ishistory"/>
+        <property schema="isprocessed"/>
+        <property schema="leakfound"/>
+        <property schema="leakrepaired"/>
+        <property schema="modifiedby"/>
+        <property schema="modifieddatetime"/>
+        <property schema="modifiedon"/>
+        <property schema="modifiedtechnicianid"/>
+        <property schema="name"/>
+        <property schema="netadded"/>
+        <property schema="optimalcharge"/>
+        <property schema="recharged"/>
+        <property schema="recovered"/>
+        <property schema="recycled"/>
+        <property schema="refrigerantequipmenttypeid"/>
+        <property schema="refrigerantleaklocationid"/>
+        <property schema="refrigerantleaksublocationid"/>
+        <property schema="refrigerantsuppliedby"/>
+        <property schema="refrigeranttransfer"/>
+        <property schema="refrigeranttypeid"/>
+        <property schema="released"/>
+        <property schema="repairattempted"/>
+        <property schema="rtreferenceid"/>
+        <property schema="servicecallid"/>
+        <property schema="servicedatetime"/>
+        <property schema="storenumber"/>
+        <property schema="systemtype"/>
+        <property schema="thirdpartyconfirmation"/>
+      </properties>
+      <indexes>
+        <index schema="idx_refrigeranttracking_actioncodeid" issystem="true">
+          <fields>
+            <field schema="actioncodeid"/>
+          </fields>
+        </index>
+        <index schema="idx_refrigeranttracking_circuitcodeid" issystem="true">
+          <fields>
+            <field schema="circuitcodeid"/>
+          </fields>
+        </index>
+        <index schema="idx_refrigeranttracking_createdby" issystem="true">
+          <fields>
+            <field schema="createdby"/>
+          </fields>
+        </index>
+        <index schema="idx_refrigeranttracking_employeeid" issystem="true">
+          <fields>
+            <field schema="employeeid"/>
+          </fields>
+        </index>
+        <index schema="idx_refrigeranttracking_equipmentid" issystem="true">
+          <fields>
+            <field schema="equipmentid"/>
+          </fields>
+        </index>
+        <index schema="idx_refrigeranttracking_faultcodeid" issystem="true">
+          <fields>
+            <field schema="faultcodeid"/>
+          </fields>
+        </index>
+        <index schema="idx_refrigeranttracking_followupleaktestcodeid" issystem="true">
+          <fields>
+            <field schema="followupleaktestcodeid"/>
+          </fields>
+        </index>
+        <index schema="idx_refrigeranttracking_initialleaktestcodeid" issystem="true">
+          <fields>
+            <field schema="initialleaktestcodeid"/>
+          </fields>
+        </index>
+        <index schema="idx_refrigeranttracking_modifiedby" issystem="true">
+          <fields>
+            <field schema="modifiedby"/>
+          </fields>
+        </index>
+        <index schema="idx_refrigeranttracking_refrigerantequipmenttypeid" issystem="true">
+          <fields>
+            <field schema="refrigerantequipmenttypeid"/>
+          </fields>
+        </index>
+        <index schema="idx_refrigeranttracking_refrigerantleaklocationid" issystem="true">
+          <fields>
+            <field schema="refrigerantleaklocationid"/>
+          </fields>
+        </index>
+        <index schema="idx_refrigeranttracking_refrigerantleaksublocationid" issystem="true">
+          <fields>
+            <field schema="refrigerantleaksublocationid"/>
+          </fields>
+        </index>
+        <index schema="idx_refrigeranttracking_refrigeranttypeid" issystem="true">
+          <fields>
+            <field schema="refrigeranttypeid"/>
+          </fields>
+        </index>
+        <index schema="idx_refrigeranttracking_servicecallid" issystem="true">
+          <fields>
+            <field schema="servicecallid"/>
+          </fields>
+        </index>
+        <index schema="idx_refrigeranttracking_name" issystem="true">
+          <fields>
+            <field schema="name"/>
+          </fields>
+        </index>
+      </indexes>
+    </entity>
+    <entity schema="refrigeranttype">
+      <properties>
+        <property schema="createdby"/>
+        <property schema="createdon"/>
+        <property schema="gptypeid"/>
+        <property schema="id"/>
+        <property schema="modifiedby"/>
+        <property schema="modifiedon"/>
+        <property schema="name"/>
+        <property schema="sequencenumber"/>
+        <property schema="typeofrefrigerant"/>
+        <property schema="unitofmeasure"/>
+      </properties>
+      <indexes>
+        <index schema="idx_refrigeranttype_createdby" issystem="true">
+          <fields>
+            <field schema="createdby"/>
+          </fields>
+        </index>
+        <index schema="idx_refrigeranttype_modifiedby" issystem="true">
+          <fields>
+            <field schema="modifiedby"/>
+          </fields>
+        </index>
+        <index schema="idx_refrigeranttype_name" issystem="true">
+          <fields>
+            <field schema="name"/>
+          </fields>
+        </index>
+      </indexes>
+    </entity>
+    <entity schema="report">
+      <properties>
+        <property schema="appointmentid"/>
+        <property schema="createdby"/>
+        <property schema="createdon"/>
+        <property schema="customername"/>
+        <property schema="customersignature"/>
+        <property schema="email"/>
+        <property schema="errormessage"/>
+        <property schema="gptechnicianid"/>
+        <property schema="id"/>
+        <property schema="ispreview"/>
+        <property schema="modifiedby"/>
+        <property schema="modifiedon"/>
+        <property schema="name"/>
+        <property schema="objectid"/>
+        <property schema="ownerid"/>
+        <property schema="status"/>
+        <property schema="technicianname"/>
+        <property schema="techniciansignature"/>
+      </properties>
+      <indexes>
+        <index schema="idx_report_appointmentid" issystem="true">
+          <fields>
+            <field schema="appointmentid"/>
+          </fields>
+        </index>
+        <index schema="idx_report_createdby" issystem="true">
+          <fields>
+            <field schema="createdby"/>
+          </fields>
+        </index>
+        <index schema="idx_report_modifiedby" issystem="true">
+          <fields>
+            <field schema="modifiedby"/>
+          </fields>
+        </index>
+        <index schema="idx_report_objectid" issystem="true">
+          <fields>
+            <field schema="objectid"/>
+          </fields>
+        </index>
+        <index schema="idx_report_ownerid" issystem="true">
+          <fields>
+            <field schema="ownerid"/>
+          </fields>
+        </index>
+        <index schema="idx_report_name" issystem="true">
+          <fields>
+            <field schema="name"/>
+          </fields>
+        </index>
+      </indexes>
+    </entity>
+    <entity schema="resco_audit" isonlineonly="true">
+      <properties>
+        <property schema="createdby"/>
+        <property schema="createdon"/>
+        <property schema="id"/>
+        <property schema="modifiedby"/>
+        <property schema="modifiedon"/>
+        <property schema="name"/>
+        <property schema="resco_changedon"/>
+        <property schema="resco_displayvaluenew"/>
+        <property schema="resco_displayvalueold"/>
+        <property schema="resco_fieldtype"/>
+        <property schema="resco_latitude"/>
+        <property schema="resco_longitude"/>
+        <property schema="resco_operationid"/>
+        <property schema="resco_regardingobjectid"/>
+        <property schema="resco_source"/>
+        <property schema="resco_transactionid"/>
+        <property schema="resco_valuenew"/>
+        <property schema="resco_valueold"/>
+        <property schema="statecode"/>
+        <property schema="statuscode"/>
+        <property schema="versionnumber"/>
+      </properties>
+      <indexes>
+        <index schema="idx_resco_audit_createdby" issystem="true">
+          <fields>
+            <field schema="createdby"/>
+          </fields>
+        </index>
+        <index schema="idx_resco_audit_modifiedby" issystem="true">
+          <fields>
+            <field schema="modifiedby"/>
+          </fields>
+        </index>
+        <index schema="idx_resco_audit_resco_regardingobjectid" issystem="true">
+          <fields>
+            <field schema="resco_regardingobjectid"/>
+          </fields>
+        </index>
+        <index schema="idx_resco_audit_name" issystem="true">
+          <fields>
+            <field schema="name"/>
+          </fields>
+        </index>
+      </indexes>
+    </entity>
+    <entity schema="resco_chatcomment">
+      <properties>
+        <property schema="createdon"/>
+        <property schema="id"/>
+        <property schema="modifiedon"/>
+        <property schema="name"/>
+        <property schema="resco_chatpostid"/>
+        <property schema="resco_chatuserid"/>
+        <property schema="resco_createdon"/>
+        <property schema="resco_text"/>
+      </properties>
+      <indexes>
+        <index schema="idx_resco_chatcomment_resco_chatpostid" issystem="true">
+          <fields>
+            <field schema="resco_chatpostid"/>
+          </fields>
+        </index>
+        <index schema="idx_resco_chatcomment_resco_chatuserid" issystem="true">
+          <fields>
+            <field schema="resco_chatuserid"/>
+          </fields>
+        </index>
+        <index schema="idx_resco_chatcomment_name" issystem="true">
+          <fields>
+            <field schema="name"/>
+          </fields>
+        </index>
+      </indexes>
+    </entity>
+    <entity schema="resco_chatpost">
+      <properties>
+        <property schema="createdon"/>
+        <property schema="id"/>
+        <property schema="modifiedon"/>
+        <property schema="name"/>
+        <property schema="resco_chattopicid"/>
+        <property schema="resco_chatuserid"/>
+        <property schema="resco_createdon"/>
+        <property schema="resco_modifiedon"/>
+        <property schema="resco_text"/>
+      </properties>
+      <indexes>
+        <index schema="idx_resco_chatpost_resco_chattopicid" issystem="true">
+          <fields>
+            <field schema="resco_chattopicid"/>
+          </fields>
+        </index>
+        <index schema="idx_resco_chatpost_resco_chatuserid" issystem="true">
+          <fields>
+            <field schema="resco_chatuserid"/>
+          </fields>
+        </index>
+        <index schema="idx_resco_chatpost_name" issystem="true">
+          <fields>
+            <field schema="name"/>
+          </fields>
+        </index>
+      </indexes>
+    </entity>
+    <entity schema="resco_chatpost_chatuser">
+      <properties>
+        <property schema="resco_chatpostid"/>
+        <property schema="resco_chatuserid"/>
+      </properties>
+      <indexes>
+        <index schema="idx_resco_chatpost_chatuser" issystem="true">
+          <fields>
+            <field schema="resco_chatpostid"/>
+            <field schema="resco_chatuserid"/>
+          </fields>
+        </index>
+      </indexes>
+    </entity>
+    <entity schema="resco_chattopic">
+      <properties>
+        <property schema="createdon"/>
+        <property schema="id"/>
+        <property schema="modifiedon"/>
+        <property schema="name"/>
+        <property schema="resco_regardingobjectentity"/>
+        <property schema="resco_regardingobjectid"/>
+      </properties>
+      <indexes>
+        <index schema="idx_resco_chattopic_name" issystem="true">
+          <fields>
+            <field schema="name"/>
+          </fields>
+        </index>
+      </indexes>
+    </entity>
+    <entity schema="resco_chattopic_chatuser">
+      <properties>
+        <property schema="resco_chattopicid"/>
+        <property schema="resco_chatuserid"/>
+      </properties>
+      <indexes>
+        <index schema="idx_resco_chattopic_chatuser" issystem="true">
+          <fields>
+            <field schema="resco_chattopicid"/>
+            <field schema="resco_chatuserid"/>
+          </fields>
+        </index>
+      </indexes>
+    </entity>
+    <entity schema="resco_chatuser">
+      <properties>
+        <property schema="createdon"/>
+        <property schema="id"/>
+        <property schema="modifiedon"/>
+        <property schema="name"/>
+        <property schema="resco_userentity"/>
+        <property schema="resco_userid"/>
+      </properties>
+      <indexes>
+        <index schema="idx_resco_chatuser_name" issystem="true">
+          <fields>
+            <field schema="name"/>
+          </fields>
+        </index>
+      </indexes>
+    </entity>
+    <entity schema="resco_devicecontrol">
+      <properties>
+        <property schema="createdby"/>
+        <property schema="createdon"/>
+        <property schema="modifiedby"/>
+        <property schema="modifiedon"/>
+        <property schema="ownerid"/>
+        <property schema="owningbusinessunit"/>
+        <property schema="resco_devicecontrolid"/>
+        <property schema="resco_deviceid"/>
+        <property schema="resco_entityname"/>
+        <property schema="resco_mobiledeviceid"/>
+        <property schema="resco_recordid"/>
+        <property schema="resco_requestdata"/>
+        <property schema="resco_requesttype"/>
+        <property schema="resco_responsecode"/>
+        <property schema="resco_responsedata"/>
+        <property schema="resco_responsedatalength"/>
+        <property schema="resco_responsestatus"/>
+        <property schema="statecode"/>
+        <property schema="statuscode"/>
+        <property schema="versionnumber"/>
+      </properties>
+      <indexes>
+        <index schema="idx_resco_devicecontrol_createdby" issystem="true">
+          <fields>
+            <field schema="createdby"/>
+          </fields>
+        </index>
+        <index schema="idx_resco_devicecontrol_modifiedby" issystem="true">
+          <fields>
+            <field schema="modifiedby"/>
+          </fields>
+        </index>
+        <index schema="idx_resco_devicecontrol_ownerid" issystem="true">
+          <fields>
+            <field schema="ownerid"/>
+          </fields>
+        </index>
+        <index schema="idx_resco_devicecontrol_owningbusinessunit" issystem="true">
+          <fields>
+            <field schema="owningbusinessunit"/>
+          </fields>
+        </index>
+        <index schema="idx_resco_devicecontrol_resco_mobiledeviceid" issystem="true">
+          <fields>
+            <field schema="resco_mobiledeviceid"/>
+          </fields>
+        </index>
+        <index schema="idx_resco_devicecontrol_resco_deviceid" issystem="true">
+          <fields>
+            <field schema="resco_deviceid"/>
+          </fields>
+        </index>
+      </indexes>
+    </entity>
+    <entity schema="resco_mobileaudit">
+      <properties>
+        <property schema="createdby"/>
+        <property schema="createdon"/>
+        <property schema="id"/>
+        <property schema="modifiedby"/>
+        <property schema="modifiedon"/>
+        <property schema="name"/>
+        <property schema="ownerid"/>
+        <property schema="owningbusinessunit"/>
+        <property schema="resco_description"/>
+        <property schema="resco_deviceid"/>
+        <property schema="resco_entityid"/>
+        <property schema="resco_entityname"/>
+        <property schema="resco_externaluserid"/>
+        <property schema="resco_latitude"/>
+        <property schema="resco_loggedon"/>
+        <property schema="resco_longitude"/>
+        <property schema="resco_operation"/>
+        <property schema="statecode"/>
+        <property schema="statuscode"/>
+        <property schema="versionnumber"/>
+      </properties>
+      <indexes>
+        <index schema="idx_resco_mobileaudit_createdby" issystem="true">
+          <fields>
+            <field schema="createdby"/>
+          </fields>
+        </index>
+        <index schema="idx_resco_mobileaudit_modifiedby" issystem="true">
+          <fields>
+            <field schema="modifiedby"/>
+          </fields>
+        </index>
+        <index schema="idx_resco_mobileaudit_ownerid" issystem="true">
+          <fields>
+            <field schema="ownerid"/>
+          </fields>
+        </index>
+        <index schema="idx_resco_mobileaudit_owningbusinessunit" issystem="true">
+          <fields>
+            <field schema="owningbusinessunit"/>
+          </fields>
+        </index>
+        <index schema="idx_resco_mobileaudit_name" issystem="true">
+          <fields>
+            <field schema="name"/>
+          </fields>
+        </index>
+      </indexes>
+    </entity>
+    <entity schema="resco_mobilereport">
+      <properties>
+        <property schema="createdon"/>
+        <property schema="id"/>
+        <property schema="modifiedon"/>
+        <property schema="name"/>
+        <property schema="resco_data"/>
+        <property schema="resco_entityname"/>
+        <property schema="resco_languagecode"/>
+        <property schema="resco_sourcetype"/>
+        <property schema="statuscode"/>
+      </properties>
+      <indexes>
+        <index schema="idx_resco_mobilereport_name" issystem="true">
+          <fields>
+            <field schema="name"/>
+          </fields>
+        </index>
+      </indexes>
+    </entity>
+    <entity schema="resco_question">
+      <properties>
+        <property schema="createdby"/>
+        <property schema="createdon"/>
+        <property schema="modifiedon"/>
+        <property schema="ownerid"/>
+        <property schema="resco_answeredon"/>
+        <property schema="resco_answerstorage"/>
+        <property schema="resco_defaultvalue"/>
+        <property schema="resco_description"/>
+        <property schema="resco_displayformat"/>
+        <property schema="resco_enabled"/>
+        <property schema="resco_icon"/>
+        <property schema="resco_index"/>
+        <property schema="resco_isseparator"/>
+        <property schema="resco_kind"/>
+        <property schema="resco_label"/>
+        <property schema="resco_localization"/>
+        <property schema="resco_max"/>
+        <property schema="resco_min"/>
+        <property schema="resco_name"/>
+        <property schema="resco_options"/>
+        <property schema="resco_precision"/>
+        <property schema="resco_questiongroupid"/>
+        <property schema="resco_questionid"/>
+        <property schema="resco_questionnaireid"/>
+        <property schema="resco_rawdatevalue"/>
+        <property schema="resco_rawidvalue"/>
+        <property schema="resco_rawnumericvalue"/>
+        <property schema="resco_reportingproperties"/>
+        <property schema="resco_required"/>
+        <property schema="resco_reusefromprevious"/>
+        <property schema="resco_rules"/>
+        <property schema="resco_score"/>
+        <property schema="resco_showonreport"/>
+        <property schema="resco_style"/>
+        <property schema="resco_value"/>
+        <property schema="resco_valuelabel"/>
+        <property schema="resco_visible"/>
+        <property schema="statecode"/>
+        <property schema="statuscode"/>
+      </properties>
+      <indexes>
+        <index schema="idx_resco_question_createdby" issystem="true">
+          <fields>
+            <field schema="createdby"/>
+          </fields>
+        </index>
+        <index schema="idx_resco_question_ownerid" issystem="true">
+          <fields>
+            <field schema="ownerid"/>
+          </fields>
+        </index>
+        <index schema="idx_resco_question_resco_questiongroupid" issystem="true">
+          <fields>
+            <field schema="resco_questiongroupid"/>
+          </fields>
+        </index>
+        <index schema="idx_resco_question_resco_questionnaireid" issystem="true">
+          <fields>
+            <field schema="resco_questionnaireid"/>
+          </fields>
+        </index>
+        <index schema="idx_resco_question_resco_name" issystem="true">
+          <fields>
+            <field schema="resco_name"/>
+          </fields>
+        </index>
+      </indexes>
+    </entity>
+    <entity schema="resco_questiongroup">
+      <properties>
+        <property schema="createdby"/>
+        <property schema="createdon"/>
+        <property schema="modifiedon"/>
+        <property schema="ownerid"/>
+        <property schema="resco_description"/>
+        <property schema="resco_expanded"/>
+        <property schema="resco_index"/>
+        <property schema="resco_label"/>
+        <property schema="resco_localization"/>
+        <property schema="resco_name"/>
+        <property schema="resco_questiongroupid"/>
+        <property schema="resco_questionnaireid"/>
+        <property schema="resco_repeatconfig"/>
+        <property schema="resco_repeatindex"/>
+        <property schema="resco_reportingproperties"/>
+        <property schema="resco_rules"/>
+        <property schema="resco_templategroupid"/>
+        <property schema="resco_visible"/>
+        <property schema="statecode"/>
+        <property schema="statuscode"/>
+      </properties>
+      <indexes>
+        <index schema="idx_resco_questiongroup_createdby" issystem="true">
+          <fields>
+            <field schema="createdby"/>
+          </fields>
+        </index>
+        <index schema="idx_resco_questiongroup_ownerid" issystem="true">
+          <fields>
+            <field schema="ownerid"/>
+          </fields>
+        </index>
+        <index schema="idx_resco_questiongroup_resco_questionnaireid" issystem="true">
+          <fields>
+            <field schema="resco_questionnaireid"/>
+          </fields>
+        </index>
+        <index schema="idx_resco_questiongroup_resco_templategroupid" issystem="true">
+          <fields>
+            <field schema="resco_templategroupid"/>
+          </fields>
+        </index>
+        <index schema="idx_resco_questiongroup_resco_name" issystem="true">
+          <fields>
+            <field schema="resco_name"/>
+          </fields>
+        </index>
+      </indexes>
+    </entity>
+    <entity schema="resco_questionnaire">
+      <properties>
+        <property schema="createdby"/>
+        <property schema="createdon"/>
+        <property schema="modifiedon"/>
+        <property schema="ownerid"/>
+        <property schema="resco_archivedon"/>
+        <property schema="resco_autoreport"/>
+        <property schema="resco_completionstatus"/>
+        <property schema="resco_description"/>
+        <property schema="resco_duration"/>
+        <property schema="resco_folder"/>
+        <property schema="resco_folderid"/>
+        <property schema="resco_issnippet"/>
+        <property schema="resco_istemplate"/>
+        <property schema="resco_languagecode"/>
+        <property schema="resco_localization"/>
+        <property schema="resco_name"/>
+        <property schema="resco_options"/>
+        <property schema="resco_publishedon"/>
+        <property schema="resco_publishnotes"/>
+        <property schema="resco_questionnaireid"/>
+        <property schema="resco_regardingid"/>
+        <property schema="resco_regardingidlabel"/>
+        <property schema="resco_regardingidname"/>
+        <property schema="resco_reportingproperties"/>
+        <property schema="resco_result"/>
+        <property schema="resco_reusefetch"/>
+        <property schema="resco_reusefromprevious"/>
+        <property schema="resco_rules"/>
+        <property schema="resco_score"/>
+        <property schema="resco_script"/>
+        <property schema="resco_serializedanswers"/>
+        <property schema="resco_styles"/>
+        <property schema="resco_templatedependent"/>
+        <property schema="resco_templateid"/>
+        <property schema="resco_version"/>
+        <property schema="resco_versionname"/>
+        <property schema="statecode"/>
+        <property schema="statuscode"/>
+      </properties>
+      <indexes>
+        <index schema="idx_resco_questionnaire_createdby" issystem="true">
+          <fields>
+            <field schema="createdby"/>
+          </fields>
+        </index>
+        <index schema="idx_resco_questionnaire_ownerid" issystem="true">
+          <fields>
+            <field schema="ownerid"/>
+          </fields>
+        </index>
+        <index schema="idx_resco_questionnaire_resco_folderid" issystem="true">
+          <fields>
+            <field schema="resco_folderid"/>
+          </fields>
+        </index>
+        <index schema="idx_resco_questionnaire_resco_templateid" issystem="true">
+          <fields>
+            <field schema="resco_templateid"/>
+          </fields>
+        </index>
+        <index schema="idx_resco_questionnaire_resco_name" issystem="true">
+          <fields>
+            <field schema="resco_name"/>
+          </fields>
+        </index>
+      </indexes>
+    </entity>
+    <entity schema="resco_questionnairefolder">
+      <properties>
+        <property schema="createdby"/>
+        <property schema="createdon"/>
+        <property schema="modifiedon"/>
+        <property schema="ownerid"/>
+        <property schema="resco_name"/>
+        <property schema="resco_parentid"/>
+        <property schema="resco_questionnairefolderid"/>
+        <property schema="statecode"/>
+        <property schema="statuscode"/>
+      </properties>
+      <indexes>
+        <index schema="idx_resco_questionnairefolder_createdby" issystem="true">
+          <fields>
+            <field schema="createdby"/>
+          </fields>
+        </index>
+        <index schema="idx_resco_questionnairefolder_ownerid" issystem="true">
+          <fields>
+            <field schema="ownerid"/>
+          </fields>
+        </index>
+        <index schema="idx_resco_questionnairefolder_resco_parentid" issystem="true">
+          <fields>
+            <field schema="resco_parentid"/>
+          </fields>
+        </index>
+        <index schema="idx_resco_questionnairefolder_resco_name" issystem="true">
+          <fields>
+            <field schema="resco_name"/>
+          </fields>
+        </index>
+      </indexes>
+    </entity>
+    <entity schema="resolutionsnippet">
+      <properties>
+        <property schema="createdby"/>
+        <property schema="createdon"/>
+        <property schema="description"/>
+        <property schema="gpresolutioncode"/>
+        <property schema="id"/>
+        <property schema="isselected"/>
+        <property schema="modifiedby"/>
+        <property schema="modifiedon"/>
+        <property schema="name"/>
+      </properties>
+      <indexes>
+        <index schema="idx_resolutionsnippet_createdby" issystem="true">
+          <fields>
+            <field schema="createdby"/>
+          </fields>
+        </index>
+        <index schema="idx_resolutionsnippet_modifiedby" issystem="true">
+          <fields>
+            <field schema="modifiedby"/>
+          </fields>
+        </index>
+        <index schema="idx_resolutionsnippet_name" issystem="true">
+          <fields>
+            <field schema="name"/>
+          </fields>
+        </index>
+      </indexes>
+    </entity>
+    <entity schema="role">
+      <properties>
+        <property schema="createdby"/>
+        <property schema="createdon"/>
+        <property schema="id"/>
+        <property schema="modifiedby"/>
+        <property schema="modifiedon"/>
+        <property schema="name"/>
+      </properties>
+      <indexes>
+        <index schema="idx_role_createdby" issystem="true">
+          <fields>
+            <field schema="createdby"/>
+          </fields>
+        </index>
+        <index schema="idx_role_modifiedby" issystem="true">
+          <fields>
+            <field schema="modifiedby"/>
+          </fields>
+        </index>
+        <index schema="idx_role_name" issystem="true">
+          <fields>
+            <field schema="name"/>
+          </fields>
+        </index>
+      </indexes>
+    </entity>
+    <entity schema="roleprivileges">
+      <properties>
+        <property schema="accessright"/>
+        <property schema="createdby"/>
+        <property schema="createdon"/>
+        <property schema="id"/>
+        <property schema="modifiedby"/>
+        <property schema="modifiedon"/>
+        <property schema="name"/>
+        <property schema="privilegedepth"/>
+        <property schema="roleid"/>
+      </properties>
+      <indexes>
+        <index schema="idx_roleprivileges_createdby" issystem="true">
+          <fields>
+            <field schema="createdby"/>
+          </fields>
+        </index>
+        <index schema="idx_roleprivileges_modifiedby" issystem="true">
+          <fields>
+            <field schema="modifiedby"/>
+          </fields>
+        </index>
+        <index schema="idx_roleprivileges_roleid" issystem="true">
+          <fields>
+            <field schema="roleid"/>
+          </fields>
+        </index>
+        <index schema="idx_roleprivileges_name" issystem="true">
+          <fields>
+            <field schema="name"/>
+          </fields>
+        </index>
+      </indexes>
+    </entity>
+    <entity schema="servermessage">
+      <properties>
+        <property schema="createdby"/>
+        <property schema="createdon"/>
+        <property schema="id"/>
+        <property schema="modifiedby"/>
+        <property schema="modifiedon"/>
+        <property schema="name"/>
+        <property schema="objectid"/>
+        <property schema="ownerid"/>
+        <property schema="textmessage"/>
+      </properties>
+      <indexes>
+        <index schema="idx_servermessage_createdby" issystem="true">
+          <fields>
+            <field schema="createdby"/>
+          </fields>
+        </index>
+        <index schema="idx_servermessage_modifiedby" issystem="true">
+          <fields>
+            <field schema="modifiedby"/>
+          </fields>
+        </index>
+        <index schema="idx_servermessage_objectid" issystem="true">
+          <fields>
+            <field schema="objectid"/>
+          </fields>
+        </index>
+        <index schema="idx_servermessage_ownerid" issystem="true">
+          <fields>
+            <field schema="ownerid"/>
+          </fields>
+        </index>
+        <index schema="idx_servermessage_name" issystem="true">
+          <fields>
+            <field schema="name"/>
+          </fields>
+        </index>
+      </indexes>
+    </entity>
+    <entity schema="servicecall" conflict="16384" xattr="16384">
+      <properties>
+        <property schema="callresolutionid"/>
+        <property schema="callstatusid"/>
+        <property schema="calltypeid"/>
+        <property schema="completiondate"/>
+        <property schema="contractid"/>
+        <property schema="createdby"/>
+        <property schema="createdon"/>
+        <property schema="customerid"/>
+        <property schema="dateofcall"/>
+        <property schema="description"/>
+        <property schema="employeeid"/>
+        <property schema="equipmentid"/>
+        <property schema="estimatehours"/>
+        <property schema="gpcalleremailaddress" displayformat="Email"/>
+        <property schema="gpcallername"/>
+        <property schema="gpcallerphone" displayformat="PhoneNumber"/>
+        <property schema="gpcalltype"/>
+        <property schema="gpcustomernumber"/>
+        <property schema="gpequipmentid"/>
+        <property schema="gplocationnumber"/>
+        <property schema="gpproblemtype"/>
+        <property schema="gpservicecallid"/>
+        <property schema="gptechnicianid"/>
+        <property schema="gpuserdefine1"/>
+        <property schema="gpuserdefine2"/>
+        <property schema="gpuserdefine3"/>
+        <property schema="gpuserdefine4"/>
+        <property schema="id"/>
+        <property schema="isinternal"/>
+        <property schema="locationid"/>
+        <property schema="modifiedby"/>
+        <property schema="modifiedon"/>
+        <property schema="name"/>
+        <property schema="primarytechemployeeid"/>
+        <property schema="priority"/>
+        <property schema="problemtypeid"/>
+        <property schema="purchaseorder"/>
+        <property schema="userdefine1id"/>
+        <property schema="userdefine2id"/>
+      </properties>
+      <indexes>
+        <index schema="idx_servicecall_callresolutionid" issystem="true">
+          <fields>
+            <field schema="callresolutionid"/>
+          </fields>
+        </index>
+        <index schema="idx_servicecall_calltypeid" issystem="true">
+          <fields>
+            <field schema="calltypeid"/>
+          </fields>
+        </index>
+        <index schema="idx_servicecall_contractid" issystem="true">
+          <fields>
+            <field schema="contractid"/>
+          </fields>
+        </index>
+        <index schema="idx_servicecall_createdby" issystem="true">
+          <fields>
+            <field schema="createdby"/>
+          </fields>
+        </index>
+        <index schema="idx_servicecall_customerid" issystem="true">
+          <fields>
+            <field schema="customerid"/>
+          </fields>
+        </index>
+        <index schema="idx_servicecall_employeeid" issystem="true">
+          <fields>
+            <field schema="employeeid"/>
+          </fields>
+        </index>
+        <index schema="idx_servicecall_equipmentid" issystem="true">
+          <fields>
+            <field schema="equipmentid"/>
+          </fields>
+        </index>
+        <index schema="idx_servicecall_locationid" issystem="true">
+          <fields>
+            <field schema="locationid"/>
+          </fields>
+        </index>
+        <index schema="idx_servicecall_modifiedby" issystem="true">
+          <fields>
+            <field schema="modifiedby"/>
+          </fields>
+        </index>
+        <index schema="idx_servicecall_primarytechemployeeid" issystem="true">
+          <fields>
+            <field schema="primarytechemployeeid"/>
+          </fields>
+        </index>
+        <index schema="idx_servicecall_problemtypeid" issystem="true">
+          <fields>
+            <field schema="problemtypeid"/>
+          </fields>
+        </index>
+        <index schema="idx_servicecall_userdefine1id" issystem="true">
+          <fields>
+            <field schema="userdefine1id"/>
+          </fields>
+        </index>
+        <index schema="idx_servicecall_userdefine2id" issystem="true">
+          <fields>
+            <field schema="userdefine2id"/>
+          </fields>
+        </index>
+        <index schema="idx_servicecall_name" issystem="true">
+          <fields>
+            <field schema="name"/>
+          </fields>
+        </index>
+      </indexes>
+    </entity>
+    <entity schema="servicecallhistory">
+      <properties>
+        <property schema="callresolutionid"/>
+        <property schema="calltypeid"/>
+        <property schema="completiondate"/>
+        <property schema="contractid"/>
+        <property schema="createdby"/>
+        <property schema="createdon"/>
+        <property schema="dateofcall"/>
+        <property schema="description"/>
+        <property schema="descriptionnote"/>
+        <property schema="employeeid"/>
+        <property schema="equipmentid"/>
+        <property schema="gpservicecallid"/>
+        <property schema="id"/>
+        <property schema="locationid"/>
+        <property schema="modifiedby"/>
+        <property schema="modifiedon"/>
+        <property schema="name"/>
+        <property schema="problemtypeid"/>
+        <property schema="resolutionnote"/>
+        <property schema="servicecallid"/>
+      </properties>
+      <indexes>
+        <index schema="idx_servicecallhistory_callresolutionid" issystem="true">
+          <fields>
+            <field schema="callresolutionid"/>
+          </fields>
+        </index>
+        <index schema="idx_servicecallhistory_calltypeid" issystem="true">
+          <fields>
+            <field schema="calltypeid"/>
+          </fields>
+        </index>
+        <index schema="idx_servicecallhistory_contractid" issystem="true">
+          <fields>
+            <field schema="contractid"/>
+          </fields>
+        </index>
+        <index schema="idx_servicecallhistory_createdby" issystem="true">
+          <fields>
+            <field schema="createdby"/>
+          </fields>
+        </index>
+        <index schema="idx_servicecallhistory_employeeid" issystem="true">
+          <fields>
+            <field schema="employeeid"/>
+          </fields>
+        </index>
+        <index schema="idx_servicecallhistory_equipmentid" issystem="true">
+          <fields>
+            <field schema="equipmentid"/>
+          </fields>
+        </index>
+        <index schema="idx_servicecallhistory_locationid" issystem="true">
+          <fields>
+            <field schema="locationid"/>
+          </fields>
+        </index>
+        <index schema="idx_servicecallhistory_modifiedby" issystem="true">
+          <fields>
+            <field schema="modifiedby"/>
+          </fields>
+        </index>
+        <index schema="idx_servicecallhistory_problemtypeid" issystem="true">
+          <fields>
+            <field schema="problemtypeid"/>
+          </fields>
+        </index>
+        <index schema="idx_servicecallhistory_servicecallid" issystem="true">
+          <fields>
+            <field schema="servicecallid"/>
+          </fields>
+        </index>
+        <index schema="idx_servicecallhistory_name" issystem="true">
+          <fields>
+            <field schema="name"/>
+          </fields>
+        </index>
+      </indexes>
+    </entity>
+    <entity schema="setupoption">
+      <properties>
+        <property schema="createdby"/>
+        <property schema="createdon"/>
+        <property schema="id"/>
+        <property schema="modifiedby"/>
+        <property schema="modifiedon"/>
+        <property schema="name"/>
+        <property schema="optionvalue"/>
+      </properties>
+      <indexes>
+        <index schema="idx_setupoption_createdby" issystem="true">
+          <fields>
+            <field schema="createdby"/>
+          </fields>
+        </index>
+        <index schema="idx_setupoption_modifiedby" issystem="true">
+          <fields>
+            <field schema="modifiedby"/>
+          </fields>
+        </index>
+        <index schema="idx_setupoption_name" issystem="true">
+          <fields>
+            <field schema="name"/>
+          </fields>
+        </index>
+      </indexes>
+    </entity>
+    <entity schema="setupoptionuser">
+      <properties>
+        <property schema="createdby"/>
+        <property schema="createdon"/>
+        <property schema="id"/>
+        <property schema="modifiedby"/>
+        <property schema="modifiedon"/>
+        <property schema="name"/>
+        <property schema="optionvalue"/>
+        <property schema="ownerid"/>
+      </properties>
+      <indexes>
+        <index schema="idx_setupoptionuser_createdby" issystem="true">
+          <fields>
+            <field schema="createdby"/>
+          </fields>
+        </index>
+        <index schema="idx_setupoptionuser_modifiedby" issystem="true">
+          <fields>
+            <field schema="modifiedby"/>
+          </fields>
+        </index>
+        <index schema="idx_setupoptionuser_ownerid" issystem="true">
+          <fields>
+            <field schema="ownerid"/>
+          </fields>
+        </index>
+        <index schema="idx_setupoptionuser_name" issystem="true">
+          <fields>
+            <field schema="name"/>
+          </fields>
+        </index>
+      </indexes>
+    </entity>
+    <entity schema="siteinventory">
+      <properties>
+        <property schema="createdby"/>
+        <property schema="createdon"/>
+        <property schema="description"/>
+        <property schema="gpserialnumber"/>
+        <property schema="gpsiteid"/>
+        <property schema="id"/>
+        <property schema="itemclass"/>
+        <property schema="itemnumber"/>
+        <property schema="itemtype"/>
+        <property schema="listprice"/>
+        <property schema="modifiedby"/>
+        <property schema="modifiedon"/>
+        <property schema="name"/>
+        <property schema="quantityavailable"/>
+        <property schema="unitcost"/>
+        <property schema="unitofmeasureid"/>
+      </properties>
+      <indexes>
+        <index schema="idx_siteinventory_createdby" issystem="true">
+          <fields>
+            <field schema="createdby"/>
+          </fields>
+        </index>
+        <index schema="idx_siteinventory_modifiedby" issystem="true">
+          <fields>
+            <field schema="modifiedby"/>
+          </fields>
+        </index>
+        <index schema="idx_siteinventory_unitofmeasureid" issystem="true">
+          <fields>
+            <field schema="unitofmeasureid"/>
+          </fields>
+        </index>
+        <index schema="idx_siteinventory_name" issystem="true">
+          <fields>
+            <field schema="name"/>
+          </fields>
+        </index>
+      </indexes>
+    </entity>
+    <entity schema="sublocation">
+      <properties>
+        <property schema="barcode"/>
+        <property schema="createdby"/>
+        <property schema="createdon"/>
+        <property schema="description"/>
+        <property schema="gpcustomernumber"/>
+        <property schema="gplocationnumber"/>
+        <property schema="gpsublocationid"/>
+        <property schema="id"/>
+        <property schema="locationid"/>
+        <property schema="modifiedby"/>
+        <property schema="modifiedon"/>
+        <property schema="name"/>
+      </properties>
+      <indexes>
+        <index schema="idx_sublocation_createdby" issystem="true">
+          <fields>
+            <field schema="createdby"/>
+          </fields>
+        </index>
+        <index schema="idx_sublocation_locationid" issystem="true">
+          <fields>
+            <field schema="locationid"/>
+          </fields>
+        </index>
+        <index schema="idx_sublocation_modifiedby" issystem="true">
+          <fields>
+            <field schema="modifiedby"/>
+          </fields>
+        </index>
+        <index schema="idx_sublocation_name" issystem="true">
+          <fields>
+            <field schema="name"/>
+          </fields>
+        </index>
+      </indexes>
+    </entity>
+    <entity schema="subtask">
+      <properties>
+        <property schema="completiondate"/>
+        <property schema="createdby"/>
+        <property schema="createdon"/>
+        <property schema="description" displayformat="TextArea"/>
+        <property schema="equipmentid" fieldpermissions="Read"/>
+        <property schema="estimatehours"/>
+        <property schema="gpequipmentid" fieldpermissions="Read"/>
+        <property schema="gpservicecallid" fieldpermissions="Read"/>
+        <property schema="gpsublocationid" fieldpermissions="Read"/>
+        <property schema="gpsubtaskcode"/>
+        <property schema="gpsubtasklinenumber"/>
+        <property schema="gptaskcode"/>
+        <property schema="gptasklinenumber"/>
+        <property schema="gptasklistid" fieldpermissions="Read"/>
+        <property schema="id"/>
+        <property schema="modifiedby"/>
+        <property schema="modifiedon"/>
+        <property schema="name"/>
+        <property schema="taskid"/>
+        <property schema="taskstatusid"/>
+      </properties>
+      <indexes>
+        <index schema="idx_subtask_createdby" issystem="true">
+          <fields>
+            <field schema="createdby"/>
+          </fields>
+        </index>
+        <index schema="idx_subtask_equipmentid" issystem="true">
+          <fields>
+            <field schema="equipmentid"/>
+          </fields>
+        </index>
+        <index schema="idx_subtask_modifiedby" issystem="true">
+          <fields>
+            <field schema="modifiedby"/>
+          </fields>
+        </index>
+        <index schema="idx_subtask_taskid" issystem="true">
+          <fields>
+            <field schema="taskid"/>
+          </fields>
+        </index>
+        <index schema="idx_subtask_taskstatusid" issystem="true">
+          <fields>
+            <field schema="taskstatusid"/>
+          </fields>
+        </index>
+        <index schema="idx_subtask_name" issystem="true">
+          <fields>
+            <field schema="name"/>
+          </fields>
+        </index>
+      </indexes>
+    </entity>
+    <entity schema="systemuser">
+      <properties>
+        <property schema="createdby"/>
+        <property schema="createdon"/>
+        <property schema="firstname"/>
+        <property schema="gpemployeeid"/>
+        <property schema="gptechnicianid"/>
+        <property schema="id"/>
+        <property schema="internalemailaddress"/>
+        <property schema="lastname"/>
+        <property schema="modifiedby"/>
+        <property schema="modifiedon"/>
+        <property schema="name"/>
+        <property schema="ownerid"/>
+      </properties>
+      <indexes>
+        <index schema="idx_systemuser_createdby" issystem="true">
+          <fields>
+            <field schema="createdby"/>
+          </fields>
+        </index>
+        <index schema="idx_systemuser_modifiedby" issystem="true">
+          <fields>
+            <field schema="modifiedby"/>
+          </fields>
+        </index>
+        <index schema="idx_systemuser_ownerid" issystem="true">
+          <fields>
+            <field schema="ownerid"/>
+          </fields>
+        </index>
+        <index schema="idx_systemuser_name" issystem="true">
+          <fields>
+            <field schema="name"/>
+          </fields>
+        </index>
+      </indexes>
+    </entity>
+    <entity schema="systemuser_role">
+      <properties>
+        <property schema="roleid"/>
+        <property schema="systemuserid"/>
+      </properties>
+      <indexes>
+        <index schema="idx_systemuser_role" issystem="true">
+          <fields>
+            <field schema="roleid"/>
+            <field schema="systemuserid"/>
+          </fields>
+        </index>
+      </indexes>
+    </entity>
+    <entity schema="task" conflict="65536" xattr="65536">
+      <properties>
+        <property schema="booleanresponse"/>
+        <property schema="completiondate" fieldpermissions="Read Update"/>
+        <property schema="createdby" fieldpermissions="Read"/>
+        <property schema="createdon" fieldpermissions="Read"/>
+        <property schema="description" displayformat="TextArea" fieldpermissions="Read Update"/>
+        <property schema="dropdownresponse"/>
+        <property schema="equipmentid" fieldpermissions="Read"/>
+        <property schema="estimatehours" fieldpermissions="Read Update"/>
+        <property schema="gpequipmentid" fieldpermissions="Read Update"/>
+        <property schema="gpservicecallid" fieldpermissions="Read Update"/>
+        <property schema="gpsublocationid" fieldpermissions="Read Update"/>
+        <property schema="gpsubtaskcode" fieldpermissions="Read Update"/>
+        <property schema="gpsubtasklinenumber" fieldpermissions="Read Update"/>
+        <property schema="gptaskcode" fieldpermissions="Read Update"/>
+        <property schema="gptasklevel"/>
+        <property schema="gptasklinenumber" fieldpermissions="Read Update"/>
+        <property schema="gptasklistid" fieldpermissions="Read"/>
+        <property schema="id" fieldpermissions="Read"/>
+        <property schema="modifiedby" fieldpermissions="Read Update"/>
+        <property schema="modifiedon" fieldpermissions="Read Update"/>
+        <property schema="name" fieldpermissions="Read Update"/>
+        <property schema="numericresponse1"/>
+        <property schema="numericresponse2"/>
+        <property schema="numericresponse3"/>
+        <property schema="recordlevel"/>
+        <property schema="sequencenumber" fieldpermissions="Read Update"/>
+        <property schema="servicecallid" fieldpermissions="Read Update"/>
+        <property schema="statecode"/>
+        <property schema="statuscode"/>
+        <property schema="taskhierarchy"/>
+        <property schema="taskmaterialindicator"/>
+        <property schema="taskresponseid"/>
+        <property schema="taskresponsetype"/>
+        <property schema="taskstatusid" fieldpermissions="Read Update"/>
+        <property schema="textresponse"/>
+      </properties>
+      <indexes>
+        <index schema="idx_task_createdby" issystem="true">
+          <fields>
+            <field schema="createdby"/>
+          </fields>
+        </index>
+        <index schema="idx_task_equipmentid" issystem="true">
+          <fields>
+            <field schema="equipmentid"/>
+          </fields>
+        </index>
+        <index schema="idx_task_modifiedby" issystem="true">
+          <fields>
+            <field schema="modifiedby"/>
+          </fields>
+        </index>
+        <index schema="idx_task_servicecallid" issystem="true">
+          <fields>
+            <field schema="servicecallid"/>
+          </fields>
+        </index>
+        <index schema="idx_task_taskstatusid" issystem="true">
+          <fields>
+            <field schema="taskstatusid"/>
+          </fields>
+        </index>
+        <index schema="idx_task_name" issystem="true">
+          <fields>
+            <field schema="name"/>
+          </fields>
+        </index>
+      </indexes>
+    </entity>
+    <entity schema="tasklist">
+      <properties>
+        <property schema="createdby"/>
+        <property schema="createdon"/>
+        <property schema="description"/>
+        <property schema="gptaskcode"/>
+        <property schema="gptasklinenumber"/>
+        <property schema="gptasklistid"/>
+        <property schema="id"/>
+        <property schema="modifiedby"/>
+        <property schema="modifiedon"/>
+        <property schema="name"/>
+        <property schema="taskhierarchy"/>
+      </properties>
+      <indexes>
+        <index schema="idx_tasklist_createdby" issystem="true">
+          <fields>
+            <field schema="createdby"/>
+          </fields>
+        </index>
+        <index schema="idx_tasklist_modifiedby" issystem="true">
+          <fields>
+            <field schema="modifiedby"/>
+          </fields>
+        </index>
+        <index schema="idx_tasklist_name" issystem="true">
+          <fields>
+            <field schema="name"/>
+          </fields>
+        </index>
+      </indexes>
+    </entity>
+    <entity schema="taskmaterial">
+      <properties>
+        <property schema="createdby"/>
+        <property schema="createdon"/>
+        <property schema="equipmentid"/>
+        <property schema="gpequipmentid"/>
+        <property schema="gpservicecallid"/>
+        <property schema="gpsublocationid"/>
+        <property schema="gptaskcode"/>
+        <property schema="gptasklinenumber"/>
+        <property schema="gptasklistid"/>
+        <property schema="id"/>
+        <property schema="isrequired"/>
+        <property schema="itemdescription"/>
+        <property schema="itemnumber"/>
+        <property schema="modifiedby"/>
+        <property schema="modifiedon"/>
+        <property schema="name"/>
+        <property schema="noninventory"/>
+        <property schema="quantity"/>
+        <property schema="recordlevel"/>
+        <property schema="servicecallid"/>
+        <property schema="statecode"/>
+        <property schema="statuscode"/>
+        <property schema="taskhierarchy"/>
+        <property schema="taskid"/>
+        <property schema="unitofmeasureid"/>
+      </properties>
+      <indexes>
+        <index schema="idx_taskmaterial_createdby" issystem="true">
+          <fields>
+            <field schema="createdby"/>
+          </fields>
+        </index>
+        <index schema="idx_taskmaterial_equipmentid" issystem="true">
+          <fields>
+            <field schema="equipmentid"/>
+          </fields>
+        </index>
+        <index schema="idx_taskmaterial_modifiedby" issystem="true">
+          <fields>
+            <field schema="modifiedby"/>
+          </fields>
+        </index>
+        <index schema="idx_taskmaterial_servicecallid" issystem="true">
+          <fields>
+            <field schema="servicecallid"/>
+          </fields>
+        </index>
+        <index schema="idx_taskmaterial_taskid" issystem="true">
+          <fields>
+            <field schema="taskid"/>
+          </fields>
+        </index>
+        <index schema="idx_taskmaterial_unitofmeasureid" issystem="true">
+          <fields>
+            <field schema="unitofmeasureid"/>
+          </fields>
+        </index>
+        <index schema="idx_taskmaterial_name" issystem="true">
+          <fields>
+            <field schema="name"/>
+          </fields>
+        </index>
+      </indexes>
+    </entity>
+    <entity schema="taskresponse" conflict="65536" xattr="65536">
+      <properties>
+        <property schema="canskip"/>
+        <property schema="createdby"/>
+        <property schema="createdon"/>
+        <property schema="dateresponse"/>
+        <property schema="gpcustomernumber"/>
+        <property schema="gpequipmentid"/>
+        <property schema="gplocationnumber"/>
+        <property schema="gprepairtaskcode"/>
+        <property schema="gpresponselistid"/>
+        <property schema="gpsequencenumber"/>
+        <property schema="gpservicecallid"/>
+        <property schema="gpsublocationid"/>
+        <property schema="gptaskcode"/>
+        <property schema="gptasklinenumber"/>
+        <property schema="gptasklistid"/>
+        <property schema="gpvehiclepositionresponse"/>
+        <property schema="gpvehicletypeposition"/>
+        <property schema="id"/>
+        <property schema="integerresponse"/>
+        <property schema="isrequired"/>
+        <property schema="linenumber"/>
+        <property schema="modifiedby"/>
+        <property schema="modifiedon"/>
+        <property schema="name"/>
+        <property schema="numericresponse"/>
+        <property schema="responselabel"/>
+        <property schema="responsetype"/>
+        <property schema="responsevalue"/>
+        <property schema="stringresponse"/>
+        <property schema="taskid"/>
+        <property schema="textresponse"/>
+      </properties>
+      <indexes>
+        <index schema="idx_taskresponse_createdby" issystem="true">
+          <fields>
+            <field schema="createdby"/>
+          </fields>
+        </index>
+        <index schema="idx_taskresponse_modifiedby" issystem="true">
+          <fields>
+            <field schema="modifiedby"/>
+          </fields>
+        </index>
+        <index schema="idx_taskresponse_taskid" issystem="true">
+          <fields>
+            <field schema="taskid"/>
+          </fields>
+        </index>
+        <index schema="idx_taskresponse_name" issystem="true">
+          <fields>
+            <field schema="name"/>
+          </fields>
+        </index>
+      </indexes>
+    </entity>
+    <entity schema="taskresponselistvalue">
+      <properties>
+        <property schema="createdby"/>
+        <property schema="createdon"/>
+        <property schema="id"/>
+        <property schema="modifiedby"/>
+        <property schema="modifiedon"/>
+        <property schema="name"/>
+        <property schema="responsevalue"/>
+        <property schema="seqnumber"/>
+      </properties>
+      <indexes>
+        <index schema="idx_taskresponselistvalue_createdby" issystem="true">
+          <fields>
+            <field schema="createdby"/>
+          </fields>
+        </index>
+        <index schema="idx_taskresponselistvalue_modifiedby" issystem="true">
+          <fields>
+            <field schema="modifiedby"/>
+          </fields>
+        </index>
+        <index schema="idx_taskresponselistvalue_name" issystem="true">
+          <fields>
+            <field schema="name"/>
+          </fields>
+        </index>
+      </indexes>
+    </entity>
+    <entity schema="taskstatus">
+      <properties>
+        <property schema="createdby"/>
+        <property schema="createdon"/>
+        <property schema="description" fieldpermissions="Read"/>
+        <property schema="id"/>
+        <property schema="modifiedby"/>
+        <property schema="modifiedon"/>
+        <property schema="name" fieldpermissions="Read"/>
+      </properties>
+      <indexes>
+        <index schema="idx_taskstatus_createdby" issystem="true">
+          <fields>
+            <field schema="createdby"/>
+          </fields>
+        </index>
+        <index schema="idx_taskstatus_modifiedby" issystem="true">
+          <fields>
+            <field schema="modifiedby"/>
+          </fields>
+        </index>
+        <index schema="idx_taskstatus_name" issystem="true">
+          <fields>
+            <field schema="name"/>
+          </fields>
+        </index>
+      </indexes>
+    </entity>
+    <entity schema="tasktrouble">
+      <properties>
+        <property schema="createdby"/>
+        <property schema="createdon"/>
+        <property schema="description"/>
+        <property schema="id"/>
+        <property schema="modifiedby"/>
+        <property schema="modifiedon"/>
+        <property schema="name"/>
+      </properties>
+      <indexes>
+        <index schema="idx_tasktrouble_createdby" issystem="true">
+          <fields>
+            <field schema="createdby"/>
+          </fields>
+        </index>
+        <index schema="idx_tasktrouble_modifiedby" issystem="true">
+          <fields>
+            <field schema="modifiedby"/>
+          </fields>
+        </index>
+        <index schema="idx_tasktrouble_name" issystem="true">
+          <fields>
+            <field schema="name"/>
+          </fields>
+        </index>
+      </indexes>
+    </entity>
+    <entity schema="technicianactivity">
+      <properties>
+        <property schema="createdby"/>
+        <property schema="createdon"/>
+        <property schema="id"/>
+        <property schema="modifiedby"/>
+        <property schema="modifiedon"/>
+        <property schema="name"/>
+      </properties>
+      <indexes>
+        <index schema="idx_technicianactivity_createdby" issystem="true">
+          <fields>
+            <field schema="createdby"/>
+          </fields>
+        </index>
+        <index schema="idx_technicianactivity_modifiedby" issystem="true">
+          <fields>
+            <field schema="modifiedby"/>
+          </fields>
+        </index>
+        <index schema="idx_technicianactivity_name" issystem="true">
+          <fields>
+            <field schema="name"/>
+          </fields>
+        </index>
+      </indexes>
+    </entity>
+    <entity schema="technicianbranch">
+      <properties>
+        <property schema="affiliate"/>
+        <property schema="branch"/>
+        <property schema="createdby"/>
+        <property schema="createdon"/>
+        <property schema="employeeid"/>
+        <property schema="gptechnicianid"/>
+        <property schema="homebranch"/>
+        <property schema="id"/>
+        <property schema="isexceptionbranch"/>
+        <property schema="modifiedby"/>
+        <property schema="modifiedon"/>
+        <property schema="name"/>
+        <property schema="ownerid"/>
+        <property schema="region"/>
+      </properties>
+      <indexes>
+        <index schema="idx_technicianbranch_createdby" issystem="true">
+          <fields>
+            <field schema="createdby"/>
+          </fields>
+        </index>
+        <index schema="idx_technicianbranch_employeeid" issystem="true">
+          <fields>
+            <field schema="employeeid"/>
+          </fields>
+        </index>
+        <index schema="idx_technicianbranch_modifiedby" issystem="true">
+          <fields>
+            <field schema="modifiedby"/>
+          </fields>
+        </index>
+        <index schema="idx_technicianbranch_ownerid" issystem="true">
+          <fields>
+            <field schema="ownerid"/>
+          </fields>
+        </index>
+        <index schema="idx_technicianbranch_name" issystem="true">
+          <fields>
+            <field schema="name"/>
+          </fields>
+        </index>
+      </indexes>
+    </entity>
+    <entity schema="techniciansite">
+      <properties>
+        <property schema="createdby"/>
+        <property schema="createdon"/>
+        <property schema="employeeid"/>
+        <property schema="gpsiteid"/>
+        <property schema="gptechnicianid"/>
+        <property schema="id"/>
+        <property schema="modifiedby"/>
+        <property schema="modifiedon"/>
+        <property schema="name"/>
+        <property schema="ownerid"/>
+      </properties>
+      <indexes>
+        <index schema="idx_techniciansite_createdby" issystem="true">
+          <fields>
+            <field schema="createdby"/>
+          </fields>
+        </index>
+        <index schema="idx_techniciansite_employeeid" issystem="true">
+          <fields>
+            <field schema="employeeid"/>
+          </fields>
+        </index>
+        <index schema="idx_techniciansite_modifiedby" issystem="true">
+          <fields>
+            <field schema="modifiedby"/>
+          </fields>
+        </index>
+        <index schema="idx_techniciansite_ownerid" issystem="true">
+          <fields>
+            <field schema="ownerid"/>
+          </fields>
+        </index>
+        <index schema="idx_techniciansite_name" issystem="true">
+          <fields>
+            <field schema="name"/>
+          </fields>
+        </index>
+      </indexes>
+    </entity>
+    <entity schema="timelog">
+      <properties>
+        <property schema="appointmentid"/>
+        <property schema="appointmenttype"/>
+        <property schema="costcodealias"/>
+        <property schema="costcodeid"/>
+        <property schema="createdby"/>
+        <property schema="createdon"/>
+        <property schema="description"/>
+        <property schema="employeeid"/>
+        <property schema="gpappointmentid"/>
+        <property schema="gpservicecallid"/>
+        <property schema="gptimein"/>
+        <property schema="gptimeout"/>
+        <property schema="id"/>
+        <property schema="isprocessed"/>
+        <property schema="jobcostcodeid"/>
+        <property schema="laborexpenseid"/>
+        <property schema="laborhours"/>
+        <property schema="modifiedby"/>
+        <property schema="modifiedon"/>
+        <property schema="name"/>
+        <property schema="ownerid"/>
+        <property schema="paycodeid"/>
+      </properties>
+      <indexes>
+        <index schema="idx_timelog_appointmentid" issystem="true">
+          <fields>
+            <field schema="appointmentid"/>
+          </fields>
+        </index>
+        <index schema="idx_timelog_costcodeid" issystem="true">
+          <fields>
+            <field schema="costcodeid"/>
+          </fields>
+        </index>
+        <index schema="idx_timelog_createdby" issystem="true">
+          <fields>
+            <field schema="createdby"/>
+          </fields>
+        </index>
+        <index schema="idx_timelog_employeeid" issystem="true">
+          <fields>
+            <field schema="employeeid"/>
+          </fields>
+        </index>
+        <index schema="idx_timelog_jobcostcodeid" issystem="true">
+          <fields>
+            <field schema="jobcostcodeid"/>
+          </fields>
+        </index>
+        <index schema="idx_timelog_laborexpenseid" issystem="true">
+          <fields>
+            <field schema="laborexpenseid"/>
+          </fields>
+        </index>
+        <index schema="idx_timelog_modifiedby" issystem="true">
+          <fields>
+            <field schema="modifiedby"/>
+          </fields>
+        </index>
+        <index schema="idx_timelog_ownerid" issystem="true">
+          <fields>
+            <field schema="ownerid"/>
+          </fields>
+        </index>
+        <index schema="idx_timelog_paycodeid" issystem="true">
+          <fields>
+            <field schema="paycodeid"/>
+          </fields>
+        </index>
+        <index schema="idx_timelog_name" issystem="true">
+          <fields>
+            <field schema="name"/>
+          </fields>
+        </index>
+      </indexes>
+    </entity>
+    <entity schema="timesheetapprovalrequest">
+      <properties>
+        <property schema="createdby"/>
+        <property schema="createdon"/>
+        <property schema="gpemployeeid"/>
+        <property schema="id"/>
+        <property schema="modifiedby"/>
+        <property schema="modifiedon"/>
+        <property schema="name"/>
+        <property schema="statecode"/>
+        <property schema="statuscode"/>
+        <property schema="transactionenddate"/>
+        <property schema="versionnumber"/>
+      </properties>
+      <indexes>
+        <index schema="idx_timesheetapprovalrequest_createdby" issystem="true">
+          <fields>
+            <field schema="createdby"/>
+          </fields>
+        </index>
+        <index schema="idx_timesheetapprovalrequest_modifiedby" issystem="true">
+          <fields>
+            <field schema="modifiedby"/>
+          </fields>
+        </index>
+        <index schema="idx_timesheetapprovalrequest_name" issystem="true">
+          <fields>
+            <field schema="name"/>
+          </fields>
+        </index>
+      </indexes>
+    </entity>
+    <entity schema="timesheetreportrequest">
+      <properties>
+        <property schema="createdby"/>
+        <property schema="createdon"/>
+        <property schema="employeelist"/>
+        <property schema="gpappointmentid"/>
+        <property schema="gpcostcodealias"/>
+        <property schema="gpjobnumber"/>
+        <property schema="gptechnicianid"/>
+        <property schema="id"/>
+        <property schema="isattachment"/>
+        <property schema="modifiedby"/>
+        <property schema="modifiedon"/>
+        <property schema="name"/>
+        <property schema="signature"/>
+        <property schema="transactionenddate"/>
+        <property schema="transactiontype"/>
+      </properties>
+      <indexes>
+        <index schema="idx_timesheetreportrequest_createdby" issystem="true">
+          <fields>
+            <field schema="createdby"/>
+          </fields>
+        </index>
+        <index schema="idx_timesheetreportrequest_modifiedby" issystem="true">
+          <fields>
+            <field schema="modifiedby"/>
+          </fields>
+        </index>
+        <index schema="idx_timesheetreportrequest_name" issystem="true">
+          <fields>
+            <field schema="name"/>
+          </fields>
+        </index>
+      </indexes>
+    </entity>
+    <entity schema="transactioncurrency" class="false">
+      <properties>
+        <property schema="createdby"/>
+        <property schema="createdon"/>
+        <property schema="currencyprecision"/>
+        <property schema="currencysymbol"/>
+        <property schema="exchangerate"/>
+        <property schema="id"/>
+        <property schema="isocurrencycode"/>
+        <property schema="modifiedby"/>
+        <property schema="modifiedon"/>
+        <property schema="name"/>
+        <property schema="statecode"/>
+        <property schema="statuscode"/>
+      </properties>
+      <indexes>
+        <index schema="idx_transactioncurrency_createdby" issystem="true">
+          <fields>
+            <field schema="createdby"/>
+          </fields>
+        </index>
+        <index schema="idx_transactioncurrency_modifiedby" issystem="true">
+          <fields>
+            <field schema="modifiedby"/>
+          </fields>
+        </index>
+        <index schema="idx_transactioncurrency_name" issystem="true">
+          <fields>
+            <field schema="name"/>
+          </fields>
+        </index>
+      </indexes>
+    </entity>
+    <entity schema="unitofmeasure">
+      <properties>
+        <property schema="createdby"/>
+        <property schema="createdon"/>
+        <property schema="id"/>
+        <property schema="modifiedby"/>
+        <property schema="modifiedon"/>
+        <property schema="name"/>
+      </properties>
+      <indexes>
+        <index schema="idx_unitofmeasure_createdby" issystem="true">
+          <fields>
+            <field schema="createdby"/>
+          </fields>
+        </index>
+        <index schema="idx_unitofmeasure_modifiedby" issystem="true">
+          <fields>
+            <field schema="modifiedby"/>
+          </fields>
+        </index>
+        <index schema="idx_unitofmeasure_name" issystem="true">
+          <fields>
+            <field schema="name"/>
+          </fields>
+        </index>
+      </indexes>
+    </entity>
+    <entity schema="userdefine1">
+      <properties>
+        <property schema="createdby"/>
+        <property schema="createdon"/>
+        <property schema="id"/>
+        <property schema="modifiedby"/>
+        <property schema="modifiedon"/>
+        <property schema="name"/>
+      </properties>
+      <indexes>
+        <index schema="idx_userdefine1_createdby" issystem="true">
+          <fields>
+            <field schema="createdby"/>
+          </fields>
+        </index>
+        <index schema="idx_userdefine1_modifiedby" issystem="true">
+          <fields>
+            <field schema="modifiedby"/>
+          </fields>
+        </index>
+        <index schema="idx_userdefine1_name" issystem="true">
+          <fields>
+            <field schema="name"/>
+          </fields>
+        </index>
+      </indexes>
+    </entity>
+    <entity schema="userdefine2">
+      <properties>
+        <property schema="createdby"/>
+        <property schema="createdon"/>
+        <property schema="id"/>
+        <property schema="modifiedby"/>
+        <property schema="modifiedon"/>
+        <property schema="name"/>
+      </properties>
+      <indexes>
+        <index schema="idx_userdefine2_createdby" issystem="true">
+          <fields>
+            <field schema="createdby"/>
+          </fields>
+        </index>
+        <index schema="idx_userdefine2_modifiedby" issystem="true">
+          <fields>
+            <field schema="modifiedby"/>
+          </fields>
+        </index>
+        <index schema="idx_userdefine2_name" issystem="true">
+          <fields>
+            <field schema="name"/>
+          </fields>
+        </index>
+      </indexes>
+    </entity>
+    <entity schema="userdefinelabel">
+      <properties>
+        <property schema="createdby"/>
+        <property schema="createdon"/>
+        <property schema="gprowid"/>
+        <property schema="id"/>
+        <property schema="modifiedby"/>
+        <property schema="modifiedon"/>
+        <property schema="name"/>
+        <property schema="userdefine21"/>
+        <property schema="userdefine22"/>
+        <property schema="userdefine23"/>
+        <property schema="userdefine24"/>
+        <property schema="userdefine25"/>
+        <property schema="userdefine26"/>
+        <property schema="userdefine27"/>
+        <property schema="userdefine28"/>
+        <property schema="userdefine29"/>
+        <property schema="userdefine30"/>
+        <property schema="userdefine31"/>
+      </properties>
+      <indexes>
+        <index schema="idx_userdefinelabel_createdby" issystem="true">
+          <fields>
+            <field schema="createdby"/>
+          </fields>
+        </index>
+        <index schema="idx_userdefinelabel_modifiedby" issystem="true">
+          <fields>
+            <field schema="modifiedby"/>
+          </fields>
+        </index>
+        <index schema="idx_userdefinelabel_name" issystem="true">
+          <fields>
+            <field schema="name"/>
+          </fields>
+        </index>
+      </indexes>
+    </entity>
+    <entity schema="vendor">
+      <properties>
+        <property schema="affiliate"/>
+        <property schema="branch"/>
+        <property schema="createdby"/>
+        <property schema="createdon"/>
+        <property schema="description"/>
+        <property schema="gpvendorid"/>
+        <property schema="id"/>
+        <property schema="modifiedby"/>
+        <property schema="modifiedon"/>
+        <property schema="name"/>
+        <property schema="region"/>
+      </properties>
+      <indexes>
+        <index schema="idx_vendor_createdby" issystem="true">
+          <fields>
+            <field schema="createdby"/>
+          </fields>
+        </index>
+        <index schema="idx_vendor_modifiedby" issystem="true">
+          <fields>
+            <field schema="modifiedby"/>
+          </fields>
+        </index>
+        <index schema="idx_vendor_name" issystem="true">
+          <fields>
+            <field schema="name"/>
+          </fields>
+        </index>
+      </indexes>
+    </entity>
+    <entity schema="workcrew">
+      <properties>
+        <property schema="createdby"/>
+        <property schema="createdon"/>
+        <property schema="description"/>
+        <property schema="gptechnicianid"/>
+        <property schema="id"/>
+        <property schema="modifiedby"/>
+        <property schema="modifiedon"/>
+        <property schema="name"/>
+        <property schema="ownerid"/>
+      </properties>
+      <indexes>
+        <index schema="idx_workcrew_createdby" issystem="true">
+          <fields>
+            <field schema="createdby"/>
+          </fields>
+        </index>
+        <index schema="idx_workcrew_modifiedby" issystem="true">
+          <fields>
+            <field schema="modifiedby"/>
+          </fields>
+        </index>
+        <index schema="idx_workcrew_ownerid" issystem="true">
+          <fields>
+            <field schema="ownerid"/>
+          </fields>
+        </index>
+        <index schema="idx_workcrew_name" issystem="true">
+          <fields>
+            <field schema="name"/>
+          </fields>
+        </index>
+      </indexes>
+    </entity>
+    <entity schema="workcrewemployee">
+      <properties>
+        <property schema="createdby"/>
+        <property schema="createdon"/>
+        <property schema="employeeid"/>
+        <property schema="gpemployeeid"/>
+        <property schema="gptechnicianid"/>
+        <property schema="id"/>
+        <property schema="modifiedby"/>
+        <property schema="modifiedon"/>
+        <property schema="name"/>
+        <property schema="workcrewid"/>
+      </properties>
+      <indexes>
+        <index schema="idx_workcrewemployee_createdby" issystem="true">
+          <fields>
+            <field schema="createdby"/>
+          </fields>
+        </index>
+        <index schema="idx_workcrewemployee_employeeid" issystem="true">
+          <fields>
+            <field schema="employeeid"/>
+          </fields>
+        </index>
+        <index schema="idx_workcrewemployee_modifiedby" issystem="true">
+          <fields>
+            <field schema="modifiedby"/>
+          </fields>
+        </index>
+        <index schema="idx_workcrewemployee_workcrewid" issystem="true">
+          <fields>
+            <field schema="workcrewid"/>
+          </fields>
+        </index>
+        <index schema="idx_workcrewemployee_name" issystem="true">
+          <fields>
+            <field schema="name"/>
+          </fields>
+        </index>
+      </indexes>
+    </entity>
+  </entities>
+  <home>@@UIReplacement;file://UIReplacement.html</home>
+  <home>@@SyncErrors;file://utility/syncerrors/syncerrors-list.html</home>
+  <home>@Dashboard;;Dashboard</home>
+  <home>@@bobdata;file://entity/bobdata/bob-dashboard.html</home>
+  <home>@Map;;Map</home>
+  <home>@Tourplan;;Calendar</home>
+  <home>@@customer;file://entity/customer/customer-list.html</home>
+  <home>@@appointment;file://entity/appointment/appointment-list.html</home>
+  <home>@@servicecall;file://entity/servicecall/servicecall-list.html</home>
+  <home>@@newcall;file://entity/servicecall/servicecall-form_new.html</home>
+  <home>@@invoice;file://entity/invoice/invoice-list.html</home>
+  <home>@@laborexpense;file://entity/laborexpense/laborexpense-list.html</home>
+  <home>@@additionalwork;file://entity/additionalwork/additionalwork-list.html</home>
+  <home>@Setup</home>
+  <home>@@setupoptionuser;file://entity/setupoptionuser/setupoptionuser-form_home.html</home>
+  <home>@@Help;https://docs.key2act.io/mt85/mobiletech-help</home>
+  <home>@@About;file://utility/about/about-form_home.html</home>
+</model>

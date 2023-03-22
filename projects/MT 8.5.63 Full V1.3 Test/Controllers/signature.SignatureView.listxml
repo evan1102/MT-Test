@@ -1,0 +1,73 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<EntityList xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" UseSyncFilter="true">
+  <Attributes>
+    <EntityName>signature</EntityName>
+    <CamelCase>signature</CamelCase>
+    <VisualStudioProjectId>00000000-0000-0000-0000-000000000000</VisualStudioProjectId>
+    <WrapperClass>MobileCrm.Model.signature</WrapperClass>
+    <ClassBinding>
+      <SerializedClassBinding name="#IsChecked" label="IsChecked" type="String" />
+    </ClassBinding>
+  </Attributes>
+  <ComponentId>00000000-0000-0000-0000-000000000000</ComponentId>
+  <Name>SignatureView</Name>
+  <Kind>List</Kind>
+  <IsDefault>false</IsDefault>
+  <Fetch version="1.0">
+    <entity name="signature">
+      <link-entity name="appointment" from="id" to="appointmentid">
+        <filter type="and">
+          <filter type="or">
+            <condition attribute="gpappointmentid" operator="not-null" />
+            <condition attribute="gpservicecallid" operator="not-null" />
+          </filter>
+        </filter>
+      </link-entity>
+      <link-entity name="signaturetype" from="id" to="signaturetypeid">
+        <filter type="and">
+          <condition attribute="name" operator="not-null" />
+        </filter>
+      </link-entity>
+    </entity>
+  </Fetch>
+  <Search />
+  <OrderBy>signaturetypeid.signaturetype.gpsignaturetypeid</OrderBy>
+  <SerializedBindings>
+    <string>appointmentid</string>
+    <string>id</string>
+    <string>signaturefile</string>
+    <string>signaturetypeid</string>
+    <string>signaturetypeid.signaturetype.gpsignaturetypeid</string>
+    <string>signaturetypeid.signaturetype.name</string>
+  </SerializedBindings>
+  <SerializedTemplates>
+    <RowTemplate>
+      <DesignWidth>240</DesignWidth>
+      <DesignHeight>40</DesignHeight>
+      <Name>Default</Name>
+      <Width>240</Width>
+      <Height>40</Height>
+      <SerializedBackground>0</SerializedBackground>
+      <SerializedSelectedBackground>0</SerializedSelectedBackground>
+      <SerializedChildren>
+        <CellTemplate SchemaName="#IsChecked">
+          <IsConstant>false</IsConstant>
+          <StyleName>r_large</StyleName>
+          <Bounds>212,1,24,38</Bounds>
+          <CellKind>0</CellKind>
+          <Anchor>9</Anchor>
+        </CellTemplate>
+        <CellTemplate SchemaName="signaturetypeid.signaturetype.name">
+          <IsConstant>false</IsConstant>
+          <StyleName>primary</StyleName>
+          <Bounds>3,2,206,37</Bounds>
+          <CellKind>0</CellKind>
+          <Anchor>5</Anchor>
+        </CellTemplate>
+      </SerializedChildren>
+    </RowTemplate>
+  </SerializedTemplates>
+  <CustomProperties />
+  <SerializedChildren />
+  <Height>0</Height>
+</EntityList>

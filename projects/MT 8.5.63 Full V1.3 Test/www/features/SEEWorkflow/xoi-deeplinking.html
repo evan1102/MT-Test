@@ -1,0 +1,173 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <!-- Activate IE9 document mode, if available -->
+    <meta charset="utf-8" http-equiv="X-UA-Compatible" content="IE=edge" />
+    <!-- Defined iOS viewport -->
+    <meta name="viewport" content="initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=false">
+    <!-- Disable iOS Phone No Detection -->
+    <meta name="format-detection" content="telephone=no" />
+    <!-- DevExtreme dependencies -->
+    <script type="text/javascript" src="../../scripts/jquery-3.3.1.min.js"></script>
+    <!-- A DevExtreme library -->
+    <script type="text/javascript" src="../../scripts/dx.all.js"></script>
+    <!-- Offline HTML JavaScript Bridge-->
+    <script type="text/javascript" src="../../scripts/JSBridge.js"></script>
+    <script type="text/javascript" src="../../scripts/k2aMethods.js"></script>
+    <script type="text/javascript" src="../../enum/Schema.js"></script>
+    <script type="text/javascript" src="../../enum/setupoption.js"></script>
+    <title>XOi Vision Workflow</title>
+</head>
+<body>
+    <script>
+        //============== INITIAL SETTINGS ================
+        var xoiURL = 'xoi-vision://', workflowLinkItem, siteHistoryLinkItem;
+        var workflowSubject = 'XOi Workflow', siteHistorySubject = 'XOi Site History';
+        var workflowItem = { name: 'xoiWorkflow', label: "XOi Workflow", value: "Open XOi Vision" };
+        var siteHistoryItem = { name: 'xoiSiteHistory', label: "XOi Site History", value: "Open XOi Vision" };
+        //============== SELECTED DATA ================
+        var selected = { 'appointment': null };
+        var notes = { 'workflow': null, 'sitehistory': null };
+        //============== FETCH DATA ================
+        var requiredSetupOptions = [
+            SETUPOPTION.UseXOiDeepLinking
+        ];
+        var noteAttributes = [
+            SCHEMA.annotation.Properties.subject,
+            SCHEMA.annotation.Properties.notetext
+        ];
+
+        $(function () {
+            MobileCRM.bridge.onGlobalEvent("FormItemsUpdated", function (args) {
+                loadSetupOptions(loadFormOptions);
+            }, true);
+        });
+
+        //============== LOAD OPTIONS ================
+        function loadFormOptions() {
+            if (!setupOptions.UseXOiDeepLinking)
+                return;
+
+            loadAppointment().then(function () {
+                fetchXOiNotes().then(function (xoiNotes) {
+                    if (xoiNotes.length > 0) {
+                        $(xoiNotes).each(function (i, note) {
+                            if (note.subject.indexOf(workflowSubject) > -1) {
+                                notes.workflow = note.notetext;
+                            }
+                            else if (note.subject.indexOf(siteHistorySubject) > -1) {
+                                notes.sitehistory = note.notetext
+                            }
+                        });
+
+                        loadFormItems();
+                    }
+                }, MobileCRM.bridge.alert);
+            }, MobileCRM.bridge.alert);
+        }
+        function loadAppointment() {
+            var deferred = $.Deferred();
+            MobileCRM.UI.EntityForm.requestObject(function (entityForm) {
+                selected.appointment = entityForm.entity.properties;
+
+                return deferred.resolve();
+            }, function (err) { return deferred.reject("Load Appointment Error: " + err); });
+            return deferred.promise();
+        }
+        function fetchXOiNotes() {
+            var deferred = $.Deferred();
+            if (!selected.appointment) {
+                return deferred.reject("Fetch XOi Notes Error: Missing Appointment Details");
+            }
+
+            var entity = new MobileCRM.FetchXml.Entity(SCHEMA.annotation.name);
+            $(noteAttributes).each(function (index, attribute) {
+                entity.addAttribute(attribute);
+            });
+
+            entity.addFilter().where('objectid', 'eq', selected.appointment.id);
+            entity.addFilter().isIn('subject', [workflowSubject, siteHistorySubject]);
+            entity.addFilter().startsWith('notetext', xoiURL);
+            entity.filter.type = 'and';
+
+            var fetch = new MobileCRM.FetchXml.Fetch(entity);
+            fetch.execute("JSON",
+                function (res) { return deferred.resolve(res); },
+                function (err) { return deferred.reject("Fetch XOi Notes Error: " + err); }
+            );
+            return deferred.promise();
+        }
+
+        function loadFormItems() {
+            MobileCRM.UI.EntityForm.requestObject(function (entityForm) {
+                var detailView = null;
+                var insertIndex = -1;
+                var insertSeparatorAfter = false;
+
+                // Determine attributes based on which Appointment form is opened
+                if (entityForm.getDetailView(SCHEMA.appointment.name)) {
+                    detailView = entityForm.getDetailView(SCHEMA.appointment.name);
+                    insertIndex = detailView.getItemIndex('ownerid') + 1;
+                }
+                else if (entityForm.getDetailView("Resolution")) {
+                    detailView = entityForm.getDetailView("Resolution");
+                    insertIndex = detailView.getItemIndex('isinternal');
+                    insertSeparatorAfter = true;
+                }
+
+                // Create Form Items if notes exist
+                if (notes.workflow) {
+                    workflowLinkItem = detailView.getItemByName(workflowItem.name);
+
+                    if (workflowLinkItem) {
+                        workflowLinkItem.setTypedValue("value", "System.String", workflowItem.value);
+                    }
+                    else {
+                        workflowLinkItem = new MobileCRM.UI.DetailViewItems.LinkItem(workflowItem.name, workflowItem.label);
+                        workflowLinkItem.value = workflowItem.value;
+                    }
+                    detailView.registerClickHandler(workflowLinkItem, onLinkItemClick);
+                }
+                if (notes.sitehistory) {
+                    siteHistoryLinkItem = detailView.getItemByName(siteHistoryItem.name);
+
+                    if (siteHistoryLinkItem) {
+                        siteHistoryLinkItem.setTypedValue("value", "System.String", siteHistoryItem.value);
+                    }
+                    else {
+                        siteHistoryLinkItem = new MobileCRM.UI.DetailViewItems.LinkItem(siteHistoryItem.name, siteHistoryItem.label);
+                        siteHistoryLinkItem.value = siteHistoryItem.value;
+                    }
+                    detailView.registerClickHandler(siteHistoryItem, onLinkItemClick);
+                }
+
+                // Insert Form Items
+                var itemsToInsert = [new MobileCRM.UI.DetailViewItems.SeparatorItem("XOiBefore", "")];
+                if (workflowLinkItem) {
+                    itemsToInsert.push(workflowLinkItem);
+                }
+                if (siteHistoryLinkItem) {
+                    itemsToInsert.push(siteHistoryLinkItem);
+                }
+                if (insertSeparatorAfter) {
+                    itemsToInsert.push(new MobileCRM.UI.DetailViewItems.SeparatorItem("XOiAfter", ""));
+                }
+                detailView.insertItems(itemsToInsert, insertIndex);
+            }, MobileCRM.bridge.alert);
+        }
+
+        function onLinkItemClick(itemName, detailViewName) {
+            switch (itemName) {
+                case workflowItem.name:
+                    MobileCRM.Platform.openUrl(notes.workflow);
+                    break;
+                case siteHistoryItem.name:
+                    MobileCRM.Platform.openUrl(notes.sitehistory);
+                    break;
+                default:
+                    MobileCRM.bridge.alert("Unable to find link item path");
+            }
+        }
+    </script>
+</body>
+</html>

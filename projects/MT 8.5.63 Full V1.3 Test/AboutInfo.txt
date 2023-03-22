@@ -1,0 +1,7 @@
+﻿Manufacturer=Key2Act
+ProductTitle=MobileTech
+ProductSubTitle=For Signature
+PoweredBy=Powered by Resco.Net
+Icon=Logo.MobileTech.png
+Website=www.Key2Act.com
+SupportEmail=evan.holloway@pacelabs.com

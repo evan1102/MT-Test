@@ -1,0 +1,386 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<EntityList xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" UseSyncFilter="true">
+  <Attributes>
+    <EntityName>task</EntityName>
+    <CamelCase>task</CamelCase>
+    <VisualStudioProjectId>00000000-0000-0000-0000-000000000000</VisualStudioProjectId>
+    <ClassBinding />
+  </Attributes>
+  <ComponentId>00000000-0000-0000-0000-000000000000</ComponentId>
+  <Name>All Open Tasks (hierarchy)</Name>
+  <Kind>List</Kind>
+  <IsDefault>false</IsDefault>
+  <Fetch version="1.0">
+    <entity name="task">
+      <link-entity name="taskstatus" from="id" to="taskstatusid">
+        <filter type="and">
+          <condition attribute="name" operator="ne" value="COMPLETE" />
+        </filter>
+      </link-entity>
+    </entity>
+  </Fetch>
+  <Search>
+    <attribute schema="description" method="Contains" />
+    <attribute schema="gpequipmentid" method="Contains" />
+    <attribute schema="gpsublocationid" method="Contains" />
+    <attribute schema="gptaskcode" method="Contains" />
+    <attribute schema="gptasklevel" method="Contains" />
+    <attribute schema="gptasklistid" method="Contains" />
+    <attribute schema="taskstatusid" method="Contains" reference="true" />
+  </Search>
+  <OrderBy>gpsublocationid;gpequipmentid;taskhierarchy;recordlevel;gptasklinenumber</OrderBy>
+  <SerializedBindings>
+    <string>description</string>
+    <string>gpequipmentid</string>
+    <string>gpservicecallid</string>
+    <string>gpsublocationid</string>
+    <string>gpsubtaskcode</string>
+    <string>gpsubtasklinenumber</string>
+    <string>gptaskcode</string>
+    <string>gptasklevel</string>
+    <string>gptasklinenumber</string>
+    <string>gptasklistid</string>
+    <string>id</string>
+    <string>name</string>
+    <string>recordlevel</string>
+    <string>taskhierarchy</string>
+    <string>taskstatusid</string>
+    <string>taskmaterialindicator</string>
+    <string>equipmentid.equipment.equipmenttypeid</string>
+    <string>taskstatusid.taskstatus.name</string>
+  </SerializedBindings>
+  <SerializedTemplates>
+    <RowTemplate>
+      <DesignWidth>240</DesignWidth>
+      <DesignHeight>40</DesignHeight>
+      <Name>Sublocation-Row</Name>
+      <Width>240</Width>
+      <Height>26</Height>
+      <SerializedBackground>0</SerializedBackground>
+      <SerializedSelectedBackground>0</SerializedSelectedBackground>
+      <SerializedChildren>
+        <CellTemplate SchemaName="gptasklevel">
+          <IsConstant>false</IsConstant>
+          <StyleName>primary</StyleName>
+          <Bounds>2,2,236,22</Bounds>
+          <CellKind>0</CellKind>
+          <Anchor>13</Anchor>
+        </CellTemplate>
+      </SerializedChildren>
+    </RowTemplate>
+    <RowTemplate>
+      <DesignWidth>240</DesignWidth>
+      <DesignHeight>40</DesignHeight>
+      <Name>Equipment-Row</Name>
+      <Width>240</Width>
+      <Height>26</Height>
+      <SerializedBackground>0</SerializedBackground>
+      <SerializedSelectedBackground>0</SerializedSelectedBackground>
+      <SerializedChildren>
+        <CellTemplate SchemaName="gptasklevel">
+          <IsConstant>false</IsConstant>
+          <StyleName>primary</StyleName>
+          <Bounds>15,2,224,22</Bounds>
+          <CellKind>0</CellKind>
+          <Anchor>13</Anchor>
+        </CellTemplate>
+        <CellTemplate SchemaName="equipmentid.equipment.equipmenttypeid">
+          <IsConstant>false</IsConstant>
+          <StyleName>r_gray</StyleName>
+          <Bounds>139,2,100,16</Bounds>
+          <CellKind>0</CellKind>
+          <Anchor>13</Anchor>
+        </CellTemplate>
+      </SerializedChildren>
+    </RowTemplate>
+    <RowTemplate>
+      <DesignWidth>240</DesignWidth>
+      <DesignHeight>40</DesignHeight>
+      <Name>TaskList-Row</Name>
+      <Width>240</Width>
+      <Height>26</Height>
+      <SerializedBackground>0</SerializedBackground>
+      <SerializedSelectedBackground>0</SerializedSelectedBackground>
+      <SerializedChildren>
+        <CellTemplate SchemaName="gptasklevel">
+          <IsConstant>false</IsConstant>
+          <StyleName>primary</StyleName>
+          <Bounds>30,2,208,22</Bounds>
+          <CellKind>0</CellKind>
+          <Anchor>13</Anchor>
+        </CellTemplate>
+      </SerializedChildren>
+    </RowTemplate>
+    <RowTemplate>
+      <DesignWidth>240</DesignWidth>
+      <DesignHeight>40</DesignHeight>
+      <Name>Task-Row</Name>
+      <Width>240</Width>
+      <Height>60</Height>
+      <SerializedBackground>0</SerializedBackground>
+      <SerializedSelectedBackground>0</SerializedSelectedBackground>
+      <SerializedChildren>
+        <CellTemplate SchemaName="gptaskcode">
+          <IsConstant>false</IsConstant>
+          <StyleName>gray9</StyleName>
+          <Bounds>45,22,80,12</Bounds>
+          <CellKind>0</CellKind>
+          <Anchor>13</Anchor>
+        </CellTemplate>
+        <CellTemplate SchemaName="gptasklevel">
+          <IsConstant>false</IsConstant>
+          <StyleName>primary</StyleName>
+          <Bounds>45,2,161,20</Bounds>
+          <CellKind>0</CellKind>
+          <Anchor>13</Anchor>
+        </CellTemplate>
+        <CellTemplate SchemaName="taskstatusid">
+          <IsConstant>false</IsConstant>
+          <StyleName>r_gray</StyleName>
+          <Bounds>142,46,96,12</Bounds>
+          <CellKind>0</CellKind>
+          <Anchor>13</Anchor>
+        </CellTemplate>
+        <CellTemplate SchemaName="description">
+          <IsConstant>false</IsConstant>
+          <StyleName>gray</StyleName>
+          <Bounds>45,34,193,12</Bounds>
+          <CellKind>0</CellKind>
+          <Anchor>13</Anchor>
+        </CellTemplate>
+        <CellTemplate SchemaName="gptasklistid">
+          <IsConstant>false</IsConstant>
+          <StyleName>gray</StyleName>
+          <Bounds>45,46,97,12</Bounds>
+          <CellKind>0</CellKind>
+          <Anchor>13</Anchor>
+        </CellTemplate>
+        <CellTemplate SchemaName="gpequipmentid">
+          <IsConstant>false</IsConstant>
+          <StyleName>gray</StyleName>
+          <Bounds>125,22,81,12</Bounds>
+          <CellKind>0</CellKind>
+          <Anchor>1</Anchor>
+        </CellTemplate>
+        <CellTemplate SchemaName="name">
+          <IsConstant>false</IsConstant>
+          <StyleName>text_checkbox</StyleName>
+          <Bounds>206,2,32,32</Bounds>
+          <CellKind>0</CellKind>
+          <Anchor>9</Anchor>
+        </CellTemplate>
+        <CellTemplate SchemaName="taskmaterialindicator">
+          <IsConstant>false</IsConstant>
+          <StyleName>primary</StyleName>
+          <Bounds>2,2,20,20</Bounds>
+          <CellKind>0</CellKind>
+          <Anchor>5</Anchor>
+        </CellTemplate>
+      </SerializedChildren>
+    </RowTemplate>
+    <RowTemplate>
+      <DesignWidth>240</DesignWidth>
+      <DesignHeight>40</DesignHeight>
+      <Name>ChildTask-Row</Name>
+      <Width>240</Width>
+      <Height>60</Height>
+      <SerializedBackground>0</SerializedBackground>
+      <SerializedSelectedBackground>0</SerializedSelectedBackground>
+      <SerializedChildren>
+        <CellTemplate SchemaName="gptaskcode">
+          <IsConstant>false</IsConstant>
+          <StyleName>gray9</StyleName>
+          <Bounds>60,22,80,12</Bounds>
+          <CellKind>0</CellKind>
+          <Anchor>13</Anchor>
+        </CellTemplate>
+        <CellTemplate SchemaName="gptasklevel">
+          <IsConstant>false</IsConstant>
+          <StyleName>primary</StyleName>
+          <Bounds>60,2,146,20</Bounds>
+          <CellKind>0</CellKind>
+          <Anchor>13</Anchor>
+        </CellTemplate>
+        <CellTemplate SchemaName="taskstatusid">
+          <IsConstant>false</IsConstant>
+          <StyleName>r_gray</StyleName>
+          <Bounds>147,46,91,12</Bounds>
+          <CellKind>0</CellKind>
+          <Anchor>13</Anchor>
+        </CellTemplate>
+        <CellTemplate SchemaName="description">
+          <IsConstant>false</IsConstant>
+          <StyleName>gray</StyleName>
+          <Bounds>60,34,178,12</Bounds>
+          <CellKind>0</CellKind>
+          <Anchor>13</Anchor>
+        </CellTemplate>
+        <CellTemplate SchemaName="gptasklistid">
+          <IsConstant>false</IsConstant>
+          <StyleName>gray</StyleName>
+          <Bounds>60,46,87,12</Bounds>
+          <CellKind>0</CellKind>
+          <Anchor>13</Anchor>
+        </CellTemplate>
+        <CellTemplate SchemaName="gpequipmentid">
+          <IsConstant>false</IsConstant>
+          <StyleName>gray</StyleName>
+          <Bounds>125,22,81,12</Bounds>
+          <CellKind>0</CellKind>
+          <Anchor>1</Anchor>
+        </CellTemplate>
+        <CellTemplate SchemaName="name">
+          <IsConstant>false</IsConstant>
+          <StyleName>text_checkbox</StyleName>
+          <Bounds>206,2,32,32</Bounds>
+          <CellKind>0</CellKind>
+          <Anchor>9</Anchor>
+        </CellTemplate>
+        <CellTemplate SchemaName="taskmaterialindicator">
+          <IsConstant>false</IsConstant>
+          <StyleName>primary</StyleName>
+          <Bounds>2,2,20,20</Bounds>
+          <CellKind>0</CellKind>
+          <Anchor>5</Anchor>
+        </CellTemplate>
+      </SerializedChildren>
+    </RowTemplate>
+    <RowTemplate>
+      <DesignWidth>240</DesignWidth>
+      <DesignHeight>40</DesignHeight>
+      <Name>ChildTask-Row2</Name>
+      <Width>240</Width>
+      <Height>60</Height>
+      <SerializedBackground>0</SerializedBackground>
+      <SerializedSelectedBackground>0</SerializedSelectedBackground>
+      <SerializedChildren>
+        <CellTemplate SchemaName="gptaskcode">
+          <IsConstant>false</IsConstant>
+          <StyleName>gray9</StyleName>
+          <Bounds>75,22,65,12</Bounds>
+          <CellKind>0</CellKind>
+          <Anchor>13</Anchor>
+        </CellTemplate>
+        <CellTemplate SchemaName="gptasklevel">
+          <IsConstant>false</IsConstant>
+          <StyleName>primary</StyleName>
+          <Bounds>75,2,133,20</Bounds>
+          <CellKind>0</CellKind>
+          <Anchor>13</Anchor>
+        </CellTemplate>
+        <CellTemplate SchemaName="taskstatusid">
+          <IsConstant>false</IsConstant>
+          <StyleName>r_gray</StyleName>
+          <Bounds>144,46,96,12</Bounds>
+          <CellKind>0</CellKind>
+          <Anchor>13</Anchor>
+        </CellTemplate>
+        <CellTemplate SchemaName="description">
+          <IsConstant>false</IsConstant>
+          <StyleName>gray</StyleName>
+          <Bounds>75,34,165,12</Bounds>
+          <CellKind>0</CellKind>
+          <Anchor>13</Anchor>
+        </CellTemplate>
+        <CellTemplate SchemaName="gptasklistid">
+          <IsConstant>false</IsConstant>
+          <StyleName>gray</StyleName>
+          <Bounds>75,46,97,12</Bounds>
+          <CellKind>0</CellKind>
+          <Anchor>13</Anchor>
+        </CellTemplate>
+        <CellTemplate SchemaName="gpequipmentid">
+          <IsConstant>false</IsConstant>
+          <StyleName>gray</StyleName>
+          <Bounds>140,22,69,12</Bounds>
+          <CellKind>0</CellKind>
+          <Anchor>1</Anchor>
+        </CellTemplate>
+        <CellTemplate SchemaName="name">
+          <IsConstant>false</IsConstant>
+          <StyleName>text_checkbox</StyleName>
+          <Bounds>208,2,32,32</Bounds>
+          <CellKind>0</CellKind>
+          <Anchor>9</Anchor>
+        </CellTemplate>
+        <CellTemplate SchemaName="taskmaterialindicator">
+          <IsConstant>false</IsConstant>
+          <StyleName>primary</StyleName>
+          <Bounds>2,2,20,20</Bounds>
+          <CellKind>0</CellKind>
+          <Anchor>5</Anchor>
+        </CellTemplate>
+      </SerializedChildren>
+    </RowTemplate>
+    <RowTemplate>
+      <DesignWidth>240</DesignWidth>
+      <DesignHeight>40</DesignHeight>
+      <Name>ChildTask-Row3</Name>
+      <Width>240</Width>
+      <Height>60</Height>
+      <SerializedBackground>0</SerializedBackground>
+      <SerializedSelectedBackground>0</SerializedSelectedBackground>
+      <SerializedChildren>
+        <CellTemplate SchemaName="gptaskcode">
+          <IsConstant>false</IsConstant>
+          <StyleName>gray9</StyleName>
+          <Bounds>90,22,58,12</Bounds>
+          <CellKind>0</CellKind>
+          <Anchor>13</Anchor>
+        </CellTemplate>
+        <CellTemplate SchemaName="gptasklevel">
+          <IsConstant>false</IsConstant>
+          <StyleName>primary</StyleName>
+          <Bounds>90,2,116,20</Bounds>
+          <CellKind>0</CellKind>
+          <Anchor>13</Anchor>
+        </CellTemplate>
+        <CellTemplate SchemaName="taskstatusid">
+          <IsConstant>false</IsConstant>
+          <StyleName>r_gray</StyleName>
+          <Bounds>160,46,78,12</Bounds>
+          <CellKind>0</CellKind>
+          <Anchor>13</Anchor>
+        </CellTemplate>
+        <CellTemplate SchemaName="description">
+          <IsConstant>false</IsConstant>
+          <StyleName>gray</StyleName>
+          <Bounds>90,34,148,12</Bounds>
+          <CellKind>0</CellKind>
+          <Anchor>13</Anchor>
+        </CellTemplate>
+        <CellTemplate SchemaName="gptasklistid">
+          <IsConstant>false</IsConstant>
+          <StyleName>gray</StyleName>
+          <Bounds>90,46,71,12</Bounds>
+          <CellKind>0</CellKind>
+          <Anchor>13</Anchor>
+        </CellTemplate>
+        <CellTemplate SchemaName="gpequipmentid">
+          <IsConstant>false</IsConstant>
+          <StyleName>gray</StyleName>
+          <Bounds>148,22,58,12</Bounds>
+          <CellKind>0</CellKind>
+          <Anchor>13</Anchor>
+        </CellTemplate>
+        <CellTemplate SchemaName="name">
+          <IsConstant>false</IsConstant>
+          <StyleName>text_checkbox</StyleName>
+          <Bounds>206,2,32,32</Bounds>
+          <CellKind>0</CellKind>
+          <Anchor>9</Anchor>
+        </CellTemplate>
+        <CellTemplate SchemaName="taskmaterialindicator">
+          <IsConstant>false</IsConstant>
+          <StyleName>primary</StyleName>
+          <Bounds>2,2,20,20</Bounds>
+          <CellKind>0</CellKind>
+          <Anchor>5</Anchor>
+        </CellTemplate>
+      </SerializedChildren>
+    </RowTemplate>
+  </SerializedTemplates>
+  <CustomProperties />
+  <SerializedChildren />
+  <Height>0</Height>
+</EntityList>

@@ -1,0 +1,328 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <!-- Activate IE9 document mode, if available -->
+    <meta charset="utf-8" http-equiv="X-UA-Compatible" content="IE=edge" />
+    <!-- Defined iOS viewport -->
+    <meta name="viewport" content="initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=false">
+    <!-- Disable iOS Phone No Detection -->
+    <meta name="format-detection" content="telephone=no" />
+    <!-- DevExtreme dependencies -->
+    <script type="text/javascript" src="../../scripts/jquery-3.3.1.min.js"></script>
+    <!-- DevExtreme themes -->
+    <link rel="stylesheet" type="text/css" href="../../css/dx.common.css" />
+    <link rel="stylesheet" type="text/css" href="../../css/dx.light.css" />
+    <!-- A DevExtreme library -->
+    <script type="text/javascript" src="../../scripts/dx.all.js"></script>
+    <!-- Offline HTML JavaScript Bridge-->
+    <script type="text/javascript" src="../../scripts/JSBridge.js"></script>
+    <script type="text/javascript" src="../../scripts/k2aMethods.js"></script>
+    <script type="text/javascript" src="../../enum/Schema.js"></script>
+    <script type="text/javascript" src="../../enum/setupoption.js"></script>
+    <!-- Offline HTML Template Factory-->
+    <script type="text/javascript" src="../../templates/listItem-factory.js"></script>
+    <script type="text/javascript" src="../../templates/toolbar-factory.js"></script>
+    <!-- Offline HTML Styling -->
+    <link rel="stylesheet" type="text/css" href="../../css/k2a.css" />
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+    </style>
+    <title>Payment Summary</title>
+</head>
+<body>
+    <div id="toast"></div>
+    <div class="fixedPosition">
+        <div id="mainToolbar"></div><br>
+        <div id="mainScrollView">
+            <div id='summary'></div><br>
+            <hr>
+            <div id='footer'></div>
+        </div>
+        <div id="actionSheet"></div>
+        <div id="filterPopup"></div>
+    </div>
+
+    <script>
+        //============== INITIAL SETTINGS ================
+        var entityName = SCHEMA.payment.name;
+        var sortDesc = false, sortSelector = SCHEMA.payment.Properties.gpinvoicenumber;
+        const ViewLabel = {
+            currentWeek: "currentweek",
+            previousWeek: "previousweek"
+        }
+        var selectedView = ViewLabel.currentWeek, isCollapsed = false;
+        var gridFontSize = 'xx-small';
+        //============== OFFLINE DATA ================
+        var entityData = [];
+        //============== FETCH DATA ================
+        var requiredSetupOptions = [SETUPOPTION.DefaultWeekday];
+        var entityAttributes = [
+            SCHEMA.payment.Properties.id,
+            SCHEMA.payment.Properties.gpinvoicenumber,
+            SCHEMA.payment.Properties.transactiondate,
+            SCHEMA.payment.Properties.cashamount,
+            SCHEMA.payment.Properties.checkamount,
+            SCHEMA.payment.Properties.checknumber,
+            SCHEMA.payment.Properties.creditcardamount,
+            SCHEMA.payment.Properties.cardnameid
+        ];
+        var invoiceAttributes = [
+            SCHEMA.invoice.Properties.gpservicecallid,
+            SCHEMA.invoice.Properties.customername,
+            SCHEMA.invoice.Properties.locationname
+        ];
+        //============== DISPLAY DATA ================
+        var currencyFormat = { type: 'currency', precision: 2 };
+        var detailsTemplate = function (element, cellInfo) {
+            var lblServiceCall = MobileCRM.Localization.get(entityName + "." + SCHEMA.invoice.Properties.gpservicecallid).toUpperCase();
+            element.append(
+                $("<div>").append(cellInfo.data.gpinvoicenumber),
+                $("<div>").append(cellInfo.data['invoice.customername']),
+                $("<div>").append(cellInfo.data['invoice.locationname']),
+                $("<div>").append(
+                    $("<span>").append(lblServiceCall + ": ").css('color', '#5174FA'),
+                    $("<span>").append(cellInfo.data['invoice.gpservicecallid'])
+                )
+            ).css('font-size', gridFontSize);
+        };
+        var cashSummary = { column: SCHEMA.payment.Properties.cashamount, summaryType: 'sum', displayFormat: "{0}", valueFormat: currencyFormat, alignByColumn: true }
+        var checkSummary = { column: SCHEMA.payment.Properties.checkamount, summaryType: 'sum', displayFormat: "{0}", valueFormat: currencyFormat, alignByColumn: true }
+        var creditcardSummary = { column: SCHEMA.payment.Properties.creditcardamount, summaryType: 'sum', displayFormat: "{0}", valueFormat: currencyFormat, alignByColumn: true }
+        //============== TOOLBAR ITEMS ================
+        var mainToolbarItems = [ToolbarItemType.selectView];
+
+        $(function () {
+            //============== LOCALIZATION ================
+            MobileCRM.Localization.initialize(function (localization) {
+
+                //============== ANDROID CHECK ================
+                MobileCRM.Platform.preventBackButton(btnBackClicked);
+
+                //============== LOADPANEL ================
+                loading = MobileCRM.UI.Form.showPleaseWait(MobileCRM.Localization.get("Msg.Loading"));
+
+                //============== SCROLLVIEW ================
+                mainScrollView = $("#mainScrollView").dxScrollView({
+                    showScrollbar: "always",
+                    height: function () { return window.innerHeight - 80; },
+                    width: '100%'
+                }).dxScrollView("instance");
+                $(window).resize(function () {
+                    updateToolbarItem(mainToolbar, ToolbarItemType.selectView, 'options', {
+                        width: $(window).width() * 0.75,
+                        value: selectedView
+                    });
+                    repaintScrollView(mainScrollView);
+                });
+
+                //============== TOOLBARS ================
+                mainToolbar = $("#mainToolbar").dxToolbar({
+                    items: (new ToolbarFactory()).addItems(mainToolbarItems)
+                }).dxToolbar("instance");
+
+                //============== SUMMARY ================
+                summary = $("#summary").dxDataGrid({
+                    dataSource: entityData,
+                    columns: [
+                        {
+                            dataField: SCHEMA.payment.Properties.transactiondate,
+                            caption: MobileCRM.Localization.get(entityName + "." + SCHEMA.payment.Properties.transactiondate),
+                            format: { type: 'shortDate' }, groupIndex: 0
+                        },
+                        { dataField: SCHEMA.payment.Properties.id, caption: ' ', width: '50%', cellTemplate: detailsTemplate },
+                        {
+                            dataField: SCHEMA.payment.Properties.cashamount,
+                            caption: MobileCRM.Localization.get(entityName + ".cash"),
+                            format: currencyFormat,
+                            cellTemplate: function (element, cellInfo) {
+                                element.append(cellInfo.text).css('font-size', gridFontSize);
+                            }
+                        },
+                        {
+                            dataField: SCHEMA.payment.Properties.checkamount,
+                            caption: MobileCRM.Localization.get(entityName + ".check"),
+                            format: currencyFormat,
+                            cellTemplate: function (element, cellInfo) {
+                                if (cellInfo.data.checkamount) {
+                                    element.append(
+                                        $("<div>").append(cellInfo.text), $("<br>"),
+                                        $("<div>").append("# " + cellInfo.data.checknumber)
+                                    ).css('font-size', gridFontSize);
+                                }
+                            }
+                        },
+                        {
+                            dataField: SCHEMA.payment.Properties.creditcardamount,
+                            caption: MobileCRM.Localization.get(entityName + ".creditcard"),
+                            format: currencyFormat,
+                            cellTemplate: function (element, cellInfo) {
+                                if (cellInfo.data.creditcardamount && cellInfo.data.cardnameid) {
+                                    element.append(
+                                        $("<div>").append(cellInfo.text), $("<br>"),
+                                        $("<div>").append(cellInfo.data.cardnameid.primaryName)
+                                    ).css('font-size', gridFontSize);
+                                }
+                            }
+                        }
+                    ],
+                    filterSyncEnabled: true,
+                    grouping: { expandMode: 'rowClick' },
+                    groupPanel: { visible: true },
+                    onToolbarPreparing: function (e) {
+                        e.toolbarOptions.items.push({
+                            location: 'after', widget: 'dxButton', locateInMenu: 'never',
+                            options: {
+                                text: MobileCRM.Localization.get(isCollapsed ? "Action.ExpandAll" : "Action.CollapseAll"),
+                                icon: isCollapsed ? "spindown" : "spinup",
+                                stylingMode: "text",
+                                type: "default",
+                                onClick: expandCollapseSummary
+                            }
+                        });
+                    },
+                    summary: {
+                        groupItems: [cashSummary, checkSummary, creditcardSummary],
+                        totalItems: [
+                            { column: 'id', displayFormat: MobileCRM.Localization.get(entityName + ".totalforthisweek") + ":", alignment: 'right' },
+                            cashSummary, checkSummary, creditcardSummary
+                        ]
+                    },
+                    wordWrapEnabled: true
+                }).dxDataGrid('instance');
+
+                loadSetupOptions(loadSummaryOptions);
+            }, alertError);
+        });
+
+        //============== LOAD OPTIONS ================
+        function loadSummaryOptions() {
+            getWorkWeekDates(fetchProcessedPayments);
+            loadToolbarOptions();
+
+            // Create Summary Footer
+            fetchSystemUser().then(function (technician) {
+                var lblCreationDate = MobileCRM.Localization.get(entityName + ".reportcreationdate");
+                var lblTechnicianId = MobileCRM.Localization.get(entityName + ".reporttechnicianid");
+                var lblTechnicianName = MobileCRM.Localization.get(entityName + ".reporttechnicianname");
+
+                $("#footer").append(
+                    $("<div>").append(lblCreationDate + ": " + (new Date()).toLocaleDateString()).css('text-align', 'center'),
+                    $("<span>").append(lblTechnicianId + ": " + technician.gptechnicianid),
+                    $("<span>").append(lblTechnicianName + ": " + technician.name).css('float', 'right')
+                ).css({ 'font-size': '14px', 'color': 'grey' });
+            }, alertError);
+        }
+        function loadToolbarOptions() {
+            updateToolbarItem(mainToolbar, ToolbarItemType.selectView, "options", {
+                displayExpr: 'display',
+                valueExpr: 'value',
+                items: [
+                    { display: MobileCRM.Localization.get(entityName + "." + ViewLabel.currentWeek), value: ViewLabel.currentWeek },
+                    { display: MobileCRM.Localization.get(entityName + "." + ViewLabel.previousWeek), value: ViewLabel.previousWeek }
+                ],
+                width: $(window).width() * 0.75,
+                value: selectedView
+            });
+        }
+
+        //============== LOAD DATA ================
+        function fetchProcessedPayments() {
+            var entity = new MobileCRM.FetchXml.Entity(entityName);
+            $(entityAttributes).each(function (index, attribute) {
+                entity.addAttribute(attribute);
+            });
+            entity.orderBy(sortSelector, sortDesc);
+
+            entity.addFilter().where(SCHEMA.payment.Properties.isprocessed, 'eq', true);
+            entity.addFilter().where(SCHEMA.payment.Properties.transactiondate, 'ge', workWeekDates ? workWeekDates.prevWeekStart : null);
+            entity.addFilter().where(SCHEMA.payment.Properties.transactiondate, 'le', workWeekDates ? workWeekDates.currWeekEnd : null);
+            entity.filter.type = 'and';
+
+            var amountFilter = new MobileCRM.FetchXml.Filter();
+            amountFilter.where(SCHEMA.payment.Properties.cashamount, 'gt', 0);
+            amountFilter.where(SCHEMA.payment.Properties.checkamount, 'gt', 0);
+            amountFilter.where(SCHEMA.payment.Properties.creditcardamount, 'gt', 0);
+            amountFilter.type = 'or';
+            entity.filter.filters.push(amountFilter);
+
+            var invoiceLink = entity.addLink(
+                SCHEMA.invoice.name,
+                SCHEMA.invoice.Properties.id,
+                SCHEMA.payment.Properties.invoiceid,
+                "inner");
+            invoiceLink.alias = SCHEMA.invoice.name;
+            $(invoiceAttributes).each(function (index, attribute) {
+                invoiceLink.addAttribute(attribute);
+            });
+
+            var fetch = new MobileCRM.FetchXml.Fetch(entity);
+            fetch.execute("DynamicEntities", function (res) {
+                $(res).each(function (i, payment) {
+                    payment.properties.transactiondate = new Date(
+                        payment.properties.transactiondate.getFullYear(),
+                        payment.properties.transactiondate.getMonth(),
+                        payment.properties.transactiondate.getDate()
+                    );
+                    entityData.push(payment.properties);
+
+                });
+
+                loadDateFilteredData();
+                loading.close();
+            }, alertError);
+        }
+
+        function loadDateFilteredData() {
+            if (typeof workWeekDates === 'undefined') {
+                return;
+            }
+
+            var op = selectedView === ViewLabel.previousWeek ? "<" : ">=";
+            summary.option({
+                dataSource: entityData,
+                filterValue: [SCHEMA.payment.Properties.transactiondate, op, workWeekDates.currWeekStart]
+            });
+        }
+
+        function fetchSystemUser() {
+            var deferred = $.Deferred();
+            var entity = new MobileCRM.FetchXml.Entity(SCHEMA.systemuser.name);
+            entity.addAttribute(SCHEMA.systemuser.Properties.name);
+            entity.addAttribute(SCHEMA.systemuser.Properties.gptechnicianid);
+
+            var fetch = new MobileCRM.FetchXml.Fetch(entity);
+            fetch.execute("JSON", function (res) {
+                if (res[0]) {
+                    return deferred.resolve(res[0]);
+                }
+                else {
+                    return deferred.reject("Unable to fetch technician details.");
+                }
+            }, function (err) { return deferred.reject("Fetch System User Error: " + err); });
+            return deferred.promise();
+        }
+
+        //============== TOOLBAR FUNCTIONS ================
+        function viewSelected(e) {
+            if (selectedView != e.selectedItem) {
+                selectedView = e.selectedItem.value;
+                loadDateFilteredData();
+            }
+        }
+        function expandCollapseSummary() {
+            var currentlyCollapsed = this.option("text") === MobileCRM.Localization.get("Action.ExpandAll") ? true : false;
+            this.option("text", MobileCRM.Localization.get(currentlyCollapsed ? "Action.CollapseAll" : "Action.ExpandAll"));
+            this.option("icon", currentlyCollapsed ? "spinup" : "spindown");
+
+            if (currentlyCollapsed) {
+                summary.expandAll(0);
+            }
+            else {
+                summary.collapseAll(0);
+            }
+        }
+    </script>
+</body>
+</html>

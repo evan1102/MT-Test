@@ -1,0 +1,1606 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <!-- Activate IE9 document mode, if available -->
+    <meta charset="utf-8" http-equiv="X-UA-Compatible" content="IE=edge" />
+    <!-- Defined iOS viewport -->
+    <meta name="viewport" content="initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=false">
+    <!-- Disable iOS Phone No Detection -->
+    <meta name="format-detection" content="telephone=no" />
+    <!-- DevExtreme dependencies -->
+    <script type="text/javascript" src="../../scripts/jquery-3.3.1.min.js"></script>
+    <!-- DevExtreme themes -->
+    <link rel="stylesheet" type="text/css" href="../../css/dx.common.css" />
+    <link rel="stylesheet" type="text/css" href="../../css/dx.light.css" />
+    <!-- A DevExtreme library -->
+    <script type="text/javascript" src="../../scripts/dx.all.js"></script>
+    <!-- Offline HTML Template Factory-->
+    <script type="text/javascript" src="../../templates/listItem-factory.js"></script>
+    <script type="text/javascript" src="../../templates/toolbar-factory.js"></script>
+    <!-- Offline HTML JavaScript Bridge-->
+    <script type="text/javascript" src="../../scripts/JSBridge.js"></script>
+    <script type="text/javascript" src="../../scripts/k2aMethods.js"></script>
+    <script type="text/javascript" src="../../enum/Schema.js"></script>
+    <script type="text/javascript" src="../../enum/setupoption.js"></script>
+    <script type="text/javascript" src="subtasks.js"></script>
+    <script type="text/javascript" src="taskForm.js"></script>
+    <script type="text/javascript" src="taskmaterial.js"></script>
+    <script type="text/javascript" src="../taskmaterial/task-materials.js"></script>
+    <script type="text/javascript" src="validations.js"></script>
+    <script type="text/javascript" src="task-attachment-list.js"></script>
+    <!-- Offline HTML Styling -->
+    <link rel="stylesheet" type="text/css" href="../../css/k2a.css" />
+    <title>Entity List</title>
+</head>
+<body>
+    <div id="toast"></div>
+    <div class="fixedPosition">
+        <div>
+            <div id="header">
+                <div id="viewBox"></div>
+                <div id="sublocationSelectorBox"></div>
+                <div id="equipmentSelectorBox"></div>
+            </div><br />
+            <div id="mainScrollView">
+                <div id="mainToolbar"></div><br />
+                <div id="mainList"></div>
+            </div>
+        </div>
+        <div id="actionSheet"></div>
+        <div id="subTaskActionSheet"></div>
+        <div id="taskMaterialActionSheet"></div>
+        <div id="taskAttachmentActionSheet"></div>
+        <div id="formPopup"></div>
+        <div id="subTaskFormPopup"></div>
+    </div>
+
+    <script>
+        //============== INITIAL SETTINGS ================
+        var callingObjectName = null, callingObject = null, servicecallid = null;
+        var entityName = SCHEMA.task.name;
+        var openStatus = "OPEN", completeStatus = "COMPLETE";
+        //============== DISPLAY OBJECTS ================
+        var sublocationList, equipmentList;
+        var formAccordion, accordionItems, formPopup = null, taskForm;
+        //============== OFFLINE DATA ================
+        var entityListData;
+        var taskDataStore, taskAttachmentDataStore;
+        //============== SELECTED DATA ================
+        var selected = { entityName: null, servicecall: null };
+        var itemIndexing = [], itemIndex = null;
+        var subTaskItemIndexing = [], subTaskItemIndex = null;
+        var selectedItemElement, currentSelectedIndex, nextElementSibling, previousElementSibling;
+        var previousTask = null, nextTask = null, groupId = 0;
+        //============== FETCH DATA ================
+        var requiredSetupOptions = [
+            SETUPOPTION.DefaultTaskStatus,
+            SETUPOPTION.DefaultTaskCompletionStatus,
+            SETUPOPTION.TaskValidationLevel,
+            SETUPOPTION.UseTaskMaterials,
+            SETUPOPTION.HideTaskEstimateHours,
+            SETUPOPTION.UseBarcoding,
+            SETUPOPTION.UseNonInventoryItems,
+            SETUPOPTION.UseSublocationValidation
+        ];
+        var taskResponseAttributes = [
+            SCHEMA.taskresponse.Properties.id,
+            SCHEMA.taskresponse.Properties.responsetype,
+            SCHEMA.taskresponse.Properties.taskid,
+            SCHEMA.taskresponse.Properties.linenumber,
+            SCHEMA.taskresponse.Properties.gpsequencenumber,
+            SCHEMA.taskresponse.Properties.gpsublocationid,
+            SCHEMA.taskresponse.Properties.canskip,
+            SCHEMA.taskresponse.Properties.isrequired,
+            SCHEMA.taskresponse.Properties.gpservicecallid,
+            SCHEMA.taskresponse.Properties.numericresponse,
+            SCHEMA.taskresponse.Properties.gptasklistid,
+            SCHEMA.taskresponse.Properties.responselabel,
+            SCHEMA.taskresponse.Properties.textresponse,
+            SCHEMA.taskresponse.Properties.integerresponse,
+            SCHEMA.taskresponse.Properties.dateresponse,
+            SCHEMA.taskresponse.Properties.gptasklinenumber,
+            SCHEMA.taskresponse.Properties.responsevalue,
+            SCHEMA.taskresponse.Properties.gprepairtaskcode,
+            SCHEMA.taskresponse.Properties.gpresponselistid,
+            SCHEMA.taskresponse.Properties.stringresponse,
+            SCHEMA.taskresponse.Properties.name
+        ]
+        var listSearchItems = [
+            SCHEMA.task.Properties.gpequipmentid,
+            SCHEMA.task.Properties.gpsublocationid,
+            SCHEMA.task.Properties.description,
+            SCHEMA.task.Properties.gptaskcode,
+            SCHEMA.task.Properties.completiondate,
+            SCHEMA.task.Properties.taskstatusid,
+            SCHEMA.task.Properties.gpsublocationid,
+            "equipmentbarcode",
+            "sublocationbarcode"
+        ];
+
+        var views = [
+            { id: 0, label: "task.View.AllHierarchy" },
+            { id: 1, label: "task.View.OpenHierarchy" },
+            { id: 2, label: "task.View.AllNoHierarchy" }
+        ];
+        var listFilters = [
+            { id: 0, label: "task.Filter.ShowAll" },
+            { id: 1, label: "task.Filter.OpenTasks" },
+            { id: 2, label: "task.Filter.CompleteTasks" }
+        ];
+
+        var listItemTemplate = function (data, index, element) {
+            createTaskTemplate(data, index, element);
+        };
+        //============== TOOLBAR ITEMS ================
+        var mainToolbarItems = [
+            {
+                location: "before",
+                widget: "dxSelectBox",
+                options: {
+                    items: listFilters,
+                    valueExpr: "id",
+                    displayExpr: "text",
+                    value: listFilters[0].id,
+                    width: 175,
+                    onValueChanged: function (args) {
+                        filterList(args.value);
+                    }
+                }
+            },
+            {
+                location: "after",
+                locateInMenu: "auto",
+                widget: "dxButton",
+                options: {
+                    type: "normal",
+                    icon: 'repeat',
+                    onClick: openTasksInList
+                }
+            },
+            {
+                location: "after",
+                locateInMenu: "auto",
+                widget: "dxButton",
+                options: {
+                    type: "normal",
+                    icon: "check",
+                    onClick: completeTasksInList
+                }
+            }
+        ];
+        //============== LIST ACTION ITEMS ================
+        var actionItems = [
+            { text: "More", onClick: viewEntity },
+            { text: "Materials", onClick: showTaskMaterial },
+            { text: "Reopen", onClick: changeStatus },
+            { text: "Complete", onClick: changeStatus }
+        ];
+        var taskAttachmentActionItems = [
+            { text: "More", onClick: viewAttachmentEntity },
+            { text: "Delete", onClick: deleteTaskAttachment }
+        ];
+        var taskMaterialActionItems = [
+            { text: "Add", onClick: addTaskMaterial }
+        ];
+
+        $(function () {
+            //============== LOCALIZATION ================
+            MobileCRM.Localization.initialize(function (localization) {
+
+                //============== ANDROID CHECK ================
+                MobileCRM.Platform.preventBackButton(btnBackClicked);
+
+                //============== LOADPANEL ================
+                loading = MobileCRM.UI.Form.showPleaseWait(MobileCRM.Localization.get("Msg.Loading"));
+
+                //============== SCROLLVIEW ================
+                mainScrollView = $("#mainScrollView").dxScrollView({
+                    showScrollbar: "always",
+                    height: function () { return window.innerHeight - 150; },
+                    width: '100%'
+                }).dxScrollView("instance");
+
+                $(window).resize(function () {
+                    this.setTimeout(function () {
+                        MobileCRM.bridge.getWindowSize(function (obj) {
+                            mainScrollView.option("height", obj.height - 150);
+                            // If task popup is showing, resize accordion item scroll views
+                            if (formPopup && formPopup.option('visible')) {
+                                formPopup.option('position', { offset: '1, 0' });
+                                formPopup.option('width', '99%');
+                                formPopup.option('height', '99%');
+                                updateAccordionScrollViewHeight();
+                            }
+                        }, MobileCRM.bridge.alert);
+                    }, 500);
+                });
+
+                //============== TOOLBARS ================
+                mainToolbar = $("#mainToolbar").dxToolbar({}).dxToolbar("instance");
+
+                //============== LIST ================
+                mainList = (new ListFactory()).createItem("#mainList", entityName, [
+                    { name: 'searchExpr', value: listSearchItems },
+                    { name: 'itemTemplate', value: listItemTemplate },
+                    { name: 'keyExpr', value: SCHEMA.task.Properties.id },
+                    { name: 'onSelectionChanged', value: taskSelectionChanged }
+                ]);
+
+                //============== ACTION SHEETS ================
+                actionSheet = (new ActionSheetFactory()).createItem(actionItems, "#actionSheet");
+                taskAttachmentActionSheet = (new ActionSheetFactory()).createItem(taskAttachmentActionItems, "#taskAttachmentActionSheet");
+                taskMaterialActionSheet = (new ActionSheetFactory()).createItem(taskMaterialActionItems, "#taskMaterialActionSheet");
+
+                //============== EVENT HANDLERS ================
+                MobileCRM.bridge.onGlobalEvent("IFrameFormClosed", function (closedForm) {
+                    if (closedForm.options && closedForm.options.entityName === entityName) {
+                        reloadList();
+                    }
+                }, true);
+                MobileCRM.bridge.onGlobalEvent("EntityFormClosed", function (closedForm) {
+                    if (closedForm.entity && closedForm.entity.entityName === entityName) {
+                        reloadList();
+                    }
+                }, true);
+                MobileCRM.Configuration.requestObject(function (config) {
+                    MobileCRM.bridge.onGlobalEvent("SyncFinished", reloadList, !config.settings.requireSyncLogin);
+                }, MobileCRM.bridge.alert);
+                MobileCRM.UI.EntityForm.onSelectedViewChanged(function (entityForm) {
+                    if (entityForm.context.selectedView === "task") {
+                        reloadList();
+                    }
+                }, true);
+
+                loadSetupOptions(loadListOptions);
+            }, alertError);
+        });
+
+        //============== LOAD OPTIONS ================
+        function loadListOptions() {
+            if (setupOptions.DefaultTaskStatus) {
+                openStatus = setupOptions.DefaultTaskStatus
+            }
+            if (setupOptions.DefaultTaskCompletionStatus) {
+                completeStatus = setupOptions.DefaultTaskCompletionStatus;
+            }
+            MobileCRM.UI.EntityForm.requestObject(function (entityForm) {
+                if (entityForm) {
+                    callingObject = entityForm.entity;
+                    callingObjectName = entityForm.entity.entityName;
+                    if (entityForm.entity.entityName === SCHEMA.servicecall.name) {
+                        selected.servicecall = entityForm.entity;
+                    }
+                    else if (entityForm.entity.entityName === SCHEMA.appointment.name) {
+                        selected.servicecall = entityForm.entity.properties.servicecallid;
+                    }
+                    if (entityForm.iFrameOptions) {
+                        if (entityForm.iFrameOptions.barcode !== undefined) {
+                            mainList.option('searchValue', entityForm.iFrameOptions.barcode);
+                        }
+                    }
+
+                    // Create Header Items
+                    createViewBox();
+                    createSublocationBox();
+                    createEquipmentBox();
+
+                    // Update Task List Items
+                    loadToolbarOptions();
+                    loadListItemOptions();
+
+                    // Load Data
+                    var promise = getStatus(openStatus);
+                    promise.then(function (status) {
+                        var fetchPromise = fetchListEntityData(status);
+                        fetchPromise.then(function (result) {
+                            loadSublocationList(entityListData);
+                        }, function (error) {
+                            MobileCRM.bridge.alert(error);
+                        })
+                    }, function (error) {
+                        MobileCRM.bridge.alert(error);
+                    });
+                }
+            }, alertError, null);
+
+            loading.close();
+        }
+
+        function findTaskIndexGroup(task) {
+            return $.grep(itemIndexing, function (t, i) {
+                return t.taskid === task.taskid &&
+                    t.groupId === task.groupId &&
+                    t.item === task.item;
+            });
+        };
+
+        function findTaskIndex(task) {
+            return $.grep(itemIndexing, function (t, i) {
+                return t.taskid === task.taskid &&
+                    t.item === task.item;
+            });
+        };
+
+        // ----- Templates -----
+        function subLocationGroupHeaderTemplate(data, index, element) {
+            groupId = index;
+            var groupValue = '';
+            if (data.key && data.key.primaryName) {
+                groupValue = data.key.primaryName;
+            }
+            else if (data.key) {
+                groupValue = data.key;
+            }
+            else {
+                groupValue = data.gpsublocationid;
+            }
+            groupValue = groupValue === undefined ? '' : groupValue;
+
+            return $("<div>").append(MobileCRM.Localization.get(SCHEMA.sublocation.name) + ": " + groupValue);
+        }
+
+        function equipmentGroupHeaderTemplate(data, index, element) {
+            groupId = index;
+            var groupValue = '';
+            if (data.key && data.key.primaryName) {
+                groupValue = data.key.primaryName;
+            }
+            else if (data.key) {
+                groupValue = data.key;
+            }
+            else {
+                groupValue = data.gpsublocationid;
+            }
+            groupValue = groupValue === undefined ? '' : groupValue;
+
+            return $("<div>").append(MobileCRM.Localization.get(SCHEMA.equipment.name) + ": " + groupValue);
+        }
+
+        function taskListGroupHeaderTemplate(data, index, element) {
+            groupId = index;
+            var key = data.key ? data.key : '';
+            var lblTaskList = MobileCRM.Localization.get(SCHEMA.task.name + "." + SCHEMA.task.Properties.gptasklistid);
+
+            return $("<div>").append(lblTaskList + ": " + key);
+        }
+
+        function createTaskTemplate(data, index, element) {
+            var item;
+            var selectedView = $('#viewSelector').dxSelectBox('instance').option('value');
+            if (parseInt(selectedView) !== 2) {
+                item = { taskid: data.id, group: groupId, item: index }
+                if (findTaskIndexGroup(item).length === 0) {
+                    itemIndexing.push(item);
+                }
+            }
+            else {
+                item = { taskid: data.id, item: index }
+                if (findTaskIndex(item).length === 0) {
+                    itemIndexing.push(item);
+                }
+            }
+
+            var leftPadding = 0;
+            if ($('#viewSelector').dxSelectBox('instance').option('value') !== 2) {
+                leftPadding = getLeftPadding(data.taskhierarchy);
+            }
+
+            var taskmaterialindicator = '';
+            if (setupOptions.UseTaskMaterials && data.taskmaterialindicator) {
+                taskmaterialindicator = data.taskmaterialindicator;
+            }
+            var statusColor = data.taskstatusid ? (data.taskstatusid.primaryName === completeStatus ? "green" : "black") : "black";
+            element.append(
+
+                $('<div>').append(
+                    $('<div>').append(
+                        $('<div>').append(taskmaterialindicator + " " + data.gptasklevel).css('font-size', 'large'),
+                        $('<div>').append(data.gpsublocationid),
+                        $('<div>').append(data.name),
+                        $('<div>').append(data.gpequipmentid)
+                    ),
+                    $('<div>').append(
+                        $('<div>').append(data.gptasklistid).css('float', 'left'),
+                        $('<div id="' + data.id + '_status">').append(data.taskstatusid ? data.taskstatusid.primaryName : "")
+                            .css({ 'float': 'right', 'color': statusColor, 'font-weight': statusColor === "black" ? 'normal' : 'bold' })
+                    )
+                ).css('margin-left', leftPadding)
+            );
+        }
+
+        // ----- Create Header Items -----
+        function createViewBox() {
+            $("#viewBox").dxBox({
+                direction: "row",
+                width: "100%",
+                items: [{
+                    ratio: 1,
+                    html: "<div id='viewSelector'></div>"
+                },
+                { ratio: 0, baseSize: 5 },
+                {
+                    ratio: 0,
+                    baseSize: 50,
+                    html: "<div id='validationCheck'></div>"
+                }
+                ]
+            }).dxBox("instance");
+
+            $(views).each(function (i, view) {
+                view.text = MobileCRM.Localization.get(view.label);
+            });
+
+            $("#viewSelector").dxSelectBox({
+                items: views,
+                value: views[0].id,
+                displayExpr: 'text',
+                valueExpr: 'id',
+                onValueChanged: viewValueChanged
+            }).dxSelectBox('instance');
+
+            $("#validationCheck").dxButton({
+                icon: "fieldchooser",
+                onClick: validateAppointmentInformation
+            }).dxButton('instance');
+        }
+
+        function createSublocationBox() {
+            $("#sublocationSelectorBox").dxBox({
+                direction: "row",
+                width: "100%",
+                items: [{
+                    ratio: 1,
+                    html: "<div id='sublocationSelector'></div>"
+                },
+                { ratio: 0, baseSize: 5 },
+                {
+                    ratio: 0,
+                    baseSize: 50,
+                    html: "<div id='sublocationRefresh'></div>"
+                }
+                ]
+            }).dxBox("instance");
+
+            $("#sublocationSelector").dxSelectBox({
+                displayExpr: "name",
+                valueExpr: "id",
+                placeholder: MobileCRM.Localization.get("task.SelectSublocation"),
+                acceptCustomValue: false,
+                onValueChanged: sublocationValueChanged
+            }).dxSelectBox("instance");
+
+            $("#sublocationRefresh").dxButton({
+                icon: 'refresh',
+                onClick: reloadList
+            })
+        }
+
+        function createEquipmentBox() {
+            $("#equipmentSelectorBox").dxBox({
+                direction: "row",
+                width: "100%",
+                items: [{
+                    ratio: 1,
+                    html: "<div id='equipmentSelector'></div>"
+                },
+                { ratio: 0, baseSize: 5 },
+                {
+                    ratio: 0,
+                    baseSize: 50,
+                    html: "<div id='equipmentRefresh'></div>"
+                }
+                ]
+            }).dxBox("instance");
+
+            $("#equipmentSelector").dxSelectBox({
+                placeholder: MobileCRM.Localization.get("task.SelectEquipment"),
+                displayExpr: "name",
+                valueExpr: "id",
+                acceptCustomValue: false,
+                onValueChanged: equipmentValueChanged
+            }).dxSelectBox("instance");
+
+            $("#equipmentRefresh").dxButton({
+                icon: 'refresh',
+                visible: false,
+                onClick: function (e) {
+                    var sublocationSelected = $('#sublocationSelector').dxSelectBox('instance').option('value');
+                    loadEquipmentList(sublocationSelected);
+                }
+            })
+        }
+
+        // ----- Update Task List Items -----
+        function loadToolbarOptions() {
+            $(listFilters).each(function (i, filter) {
+                filter.text = MobileCRM.Localization.get(filter.label);
+            });
+
+            mainToolbar.option({
+                items: mainToolbarItems
+            });
+        }
+
+        function loadListItemOptions() {
+            mainList.option({
+                searchEditorOptions: {
+                    showClearButton: true,
+                    buttons: ["clear", {
+                        location: "after",
+                        name: "barcodeSearch",
+                        options: {
+                            icon: "../../images/barcode.png",
+                            visible: setupOptions.UseBarcoding,
+                            onClick: barcodeBtnClicked
+                        }
+                    }]
+                }
+            });
+        }
+
+        //============== LOAD DATA ================
+        function fetchListEntityData(status) {
+            var deferred = $.Deferred();
+
+            $(function () {
+                var selectedView = $('#viewSelector').dxSelectBox('instance').option('value');
+                var entity = new MobileCRM.FetchXml.Entity(SCHEMA.task.name);
+                entity.addAttributes();
+                entity.orderBy(SCHEMA.task.Properties.gpsublocationid, false);
+                entity.orderBy(SCHEMA.task.Properties.gpequipmentid, false);
+                entity.orderBy(SCHEMA.task.Properties.gptasklistid, false);
+                entity.orderBy(SCHEMA.task.Properties.taskhierarchy, false);
+                entity.orderBy(SCHEMA.task.Properties.recordlevel, false);
+                entity.orderBy(SCHEMA.task.Properties.gptasklinenumber, false);
+                entity.orderBy(SCHEMA.task.Properties.gptaskcode, false);
+
+                entity.filter = new MobileCRM.FetchXml.Filter();
+                entity.filter.where('servicecallid', 'eq', selected.servicecall.id);
+                if (selectedView === 1) {
+                    // All open heirarchy
+                    entity.filter.where('taskstatusid', 'eq', status.id);
+                }
+
+                // Link: Equipment
+                var equipmentLink = entity.addLink(SCHEMA.equipment.name, "id", SCHEMA.task.Properties.equipmentid, "outer");
+                equipmentLink.addAttribute(SCHEMA.equipment.Properties.barcode);
+                equipmentLink.alias = SCHEMA.equipment.name;
+
+                // Link: Sublocation
+                if (setupOptions.UseSublocationValidation) {
+                    sublocationLink = equipmentLink.addLink(SCHEMA.sublocation.name, "id", SCHEMA.equipment.Properties.sublocationid, "outer");
+                    sublocationLink.addAttribute("barcode");
+                    sublocationLink.alias = SCHEMA.sublocation.name;
+                }
+
+                var fetch = new MobileCRM.FetchXml.Fetch(entity);
+                fetch.execute("JSON", function (res) {
+
+                    res.forEach(function (task, index, res) {
+                        if (task.gpequipmentid === undefined) {
+                            res[index]["gpequipmentid"] = '';
+                        }
+                        if (task.gpsublocationid === undefined) {
+                            res[index]["gpsublocationid"] = '';
+                        }
+                        res[index]["equipmentbarcode"] = task[equipmentLink.alias + ".barcode"];
+                        if (setupOptions.UseSublocationValidation && task[sublocationLink.alias + ".barcode"] !== undefined) {
+                            res[index]["sublocationbarcode"] = task[sublocationLink.alias + ".barcode"];
+                        }
+                        else {
+                            res[index]["sublocationbarcode"] = '';
+                        }
+                    })
+
+                    entityListData = res;
+                    taskDataStore = new DevExpress.data.DataSource({
+                        store: {
+                            type: "array",
+                            key: "id",
+                            data: entityListData
+                        },
+                        paginate: false
+                    });
+                    loading.close();
+                    return deferred.resolve(true);
+                }, alertError);
+            }, function (error) {
+                loading.close();
+                return deferred.reject(error);
+            });
+            return deferred.promise();
+        }
+
+        function loadSublocationList(data) {
+            var sublocationList = [{ id: "0", name: MobileCRM.Localization.get("task.AllSublocations") }];
+            var ds = new DevExpress.data.DataSource({
+                store: data,
+                group: 'gpsublocationid',
+                paginate: false
+            })
+            ds.load().done(function (sublocations) {
+                for (i = 0; i < sublocations.length; i++) {
+                    var key = sublocations[i].key ? sublocations[i].key : MobileCRM.Localization.get("task.NoSublocation");
+                    sublocationList.push({ id: key, name: key });
+                }
+            })
+            $('#sublocationSelector').dxSelectBox('instance').option("items", sublocationList);
+            $('#sublocationSelector').dxSelectBox('instance').option("value", "0");
+        }
+
+        function loadEquipmentList(gpsublocationid) {
+            var equipmentList = [{ id: "0", name: MobileCRM.Localization.get("task.AllEquipment") }];
+            var ds = new DevExpress.data.DataSource({
+                store: entityListData,
+                group: 'equipmentid',
+                paginate: false
+            })
+            if (gpsublocationid !== '0') {
+                ds.filter('gpsublocationid', "=", gpsublocationid);
+            }
+            ds.load().done(function (tasks) {
+                for (i = 0; i < tasks.length; i++) {
+                    var primaryName = tasks[i].key && tasks[i].key.primaryName ? tasks[i].key.primaryName : '';
+
+                    if (primaryName === "PENDING") {
+                        for (t = 0; t < tasks[i].items.length; t++) {
+                            var key = tasks[i].items[t] ? tasks[i].items[t].equipmentid : '';
+                            equipmentList.push({ id: key, name: primaryName });
+                        }
+                    }
+                    else {
+                        var key = tasks[i].key ? tasks[i].key : tasks[i].items[0].id;
+                        equipmentList.push({ id: key, name: primaryName });
+                    }
+                }
+            });
+            $('#equipmentSelector').dxSelectBox('instance').option('dataSource', equipmentList);
+            $('#equipmentSelector').dxSelectBox('instance').option('value', "0");
+        }
+
+        function reloadList() {
+            loading = MobileCRM.UI.Form.showPleaseWait(MobileCRM.Localization.get("Msg.Loading"));
+            var promise = getStatus(openStatus);
+            promise.then(function (status) {
+                var fetchPromise = fetchListEntityData(status);
+                fetchPromise.then(function (result) {
+                    loadSublocationList(entityListData);
+                    var sublocationSelected = $('#sublocationSelector').dxSelectBox('instance').option('value');
+                    loadEquipmentList(sublocationSelected);
+
+                    // Reload List
+                    if (mainList.option('grouped')) {
+                        var equipment = $("#equipmentSelector").dxSelectBox('instance').option('value');
+                        var equipmentSelected = equipment != 0;
+                        var groupBy = !equipmentSelected ? 'gpsublocationid' : 'gptasklistid';
+                        taskDataStore.group('gpsublocationid');
+
+                        if (equipmentSelected) {
+                            taskDataStore.filter('equipmentid.id', '=', equipment.id);
+                        }
+                    }
+                    mainList.option('dataSource', taskDataStore);
+                    mainList.reload();
+                    loading.close();
+                }, alertError);
+            }, alertError);
+        }
+
+        //============== TOOLBAR FUNCTIONS ================
+        function viewValueChanged(e) {
+            itemIndexing = [];
+            if (e.value === 2) {
+                // All tasks no hierarchy
+                var promise = getStatus(openStatus);
+                promise.then(function (status) {
+                    var fetchPromise = fetchListEntityData(status);
+                    fetchPromise.then(function (result) {
+                        mainList.option({
+                            grouped: false,
+                            collapsibleGroups: false,
+                            dataSource: taskDataStore
+                        });
+                        mainList.reload();
+
+                        $("#sublocationSelectorBox").dxBox('instance').option('visible', false);
+                        $("#equipmentSelectorBox").dxBox('instance').option('visible', false);
+                        mainScrollView.option('height', function () { return window.innerHeight - 75; });
+                        loading.close();
+                    }, function (error) {
+                        MobileCRM.bridge.alert(error);
+                        loading.close()
+                    })
+                },
+                    function (error) {
+                        MobileCRM.bridge.alert(error);
+                        loading.close();
+                    });
+
+            }
+            else {
+                $("#sublocationSelectorBox").dxBox('instance').option('visible', true);
+                $("#equipmentSelectorBox").dxBox('instance').option('visible', true);
+                $("#sublocationSelector").dxSelectBox('instance').option('value', '0');
+                $("#equipmentSelector").dxSelectBox('instance').option('value', '0');
+
+                if (e.previousValue === 2) {
+                    var promise = getStatus(openStatus);
+                    promise.then(function (status) {
+                        mainScrollView.option('height', function () { return window.innerHeight - 150; });
+                        var fetchPromise = fetchListEntityData(status);
+                        fetchPromise.then(function (result) {
+                            taskDataStore.group('gpsublocationid');
+                            mainList.option({
+                                grouped: true,
+                                groupTemplate: subLocationGroupHeaderTemplate,
+                                collapsibleGroups: true,
+                                dataSource: taskDataStore
+                            });
+                            mainList.reload();
+                            loading.close();
+                        }, function (error) {
+                            MobileCRM.bridge.alert(error);
+                            loading.close();
+                        })
+                    }, function (error) {
+                        MobileCRM.bridge.alert(error);
+                        loading.close();
+                    });
+                }
+                else {
+                    var promise = getStatus(openStatus);
+                    promise.then(function (status) {
+                        var fetchPromise = fetchListEntityData(status);
+                        fetchPromise.then(function (result) {
+                            taskDataStore.group('gpsublocationid');
+                            mainList.option({
+                                grouped: true,
+                                groupTemplate: subLocationGroupHeaderTemplate,
+                                collapsibleGroups: true,
+                                dataSource: taskDataStore
+                            });
+                            mainList.reload();
+                            loading.close();
+                        }, function (error) {
+                            MobileCRM.bridge.alert(error);
+                            loading.close();
+                        })
+                    }, function (error) {
+                        MobileCRM.bridge.alert(error);
+                        loading.close();
+                    });
+                }
+            }
+        }
+
+        function sublocationValueChanged(e) {
+            loading = MobileCRM.UI.Form.showPleaseWait(MobileCRM.Localization.get("Msg.Loading"));
+            itemIndexing = [];
+            e.value = e.value === MobileCRM.Localization.get("task.NoSublocation") ? '' : e.value;
+            loadEquipmentList(e.value);
+            $('#equipmentSelector').dxSelectBox('instance').option('value', '0');
+            if (parseInt(e.value) !== 0) {
+                var group = parseInt(e.value) !== 0;
+                if (group) {
+                    taskDataStore.group("equipmentid");
+                    taskDataStore.filter("gpsublocationid", "=", e.value);
+                }
+
+                mainList.option({
+                    grouped: group,
+                    dataSource: taskDataStore,
+                    collapsibleGroups: true,
+                    groupTemplate: equipmentGroupHeaderTemplate
+                });
+                mainList.reload();
+            }
+            else {
+                taskDataStore.filter("gpsublocationid", "<>", 0);
+                taskDataStore.group("gpsublocationid");
+
+                mainList.option({
+                    grouped: true,
+                    dataSource: taskDataStore,
+                    collapsibleGroups: true,
+                    groupTemplate: subLocationGroupHeaderTemplate
+                });
+                mainList.reload();
+            }
+            loading.close();
+        }
+
+        function equipmentValueChanged(e) {
+            itemIndexing = [];
+            if (parseInt(e.value) !== 0) {
+                taskDataStore.group("gptasklistid");
+                taskDataStore.filter("equipmentid.id", "=", e.value.id);
+
+                mainList.option({
+                    grouped: true,
+                    dataSource: taskDataStore,
+                    collapsibleGroups: true,
+                    groupTemplate: taskListGroupHeaderTemplate
+                });
+                mainList.reload();
+            }
+            else {
+                // group by the sublocation if one is selected
+                var sublocationSelected = $('#sublocationSelector').dxSelectBox('instance').option('value');
+                if (sublocationSelected !== '0') {
+                    taskDataStore.group("equipmentid");
+                    taskDataStore.filter("gpsublocationid", "=", sublocationSelected);
+
+                    mainList.option({
+                        grouped: true,
+                        dataSource: taskDataStore,
+                        collapsibleGroups: true,
+                        groupTemplate: equipmentGroupHeaderTemplate
+                    });
+                    mainList.reload();
+                }
+                else {
+                    // reload the entire equipment list
+                    taskDataStore.group("gpsublocationid");
+                    if (sublocationSelected !== '0') {
+                        taskDataStore.filter("gpsublocationid", "=", sublocationSelected);
+                        mainList.option('groupTemplate', equipmentGroupHeaderTemplate);
+                    }
+                    else {
+                        taskDataStore.filter("gpsublocationid", "<>", sublocationSelected);
+                        mainList.option('groupTemplate', subLocationGroupHeaderTemplate);
+                    }
+
+                    mainList.option({
+                        grouped: true,
+                        dataSource: taskDataStore,
+                        collapsibleGroups: true
+                    });
+                    mainList.reload();
+                }
+            }
+            loading.close();
+        }
+
+        function openTasksInList() {
+            var popup = new MobileCRM.UI.MessageBox(MobileCRM.Localization.get("Alert.OpenTasksInList"));
+            popup.multiLine = true;
+            popup.items = [
+                MobileCRM.Localization.get("enum.Yes"),
+                MobileCRM.Localization.get("enum.No")
+            ];
+            popup.show(
+                function (button) {
+                    if (button === MobileCRM.Localization.get("enum.Yes")) {
+                        var selectedTask = mainList.option('selectedItem');
+                        var promise = getStatus(openStatus);
+                        promise.then(function (status) {
+                            var saving = MobileCRM.UI.Form.showPleaseWait("Opening tasks");
+                            var savePromise = setStatusOnSelectedTasks(status);
+                            savePromise.then(function (result) {
+                                mainList.repaint();
+                                if (selectedTask !== null) {
+                                    mainList.scrollToItem(selectedTask);
+                                }
+                                saving.close();
+                            },
+                                function (error) {
+                                    MobileCRM.bridge.alert(error);
+                                    saving.close();
+                                }
+                            )
+                        }, function (error) {
+                            MobileCRM.bridge.alert(error);
+                        });
+                    }
+                }
+            );
+        }
+
+        function completeTasksInList() {
+            var popup = new MobileCRM.UI.MessageBox(MobileCRM.Localization.get("Alert.CompleteTasksInList"));
+            popup.multiLine = true;
+            popup.items = [
+                MobileCRM.Localization.get("enum.Yes"),
+                MobileCRM.Localization.get("enum.No")
+            ];
+            popup.show(
+                function (button) {
+                    if (button === MobileCRM.Localization.get("enum.Yes")) {
+                        var selectedTask = mainList.option('selectedItem');
+                        var promise = getStatus(completeStatus);
+                        promise.then(function (status) {
+                            var saving = MobileCRM.UI.Form.showPleaseWait("Completing tasks");
+                            var savePromise = setStatusOnSelectedTasks(status);
+                            savePromise.then(function (result) {
+                                mainList.repaint();
+                                if (selectedTask !== null) {
+                                    mainList.scrollToItem(selectedTask);
+                                }
+                                saving.close();
+                            },
+                                function (error) {
+                                    setTimeout(function () {
+                                        mainList.repaint();
+                                        MobileCRM.bridge.alert(error);
+                                        saving.close();
+                                    }, 500);
+                                }
+                            )
+                        }, function (error) {
+                            MobileCRM.bridge.alert(error);
+                        });
+                    }
+                }
+            );
+        }
+
+        function barcodeBtnClicked() {
+            MobileCRM.Platform.scanBarCode(
+                function (barcodes) {
+                    if ($('#viewSelector').dxSelectBox('instance').option('value') !== 2) {
+                        $('#sublocationSelector').dxSelectBox('instance').option("value", "0");
+                        $('#equipmentSelector').dxSelectBox('instance').option("value", "0");
+                        mainList.option('searchValue', barcodes.join());
+                    }
+                    else {
+                        mainList.option('searchValue', barcodes.join());
+                    }
+                },
+                function (error) {
+                    if (error !== 'Failed') {
+                        MobileCRM.bridge.alert(error);
+                    }
+                }
+            );
+        }
+
+        //============== LIST ITEM FUNCTIONS ================
+        function listItemClicked(task) {
+            var dynamicActionItems = [actionItems[0]];  // 0.More
+            if (setupOptions.UseTaskMaterials && task.itemData.taskmaterialindicator && task.itemData.taskmaterialindicator !== '') {
+                dynamicActionItems.push(actionItems[1]);    // 1.Materials
+            }
+
+            if (task.itemData.taskstatusid.primaryName === completeStatus) {
+                dynamicActionItems.push(actionItems[2]);    // 2.Reopen
+            }
+            else {
+                dynamicActionItems.push(actionItems[3]);    // 3.Complete
+            }
+
+            dynamicActionItems.push(actionItems[4]);    // 4.Cancel
+            actionSheet.option({
+                title: MobileCRM.Localization.get(entityName) + ": " + selected[entityName].name,
+                items: dynamicActionItems,
+                visible: true
+            });
+        }
+
+        function viewEntity() {
+            // Open the DevExtreme task form
+            showTask(selected[entityName]);
+        }
+
+        function showTaskMaterial() {
+            MobileCRM.UI.IFrameForm.show(
+                MobileCRM.Localization.get(SCHEMA.taskmaterial.name),
+                "file:///entity/taskmaterial/task-material.html",
+                false,
+                options = { callingObject: callingObject, callingObjectName: callingObjectName, servicecall: selected.servicecall });
+        }
+
+        function taskSelectionChanged(e) {
+            var selectedView = $('#viewSelector').dxSelectBox('instance').option('value');
+            var items = mainList.option('selectedItem');
+            if (items) {
+                if (parseInt(selectedView) !== 2) {
+                    var key = items.items[0].id;
+                    $.each(itemIndexing, function (index, item) {
+                        if (item.taskid === key) {
+                            itemIndex = { group: item.group, item: item.item };
+                            return false;
+                        }
+                    })
+                    setNextPreviousTaskGroup(itemIndex);
+                }
+                else {
+                    // No grouping
+                    var key = items.id;
+                    $.each(itemIndexing, function (index, item) {
+                        if (item.taskid === key) {
+                            itemIndex = { item: item.item };
+                            return false;
+                        }
+                    })
+                    setNextPreviousTask(itemIndex);
+
+                }
+            }
+            else {
+                if (parseInt(selectedView) !== 2) {
+                    // hit a group header which has no item. Use the previous item to get the
+                    setNextPreviousTaskGroup(itemIndex);
+                }
+            }
+        }
+
+        function setNextPreviousTask(itemIndex) {
+            // Set the previous task
+            if (itemIndex.item === 0) {
+                // first task is selected. no previous task exists
+                previousTask = null;
+            }
+            else {
+                // reduce item by 1
+                previousTask = { item: itemIndex.item - 1 };
+            }
+
+            // set the next task
+            if (itemIndex.item === mainList.option('items').length - 1) {
+                // last item is selected
+                nextTask = null;
+            }
+            else {
+                // next index
+                nextTask = { item: itemIndex.item + 1 };
+            }
+        }
+
+        function setNextPreviousTaskGroup(itemIndex) {
+            var totalGroups = mainList.option('items').length;
+
+            // Set the previous task
+            if (itemIndex.group === 0 && itemIndex.item === 0) {
+                // first task is selected. no previous task exists
+                previousTask = null;
+            }
+            else if (itemIndex.group === 0) {
+                // in first group. index - 1
+                previousTask = { group: itemIndex.group, item: itemIndex.item - 1 };
+            }
+            else if (itemIndex.group > 0 && itemIndex.item === 0) {
+                // first item of additional group
+                var groupIndex = itemIndex.group - 1
+                previousTask = { group: groupIndex, item: mainList.option('items')[groupIndex].items.length - 1 };
+            }
+            else {
+                // reduce item in group by 1
+                previousTask = { group: itemIndex.group, item: itemIndex.item - 1 };
+            }
+
+            // set the next task
+            if (itemIndex.group + 1 === totalGroups && itemIndex.item === mainList.option('items')[itemIndex.group].items.length) {
+                // last item is selected
+                nextTask = null;
+            }
+            else if (itemIndex.group < totalGroups && itemIndex.item === mainList.option('items')[itemIndex.group].items.length - 1) {
+                // if last item of a group go to next group
+                if (itemIndex.group + 1 < totalGroups) {
+                    nextTask = { group: itemIndex.group + 1, item: 0 };
+                }
+                else {
+                    nextTask = null;
+                }
+            }
+            else {
+                // next index
+                nextTask = { group: itemIndex.group, item: itemIndex.item + 1 };
+            }
+        }
+
+        //============== LIST EXECUTIONS ================
+        function saveTask() {
+            var deferred = $.Deferred();
+
+            $(function () {
+                // Save all task responses
+                var responseItems = [];
+                var formItems = $('#taskForm').dxForm('instance').option('items');
+
+                $.each(formItems, function (i, item) {
+                    if (item.name && item.name.startsWith("tr_")) {
+                        responseItems.push(saveTaskResponse(item.id));
+                    }
+                });
+
+                $.when.apply($, responseItems).then(function () {
+                    // Update task status
+                    var formData = $('#taskForm').dxForm('instance').option().formData;
+                    setStatusOnTask(formData.taskstatusid, formData, formData.completiondate).then(function () {
+                        // Refresh the taskList
+                        mainList.repaint();
+                        mainList.scrollToItem(selectedItemElement);
+                        return deferred.resolve(true);
+                    }, function (err) { return deferred.reject(err); });
+                }, function (err) { return deferred.reject(err); });
+            });
+            return deferred.promise();
+        }
+        function saveTaskResponse(responseID) {
+            var deferred = $.Deferred();
+            if (!responseID)
+                return deferred.reject("Save Task Response Error: Missing Response ID");
+
+            MobileCRM.DynamicEntity.loadById(SCHEMA.taskresponse.name, responseID, function (entity) {
+                try {
+                    var taskForm = $('#taskForm').dxForm('instance');
+                    var value = taskForm.getEditor('tr_' + responseID).option('value');
+
+                    switch (parseInt(entity.properties.responsetype)) {
+                        case 1: // string response
+                            entity.properties.stringresponse = value;
+                            break;
+                        case 2: // numeric response
+                            entity.properties.numericresponse = parseFloat(value);
+                            break;
+                        case 3: // integer response
+                            entity.properties.integerresponse = parseInt(value);
+                            break;
+                        case 4: // yes/no response
+                        case 7: // repair response
+                            entity.properties.integerresponse = parseInt(value);
+                            break;
+                        case 5: // list string
+                            entity.properties.stringresponse = value;
+                            break;
+                        case 6: // text string
+                            entity.properties.textresponse = value;
+                            break;
+                        case 8: // date
+                            entity.properties.dateresponse = value ? new Date(value) : new Date(1900, 1, 1);
+                            break;
+                        default:
+                            return deferred.reject("Save Task Response Error: Unknown task response type");
+                    }
+
+                    entity.save(function (error) {
+                        if (error) {
+                            return deferred.reject("Save Response Error:\n" + error);
+                        }
+                        else {
+                            return deferred.resolve();
+                        }
+                    });
+                }
+                catch (e) { return deferred.reject(e); }
+            }, function (err) { return deferred.reject("Load Task Response Error:\n" + err); });
+            return deferred.promise();
+        }
+
+        function changeStatus() {
+            var statusNeeded = selected[entityName].taskstatusid.primaryName === completeStatus ? openStatus : completeStatus;
+
+            checkOpenRequiredResponses(selected[entityName]).then(function (hasOpenResponses) {
+                if (!hasOpenResponses || statusNeeded === openStatus) {
+                    var promise = getStatus(statusNeeded);
+                    promise.then(function (taskStatus) {
+                        MobileCRM.DynamicEntity.loadById(SCHEMA.task.name,
+                            selected[entityName].id,
+                            function (entity) {
+                                entity.properties.taskstatusid = taskStatus;
+                                entity.properties.completiondate = taskStatus.primaryName !== completeStatus ? null : new Date();
+
+                                entity.save(function (error) {
+                                    if (error) {
+                                        MobileCRM.bridge.alert(error);
+                                    }
+                                    else {
+                                        // Update the list to show the new status
+                                        var store = taskDataStore.store();
+                                        store.update(selected[entityName].id, { taskstatusid: taskStatus, completiondate: this.properties.completiondate }).done(function (dataObj, key) {
+                                            setStatusOnAllSubTasks(taskStatus, dataObj, dataObj.completiondate).then(function () {
+                                                mainList.repaint();
+                                                mainList.scrollToItem(selectedItemElement);
+                                            }, MobileCRM.bridge.alert);
+                                        }).fail(function (error) {
+                                            MobileCRM.bridge.alert(error);
+                                        });
+                                    }
+                                });
+                            },
+                            MobileCRM.bridge.alert);
+                    });
+                }
+                else {
+                    sayLocalization('Alert.MissingRequiredTaskResponse');
+                }
+            }, MobileCRM.bridge.alert);
+        }
+
+        function getStatus(status) {
+            var deferred = $.Deferred();
+
+            var entity = new MobileCRM.FetchXml.Entity(SCHEMA.taskstatus.name);
+            entity.addAttribute(SCHEMA.taskstatus.Properties.id);
+            entity.addAttribute(SCHEMA.taskstatus.Properties.name);
+
+            entity.addFilter().where(SCHEMA.taskstatus.Properties.name, 'eq', status);
+
+            var fetch = new MobileCRM.FetchXml.Fetch(entity);
+            fetch.execute("DynamicEntities", function (res) {
+                return deferred.resolve(res[0]);
+            }, function (error) {
+                MobileCRM.bridge.alert(error);
+                return deferred.resolve(null);
+            });
+            return deferred.promise();
+        }
+
+        function showTask(entity) {
+            var showTaskMaterial = false;
+            if (setupOptions.UseTaskMaterials && entity.taskmaterialindicator) {
+                showTaskMaterial = true;
+            }
+            // get subtasks
+            var promise = getSubTasks(entity.id);
+            promise.then(function (subTasks) {
+                buildAccordionItemsList(subTasks.length > 0, showTaskMaterial);
+                MobileCRM.bridge.getWindowSize(function (obj) {
+                    if (formPopup === null) {
+                        var popupOptions = {
+                            width: '99%', //obj.width - 20,
+                            height: '99%', //obj.height - 20,
+                            position: { offset: '1, 0' },
+                            showTitle: true,
+                            showCloseButton: true,
+                            title: entity.name,
+                            visible: false,
+                            toolbarItems: taskFormToolbarItems,
+                            contentTemplate: function () {
+                                return "<div id='formAccordion'></div>";
+                            },
+                            onShowing: function (e) {
+                                createFormAccordion();
+                            },
+                            onShown: updateAccordionScrollViewHeight,
+                            onHiding: function (e) {
+                                mainList.scrollToItem(selected[entityName]);
+                            }
+                        }
+                        formPopup = $("#formPopup").dxPopup(popupOptions).dxPopup('instance');
+                        formPopup.show();
+                    }
+                    else {
+                        if (formAccordion) {
+                            formAccordion.option('dataSource', accordionItems);
+                            formAccordion.reload();
+                        }
+
+                        if (!formPopup.option('visible')) {
+                            formPopup.show();
+                        }
+                        else {
+                            updateAccordionScrollViewHeight();
+                        }
+                    }
+                    loadForm(entity);
+                }, MobileCRM.bridge.alert);
+            }, function (error) { MobileCRM.bridge.alert(error); })
+        }
+
+        function createFormAccordion() {
+            formAccordion = $('#formAccordion').dxAccordion({
+                dataSource: accordionItems,
+                height: '99%',
+                onSelectionChanged: function (e) {
+                    var i = e;
+                    switch (e.addedItems[0].id) {
+                        case 0: // taskForm
+                            break;
+                        case 1: // Task Materials
+                            loadTaskMaterials();
+                            break;
+                        case 2: // Sub Tasks
+                            loadSubTasks();
+                            break;
+                        case 3: // Task Attachments
+                            loadTaskAttachments(selected[entityName].id);
+                            break;
+                    }
+
+                    updateAccordionScrollViewHeight();
+                },
+                itemTemplate: accordionItemTemplate,
+                itemTitleTemplate: function (e) { return $('<div>').append(e.tabName); },
+            }).dxAccordion('instance');
+
+            formAccordion.expandItem(0);
+        }
+
+        function accordionItemTemplate(object, itemIndex, itemElement) {
+            switch (object.id) {
+                case 0:
+                    return $("<div>").append("<div id='taskForm' />").attr('id', object.scrollViewID);
+                    break;
+                case 1:
+                    return $("<div>").append("<div id='taskMaterialList' />").attr('id', object.scrollViewID);
+                    break;
+                case 2:
+                    return $("<div>").append("<div id='subTaskToolbar' /><br /><div id='subTaskList' />").attr('id', object.scrollViewID);
+                    break;
+                case 3:
+                    return $("<div>").append("<div id='taskAttachmentToolbar' /><br /><div id='taskAttachmentList' />").attr('id', object.scrollViewID);
+                    break
+            }
+        }
+
+        function loadForm(entity) {
+            var taskStatusEntity = new MobileCRM.FetchXml.Entity(SCHEMA.taskstatus.name);
+            taskStatusEntity.addAttribute(SCHEMA.taskstatus.Properties.id)
+            taskStatusEntity.addAttribute(SCHEMA.taskstatus.Properties.name);
+
+            var fetch = new MobileCRM.FetchXml.Fetch(taskStatusEntity);
+            fetch.execute("DynamicEntities", function (statuses) {
+                var promise = getTaskFormItems(entity.id, statuses, setupOptions);
+                promise.then(function (formItems) {
+                    var taskPromise = getTask(entity.id);
+                    taskPromise.then(function (task) {
+                        formPopup.option('title', entity.name);
+                        $('#taskForm').dxForm({
+                            items: formItems,
+                            labelLocation: "top",
+                            formData: task[0],
+                        }).dxForm('instance');
+                        $.each(task, function (i, t) {
+                            var taskForm = $('#taskForm').dxForm('instance');
+                            if (taskForm) {
+                                // update the form with the correct task response value
+                                if (t.tr_responsetype) {
+                                    switch (parseInt(t.tr_responsetype)) {
+                                        case 1: // string
+                                            taskForm.updateData('tr_' + t.tr_id, t.tr_stringresponse);
+                                            break;
+                                        case 2: // numeric response
+                                            var value = parseFloat(t.tr_numericresponse) === 0 ? null : parseFloat(t.tr_numericresponse);
+                                            taskForm.updateData('tr_' + t.tr_id, value);
+                                            break;
+                                        case 3: // integer
+                                        case 4: // yes/no
+                                        case 7: // repair
+                                            var value = parseInt(t.tr_integerresponse) === 0 ? null : parseInt(t.tr_integerresponse);
+                                            taskForm.updateData('tr_' + t.tr_id, value);
+                                            break;
+                                        case 5: // list response
+                                            var responsesPromise = getListReponseItems(t.tr_gpresponselistid);
+                                            responsesPromise.then(function (data) {
+                                                taskForm.getEditor('tr_' + t.tr_id).option('items', data);
+                                                taskForm.updateData('tr_' + t.tr_id, t.tr_stringresponse);
+                                            })
+                                            break;
+                                        case 6: // text response
+                                            taskForm.updateData('tr_' + t.tr_id, t.tr_textresponse);
+                                            break;
+                                        case 8: // date response
+                                            if ((new Date(t.tr_dateresponse)).getFullYear() <= 1900) {
+                                                taskForm.updateData('tr_' + t.tr_id, null);
+                                            }
+                                            else {
+                                                taskForm.updateData('tr_' + t.tr_id, t.tr_dateresponse);
+                                            }
+                                            break;
+                                        default:
+                                            MobileCRM.bridge.alert("Load Task Response Value Error: Unknown task response type");
+                                    }
+                                }
+                            }
+                        })
+                    }, function (error) {
+                        MobileCRM.bridge.alert(error);
+                    });
+                })
+            }, MobileCRM.bridge.alert, null)
+        }
+
+        function getTask(taskid) {
+            var deferred = $.Deferred();
+
+            var entity = new MobileCRM.FetchXml.Entity(SCHEMA.task.name);
+            entity.addAttributes();
+
+            var responseLink = entity.addLink(SCHEMA.taskresponse.name, SCHEMA.taskresponse.Properties.taskid, SCHEMA.task.Properties.id, "outer");
+            responseLink.alias = 'tr';
+            $.each(taskResponseAttributes, function (i, v) {
+                responseLink.addAttribute(v);
+            });
+            entity.addFilter().where(SCHEMA.task.Properties.id, 'eq', taskid);
+
+            var fetch = new MobileCRM.FetchXml.Fetch(entity);
+            fetch.execute("JSON", function (task) {
+                var formattedData = [];
+                $.each(task, function (i, t) {
+                    if (task.gpequipmentid === undefined) {
+                        task.gpequipmentid = '';
+                    }
+                    if (task.gpsublocationid === undefined) {
+                        task.gpsublocationid = '';
+                    }
+                    $(taskResponseAttributes).each(function (index, attr) {
+                        t["tr_" + attr] = t["tr." + attr]
+                    });
+                    formattedData.push(t);
+                });
+                return deferred.resolve(formattedData);
+            }, function (error) {
+                MobileCRM.bridge.alert(error);
+                return deferred.reject(error);
+            }, null);
+
+            return deferred.promise();
+        }
+
+        function getListReponseItems(gpresponselistid) {
+            var deferred = $.Deferred();
+            var entity = new MobileCRM.FetchXml.Entity(SCHEMA.taskresponselistvalue.name);
+            entity.addAttribute(SCHEMA.taskresponselistvalue.Properties.responsevalue);
+
+            entity.addFilter().where(SCHEMA.taskresponselistvalue.Properties.name, 'eq', gpresponselistid);
+
+            var fetch = new MobileCRM.FetchXml.Fetch(entity);
+            fetch.execute("JSON", function (taskResponseListValues) {
+                return deferred.resolve(taskResponseListValues);
+            }, function (error) {
+                MobileCRM.bridge.alert(error);
+                return deferred.reject(error);
+            }, null);
+            return deferred.promise();
+        }
+
+        function setStatusOnSelectedTasks(status) {
+            var deferred = $.Deferred();
+
+            $(function () {
+                var tasks = mainList.option('items');
+                var selectedTasks = [];
+
+                if (mainList.option('grouped')) {
+                    tasks.forEach(function (item, index, array) {
+                        item.items.forEach(function (t, index, array) {
+                            selectedTasks.push(t);
+                        });
+                    });
+                }
+                else {
+                    selectedTasks = tasks;
+                }
+
+                var itemsDeferred = [];
+                selectedTasks.forEach(function (task) {
+                    if (task.taskstatusid && task.taskstatusid.primaryName !== status.primaryName) {
+                        itemsDeferred.push(setStatusOnTask(status, task));
+                    }
+                });
+
+                $.when.apply($, itemsDeferred).then(function () {
+                    $(arguments).each(function (i, isMissingResponses) {
+                        if (isMissingResponses) {
+                            sayLocalization('Alert.MissingRequiredTaskResponse');
+                            return false;
+                        }
+                    });
+
+                    return deferred.resolve();
+                }, function (err) { return deferred.reject(err); });
+            });
+            return deferred.promise();
+        }
+
+        function setStatusOnTask(status, task, completiondate) {
+            var deferred = $.Deferred();
+
+            checkOpenRequiredResponses(task).then(function (missingRequired) {
+                if (status.primaryName === openStatus || !missingRequired) {
+                    MobileCRM.DynamicEntity.loadById(SCHEMA.task.name, task.id, function (entity) {
+                        if (entity.properties.taskstatusid !== status) {
+                            entity.properties.taskstatusid = status;
+
+                            var completionDate = completiondate ? new Date(completiondate) : new Date();
+                            entity.properties.completiondate = status.primaryName !== completeStatus ? null : completionDate;
+
+                            entity.save(function (error) {
+                                if (error) {
+                                    return deferred.reject(error);
+                                }
+                                else {
+                                    // Update the list to show the new status
+                                    var store = taskDataStore.store();
+                                    store.update(task.id, { taskstatusid: status, completiondate: this.properties.completiondate }).done(function (dataObj, key) {
+                                        setStatusOnAllSubTasks(status, task, dataObj.completiondate).then(function () {
+                                            return deferred.resolve(false);
+                                        }, function (error) { return deferred.reject(error); });
+                                    }).fail(function (error) {
+                                        return deferred.reject(error);
+                                    });
+                                }
+                            })
+                        }
+                        else {
+                            return deferred.resolve(false);
+                        }
+                    }, function (err) { return deferred.reject("Load Task Error:\n" + err); });
+                }
+                else {
+                    if (missingRequired && missingRequired === true) {
+                        if (task.completiondate || task.taskstatusid && task.taskstatusid.primaryName === "COMPLETE") {
+                            // Set Task Status to Open and clear out Completion Date
+                            fetchDefaultOpenStatusId().then(function (openStatusId) {
+                                MobileCRM.DynamicEntity.loadById(SCHEMA.task.name, task.id, function (entity) {
+                                    entity.properties.completiondate = null;
+                                    entity.properties.taskstatusid = new MobileCRM.DynamicEntity(SCHEMA.taskstatus.name, openStatusId);
+                                    entity.save(function (err) {
+                                        if (err) {
+                                            return deferred.reject("Task Save Error:\n" + err);
+                                        }
+                                        else {
+                                            // Update the list to show the new status
+                                            var store = taskDataStore.store();
+                                            var openStatus = this.properties.taskstatusid;
+                                            openStatus.primaryName = "OPEN";
+                                            store.update(task.id, { taskstatusid: openStatus, completiondate: null }).done(function (dataObj, key) {
+                                                mainList.reload();
+
+                                                // Update the form to show the new status
+                                                var taskForm = $('#taskForm').dxForm('instance');
+                                                taskForm.updateData('completiondate', null);
+                                                taskForm.updateData('taskstatusid.id', openStatus.id);
+                                                taskForm.updateData('taskstatusid', openStatus);
+
+                                                return deferred.reject(MobileCRM.Localization.get("Alert.MissingRequiredTaskResponse"));
+                                            }).fail(function (error) {
+                                                return deferred.reject(error);
+                                            });
+                                        }
+                                    });
+                                }, function (err) { return deferred.reject("Load Task Error:\n" + err); });
+                            }, function (err) { return deferred.reject("Fetch Open Status Error:\n" + err); });
+                        }
+                        else {
+                            return deferred.reject(MobileCRM.Localization.get("Alert.MissingRequiredTaskResponse"));
+                        }
+                    }
+                    else {  // missingChildResponse
+                        return deferred.reject(MobileCRM.Localization.get("Alert.MissingRequiredChildTaskResponse"));
+                    }
+                }
+            }, function (err) { return deferred.reject(err); });
+            return deferred.promise();
+        }
+
+        function filterList(index) {
+            var statusNeeded = index === 0 ? '' : index === 1 ? openStatus : completeStatus;
+            if (index === 0) {
+                mainList.option('searchValue', null);
+            }
+            else {
+                var promise = getStatus(statusNeeded);
+                promise.then(function (status) {
+                    mainList.option('searchValue', status.primaryName);
+                }, function (error) {
+                    MobileCRM.bridge.alert(error);
+                });
+            }
+        }
+
+        function updateAccordionScrollViewHeight() {
+            var formAccordion = $("#formAccordion").dxAccordion('instance');
+            if (formAccordion) {
+                // Calculate height of accordion item body
+                formAccordion.updateDimensions();
+                var accordionHeight = $(".dx-accordion").height();
+                var accordionItemCount = Object.keys(formAccordion.option('dataSource')).length;
+                var accordionItemTitleHeight = $(".dx-accordion-item-title").outerHeight();
+                var accordionItemBodyPadding = $(".dx-accordion-item-body").outerHeight() - $(".dx-accordion-item-body").height();
+                var scrollViewHeight = accordionHeight - (accordionItemCount * accordionItemTitleHeight) - accordionItemBodyPadding;
+                // Update the current visible accordion item
+                var selectedItem = formAccordion.option('selectedItem');
+                if (selectedItem) {
+                    $("#" + selectedItem.scrollViewID).dxScrollView({
+                        showScrollbar: "always",
+                        width: '100%',
+                        height: scrollViewHeight
+                    });
+                }
+            }
+        }
+    </script>
+</body>
+</html>

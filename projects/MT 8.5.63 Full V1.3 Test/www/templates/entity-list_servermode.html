@@ -1,0 +1,254 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <!-- Activate IE9 document mode, if available -->
+    <meta charset="utf-8" http-equiv="X-UA-Compatible" content="IE=edge" />
+    <!-- Defined iOS viewport -->
+    <meta name="viewport" content="initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=false">
+    <!-- Disable iOS Phone No Detection -->
+    <meta name="format-detection" content="telephone=no" />
+    <!-- DevExtreme dependencies -->
+    <script type="text/javascript" src="../../scripts/jquery-3.3.1.min.js"></script>
+    <!-- DevExtreme themes -->
+    <link rel="stylesheet" type="text/css" href="../../css/dx.common.css" />
+    <link rel="stylesheet" type="text/css" href="../../css/dx.light.css" />
+    <!-- A DevExtreme library -->
+    <script type="text/javascript" src="../../scripts/dx.all.js"></script>
+    <!-- Offline HTML JavaScript Bridge-->
+    <script type="text/javascript" src="../../scripts/JSBridge.js"></script>
+    <script type="text/javascript" src="../../scripts/k2aMethods.js"></script>
+    <script type="text/javascript" src="../../enum/Schema.js"></script>
+    <script type="text/javascript" src="../../enum/setupoption.js"></script>
+    <!-- Offline HTML Template Factory-->
+    <script type="text/javascript" src="../../templates/listItem-factory.js"></script>
+    <script type="text/javascript" src="../../templates/toolbar-factory.js"></script>
+    <!-- Offline HTML Styling -->
+    <link rel="stylesheet" type="text/css" href="../../css/k2a.css" />
+    <title>Entity List</title>
+</head>
+<body>
+    <div id="toast"></div>
+    <div class="fixedPosition">
+        <div id="mainToolbar"></div><br>
+        <div id="listToolbar"></div>
+        <div id="mainScrollView">
+            <div id='mainList'></div>
+        </div>
+        <div id="actionSheet"></div>
+        <div id="filterPopup"></div>
+    </div>
+
+    <script>
+        //============== INITIAL SETTINGS ================
+        // TODO: Update var entityName, add/remove variables as needed
+        var isOnline = false, entityName = "additionalwork", gpTechnicianID;
+        // TODO: Update the initial list sort values
+        // Note: Sort values pulled from current woodford
+        var sortDesc = false, sortSelector = 'name';
+        //============== OFFLINE/ONLINE DATA ================
+        // TODO: Update if not using server mode
+        var entityListData, onEntityListData;
+        //============== SELECTED DATA ================
+        var selected = { entityName: null };
+        //============== FETCH DATA ================
+        // TODO: Update list of setupoptions needed
+        var requiredSetupOptions = ['UseServerMode', 'UseBarcoding'];
+        // TODO: Update array of attributes for the entity that will be fetched
+        var entityAttributes = ['id', 'name'];
+        // TODO: Update array of items to sort the list by
+        // Note: Sort attribute must also be in the fetch attribute array
+        // Note: Sort values pulled from current woodford
+        var listSortItems = [
+            { display: "Name", attribute: 'name' }
+        ];
+        // TODO: Update array of items to search the list by
+        // Note: Include any attributes that are visible on the list
+        var listSearchItems = ['name'];
+        // TODO: Update array of items to filter the list by (need caption, dataField, dataType)
+        // Note: See listItem-factory.js for list of dataType (FilterDataType)
+        // To have a lookup filter then use dataType: FilterDataType.object
+        var listFilterItems = [
+            { caption: "Name", dataField: 'name', dataType: FilterDataType.string }
+        ];
+        // TODO: Update the list template
+        var listItemTemplate = function (data, _, element) {
+            element.append(
+
+            );
+        };
+        //============== TOOLBAR ITEMS ================
+        // TODO: Update Toolbar Items if needed
+        // TODO: Update 'TOOLBAR FUNCTIONS' section of this file using toolbar-factory.js
+        // to see if any functions are needed - have to match name (for example --> btnDiscardClicked)
+        var mainToolbarItems = [
+            ToolbarItemType.btnBack, ToolbarItemType.switchMode, ToolbarItemType.btnNew
+        ];
+        var listToolbarItems = [
+            ToolbarItemType.btnSort, ToolbarItemType.selectSort, ToolbarItemType.btnFilter
+        ];
+        //============== LIST ACTION ITEMS ================
+        // TODO: Update List Action Items
+        // TODO: Update 'LIST EXECUTIONS' section of this file with the onClick functions
+        var actionItems = [
+            { text: "Edit", onClick: editEntity },
+            { text: "Attachments", onClick: viewAttachments }
+        ];
+
+        $(function () {
+            //============== ANDROID CHECK ================
+            MobileCRM.Platform.preventBackButton(btnBackClicked);
+
+            //============== LOADPANEL ================
+            loading = MobileCRM.UI.Form.showPleaseWait("Loading");
+
+            //============== SCROLLVIEW ================
+            mainScrollView = $("#mainScrollView").dxScrollView({
+                showScrollbar: "always",
+                height: function () { return window.innerHeight - 80; },
+                width: '100%'
+            }).dxScrollView("instance");
+            $(window).resize(function () {
+                checkIsMultiPanel(mainToolbar); // Update toolbar if needed
+                repaintScrollView(mainScrollView);
+            });
+
+            //============== TOOLBARS ================
+            mainToolbar = $("#mainToolbar").dxToolbar({
+                items: (new ToolbarFactory()).addItems(mainToolbarItems)
+            }).dxToolbar("instance");
+            listToolbar = $("#listToolbar").dxToolbar({
+                items: (new ToolbarFactory()).addItems(listToolbarItems)
+            }).dxToolbar("instance");
+
+            //============== LIST ================
+            mainList = (new ListFactory()).createItem("#mainList", entityName, [
+                { name: 'searchExpr', value: listSearchItems },
+                { name: 'itemTemplate', value: listItemTemplate }
+            ]);
+
+            //============== ACTION SHEETS ================
+            actionSheet = (new ActionSheetFactory()).createItem(actionItems, "#actionSheet");
+
+            //============== EVENT HANDLERS ================
+            MobileCRM.bridge.onGlobalEvent("IFrameFormClosed", function (closedForm) {
+                if (closedForm.options && closedForm.options.entityName === entityName)
+                    fetchListEntityData();
+            }, true);
+            MobileCRM.bridge.onGlobalEvent("EntityFormClosed", function (closedForm) {
+                if (closedForm.entity && closedForm.entity.entityName === entityName)
+                    fetchListEntityData();
+            }, true);
+
+            loadSetupOptions(loadListOptions);
+        });
+
+        //============== LOAD OPTIONS ================
+        function loadListOptions() {
+            loadToolbarOptions();
+            loadListItemOptions();
+        }
+        function loadToolbarOptions() {
+            if (typeof listFilterItems !== 'undefined' && listFilterItems.length > 0)
+                (new FilterFactory()).createFilterPopup(mainList, listToolbar);
+            // TODO: Update Toolbar Options if needed
+            if (setupOptions.UseServerMode)
+                updateToolbarItem(mainToolbar, ToolbarItemType.switchMode, "visible", true);
+
+            updateToolbarItem(listToolbar, ToolbarItemType.selectSort, "options.dataSource", listSortItems);
+            updateToolbarItem(listToolbar, ToolbarItemType.selectSort, "options.value", sortSelector); // listSortItems[0].attribute);
+            checkIsMultiPanel(mainToolbar);
+        }
+        function loadListItemOptions() {
+            if (setupOptions.UseBarcoding)
+                addBarcodeSearch();
+
+            // TODO: Add logic if need to disable list
+            enableList();
+            // disableList();
+        }
+
+        function disableList() {
+            mainList.option("disabled", true);
+            mainToolbar.option("disabled", true);
+            listToolbar.option("disabled", true);
+            loading.close();
+            showToast("List Disabled", "error");
+        }
+        function enableList() {
+            // TODO: Add any additional fetches that are needed (for example fetchEmployee), ending with fetchListEntityData()
+            // Otherwise --> fetchListEntityData();
+            // getTechnicianID(function(res) {
+            //     gpTechnicianID = res;
+            fetchListEntityData();
+            // });
+        }
+
+        //============== LOAD DATA ================
+        function fetchListEntityData() {
+            // TODO: If not using Server Mode, can remove connection check and just fetch data
+            connectionCheck(isOnline, fetchEntity);
+        }
+        function fetchEntity() {
+            var entity = new MobileCRM.FetchXml.Entity(entityName);
+            $(entityAttributes).each(function (index, attribute) {
+                entity.addAttribute(attribute);
+            });
+            entity.orderBy(sortSelector, sortDesc);
+
+            var fetch = new MobileCRM.FetchXml.Fetch(entity);
+            fetch.execute("JSON", function (res) {
+                loadListData(mainList, res);
+                entityListData = res;
+                loading.close();
+            }, alertError);
+        }
+
+        //============== TOOLBAR FUNCTIONS ================
+        function btnSortClicked() {
+            loadListData(mainList, isOnline ? onEntityListData : entityListData);
+        }
+        function sortSelected() {
+            loadListData(mainList, isOnline ? onEntityListData : entityListData);
+        }
+        function switchModeChanged(e) {
+            loading = MobileCRM.UI.Form.showPleaseWait("Loading");
+            isOnline = e.value;
+            fetchListEntityData();
+        }
+        function btnNewClicked() {
+            // TODO: Update Entity form path
+            MobileCRM.UI.IFrameForm.show("Additional Work",
+                "file:///entity/AdditionalWork/additionalwork-form.html", false,
+                option = { isNew: true, entityName: entityName });
+        }
+
+        //============== LIST ITEM FUNCTIONS ================
+        function listItemClicked() {
+            if (isOnline)
+                viewEntity();
+            else
+                actionSheet.option({
+                    title: entityName + ": " + selected[entityName].name,
+                    visible: true
+                });
+        }
+
+        //============== LIST EXECUTIONS ================
+        // TODO: Update List Executions as needed for actionsheet
+        function editEntity() {
+            MobileCRM.UI.IFrameForm.show("Additional Work",
+                "file:///entity/AdditionalWork/additionalwork-form.html", false,
+                option = { isNew: false, entityID: selected[entityName].id, entityName: entityName });
+        }
+        function viewEntity() {
+            // MobileCRM.UI.FormManager.showEditDialog(entityName, selected[entityName].id);
+            MobileCRM.UI.IFrameForm.show("Additional Work",
+                "file:///entity/AdditionalWork/additionalwork-form.html", false,
+                option = { isNew: false, entityID: selected[entityName].id, entityName: entityName });
+        }
+        function viewAttachments() {
+            showToast("Attachments");
+        }
+    </script>
+</body>
+</html>

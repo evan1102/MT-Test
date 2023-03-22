@@ -1,0 +1,131 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<EntityList xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" UseSyncFilter="true">
+  <Attributes>
+    <EntityName>appointment</EntityName>
+    <CamelCase>appointment</CamelCase>
+    <VisualStudioProjectId>00000000-0000-0000-0000-000000000000</VisualStudioProjectId>
+    <ClassBinding />
+  </Attributes>
+  <ComponentId>00000000-0000-0000-0000-000000000000</ComponentId>
+  <Name>Service Appointments - Cal</Name>
+  <Kind>List</Kind>
+  <IsDefault>false</IsDefault>
+  <IsHidden>true</IsHidden>
+  <Fetch version="1.0">
+    <entity name="appointment">
+      <filter type="and">
+        <condition attribute="gpappointmenttype" operator="eq" value="1" />
+        <condition attribute="ownerid" operator="eq-userid" />
+      </filter>
+      <link-entity name="appointmentstatus" alias="L0" from="id" to="appointmentstatusid" link-type="inner">
+        <filter type="and">
+          <filter type="and">
+            <condition attribute="name" operator="ne" value="COMPLETE" />
+            <condition attribute="name" operator="ne" value="RE-ASSIGN" />
+          </filter>
+        </filter>
+      </link-entity>
+      <link-entity name="servicecall" alias="L1" from="id" to="servicecallid" link-type="inner" />
+    </entity>
+  </Fetch>
+  <Search>
+    <attribute schema="appointmentstatusid" method="Contains" reference="true" />
+    <attribute schema="description" method="Contains" />
+    <attribute schema="location" method="Contains" />
+    <attribute schema="name" method="Contains" />
+    <attribute schema="technicianactivityid" method="Contains" reference="true" />
+  </Search>
+  <OrderBy>startdate</OrderBy>
+  <SerializedBindings>
+    <string>appointmentstatusid</string>
+    <string>description</string>
+    <string>scheduledend</string>
+    <string>estimatehours</string>
+    <string>gpappointmentid</string>
+    <string>gpappointmenttype</string>
+    <string>gpjobnumber</string>
+    <string>gpservicecallid</string>
+    <string>id</string>
+    <string>location</string>
+    <string>regardingobjectid</string>
+    <string>startdate</string>
+    <string>scheduledstart</string>
+    <string>name</string>
+    <string>technicianactivityid</string>
+    <string>jobid.job.customerid.customer.name</string>
+    <string>jobid.job.locationid.location.name</string>
+    <string>servicecallid.servicecall.description</string>
+    <string>servicecallid.servicecall.locationid</string>
+    <string>servicecallid.servicecall.customerid.customer.name</string>
+    <string>servicecallid.servicecall.locationid.location.name</string>
+  </SerializedBindings>
+  <SerializedTemplates>
+    <RowTemplate>
+      <DesignWidth>240</DesignWidth>
+      <DesignHeight>40</DesignHeight>
+      <Name>Default</Name>
+      <Width>240</Width>
+      <Height>68</Height>
+      <SerializedBackground>0</SerializedBackground>
+      <SerializedSelectedBackground>0</SerializedSelectedBackground>
+      <SerializedChildren>
+        <CellTemplate SchemaName="itemTitle">
+          <IsConstant>false</IsConstant>
+          <StyleName>primary</StyleName>
+          <Bounds>2,2,146,22</Bounds>
+          <CellKind>0</CellKind>
+          <Anchor>13</Anchor>
+        </CellTemplate>
+        <CellTemplate SchemaName="startdate">
+          <IsConstant>false</IsConstant>
+          <StyleName>r_gray_date</StyleName>
+          <Bounds>148,6,90,12</Bounds>
+          <CellKind>0</CellKind>
+          <Anchor>13</Anchor>
+        </CellTemplate>
+        <CellTemplate SchemaName="servicecallid.servicecall.locationid.location.name">
+          <IsConstant>false</IsConstant>
+          <StyleName>gray</StyleName>
+          <Bounds>2,24,180,14</Bounds>
+          <CellKind>0</CellKind>
+          <Anchor>13</Anchor>
+        </CellTemplate>
+        <CellTemplate SchemaName="estimatehours">
+          <IsConstant>false</IsConstant>
+          <StyleName>r_gray_currency</StyleName>
+          <Bounds>182,24,56,14</Bounds>
+          <CellKind>0</CellKind>
+          <Anchor>13</Anchor>
+        </CellTemplate>
+        <CellTemplate SchemaName="description">
+          <IsConstant>false</IsConstant>
+          <StyleName>gray</StyleName>
+          <Bounds>2,38,180,14</Bounds>
+          <CellKind>0</CellKind>
+          <Anchor>13</Anchor>
+        </CellTemplate>
+        <CellTemplate SchemaName="appointmentstatusid">
+          <IsConstant>false</IsConstant>
+          <StyleName>r_gray</StyleName>
+          <Bounds>182,38,56,14</Bounds>
+          <CellKind>0</CellKind>
+          <Anchor>13</Anchor>
+        </CellTemplate>
+        <CellTemplate SchemaName="servicecallid.servicecall.description">
+          <IsConstant>false</IsConstant>
+          <StyleName>gray</StyleName>
+          <Bounds>2,52,236,14</Bounds>
+          <CellKind>0</CellKind>
+          <Anchor>13</Anchor>
+        </CellTemplate>
+      </SerializedChildren>
+    </RowTemplate>
+  </SerializedTemplates>
+  <TemplateSelectorRule>&lt;?xml version="1.0" encoding="utf-16"?&gt;&lt;Workflow e="true" isvalid="true" syntaxVersion="7" version="0"&gt;&lt;definition e="false"&gt;&lt;var&gt;itemTitle&lt;/var&gt;&lt;func&gt;Clear&lt;/func&gt;&lt;type&gt;String&lt;/type&gt;&lt;/definition&gt;&lt;definition e="false"&gt;&lt;var&gt;myList&lt;/var&gt;&lt;func&gt;CreateListVariable&lt;/func&gt;&lt;type&gt;StringList&lt;/type&gt;&lt;/definition&gt;&lt;function e="false"&gt;&lt;var&gt;myList&lt;/var&gt;&lt;arg&gt;var:Entity.name&lt;/arg&gt;&lt;func&gt;AddItem&lt;/func&gt;&lt;/function&gt;&lt;branch e="true"&gt;&lt;if e="true"&gt;&lt;conditions e="true" op="And"&gt;&lt;condition e="false"&gt;&lt;var&gt;Entity.gpappointmenttype&lt;/var&gt;&lt;arg&gt;Integer:1&lt;/arg&gt;&lt;op&gt;Equal&lt;/op&gt;&lt;/condition&gt;&lt;/conditions&gt;&lt;action e="true"&gt;&lt;function e="true"&gt;&lt;var&gt;myList&lt;/var&gt;&lt;arg&gt;var:Entity.(servicecallid.servicecall.customerid.customer.name)&lt;/arg&gt;&lt;func&gt;AddItem&lt;/func&gt;&lt;/function&gt;&lt;function e="false"&gt;&lt;var&gt;myList&lt;/var&gt;&lt;arg&gt;var:Entity.(servicecallid.servicecall.locationid.location.name)&lt;/arg&gt;&lt;func&gt;AddItem&lt;/func&gt;&lt;/function&gt;&lt;function e="false"&gt;&lt;var&gt;myList&lt;/var&gt;&lt;arg&gt;var:Entity.description&lt;/arg&gt;&lt;func&gt;AddItem&lt;/func&gt;&lt;/function&gt;&lt;function e="false"&gt;&lt;var&gt;itemTitle&lt;/var&gt;&lt;arg&gt;String:{0}\n{1}\n{2}\n{3}&lt;/arg&gt;&lt;arg&gt;var:myList&lt;/arg&gt;&lt;func&gt;Format&lt;/func&gt;&lt;/function&gt;&lt;/action&gt;&lt;/if&gt;&lt;/branch&gt;&lt;/Workflow&gt;</TemplateSelectorRule>
+  <CustomProperties>
+    <SerializedClassBinding name="itemTitle" label="itemTitle" type="String" />
+    <SerializedClassBinding name="myList" label="myList" type="StringList" />
+  </CustomProperties>
+  <SerializedChildren />
+  <Height>40</Height>
+</EntityList>

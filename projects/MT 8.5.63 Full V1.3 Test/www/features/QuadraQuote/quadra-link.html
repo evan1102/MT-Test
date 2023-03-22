@@ -1,0 +1,211 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <!-- Activate IE9 document mode, if available -->
+    <meta charset="utf-8" http-equiv="X-UA-Compatible" content="IE=edge" />
+    <!-- Defined iOS viewport -->
+    <meta name="viewport" content="initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=false">
+    <!-- DevExtreme dependencies -->
+    <script type="text/javascript" src="../../scripts/jquery-3.3.1.min.js"></script>
+    <!-- Offline HTML JavaScript Bridge-->
+    <script type="text/javascript" src="../../scripts/JSBridge.js"></script>
+    <script type="text/javascript" src="../../scripts/k2aMethods.js"></script>
+    <title>Quadra Link</title>
+</head>
+<body onload="onBodyLoad()">
+    <script>
+        //============== INITIAL SETTINGS ================
+        var gpservicecallid, gpemployeeid, gpcustomernumber, gplocationnumber;
+        var contractid, gpcallername, gpcalleremailaddress, gpcallerphone, gpequipmentid;
+        var createSuccessMsg = "Quadra recommendation successfully created:";
+        var multipleCreateSuccessMsg = "Quadra recommendations successfully created:";
+
+        function onBodyLoad() {
+            MobileCRM.bridge.onGlobalEvent("FormItemsUpdated", function (args) {
+                MobileCRM.UI.EntityForm.requestObject(
+                    function (entityForm) {
+                        // Only Show Quadra Link if Service Call Apointment
+                        if (entityForm.entity.properties["gpappointmenttype"] === 1)
+                            checkSetupOption();
+                    },
+                    MobileCRM.bridge.alert, null);
+
+                //============== EVENT HANDLERS ================
+                MobileCRM.bridge.onGlobalEvent("IFrameFormClosed", function (iFrameForm) {
+                    if (iFrameForm.form && iFrameForm.form.caption.indexOf(createSuccessMsg) > -1) {
+                        setResolutionNote(iFrameForm.form.caption);
+                    }
+                }, true);
+            }, true);
+        }
+
+        //============== OFFLINE HTML FUNCTIONS ================
+        // ----- LOAD SYSTEM DATA -----
+        function checkSetupOption() {
+            var entity = new MobileCRM.FetchXml.Entity("setupoption");
+            entity.addAttribute('name');
+            entity.addAttribute('optionvalue');
+
+            entity.filter = new MobileCRM.FetchXml.Filter();
+            entity.filter.where('name', 'eq', 'UseQuadra');
+
+            var fetch = new MobileCRM.FetchXml.Fetch(entity);
+            fetch.execute("JSON", function (res) {
+                if (!res[0]) return;
+                else {
+                    useQuadra = res[0].optionvalue === "True" ? true : false;
+                    if (useQuadra) {
+                        loadAppointmentSettings();
+                        createQuadraLinkItem();
+                    }
+                }
+            }, MobileCRM.bridge.alert, null);
+        }
+        function loadAppointmentSettings() {
+            MobileCRM.UI.EntityForm.requestObject(
+                function (entityForm) {
+                    gpservicecallid = entityForm.entity.properties["gpservicecallid"];
+
+                    if (entityForm.entity.properties.servicecallid) {
+                        MobileCRM.DynamicEntity.loadById(
+                            "servicecall",
+                            entityForm.entity.properties["servicecallid"].id,
+                            function (call) {
+                                gpcustomernumber = call.properties["gpcustomernumber"];
+                                gplocationnumber = call.properties["gplocationnumber"];
+                                contractid = call.properties.contractid ? call.properties.contractid.primaryName : "";
+                                gpcallername = call.properties.gpcallername ? call.properties.gpcallername : "";
+                                gpcalleremailaddress = call.properties.gpcalleremailaddress ? call.properties.gpcalleremailaddress : "";
+                                gpcallerphone = call.properties.gpcallerphone ? call.properties.gpcallerphone : "";
+                                gpequipmentid = (call.properties.gpequipmentid && call.properties.gpequipmentid !== "PENDING") ? call.properties.gpequipmentid : "";
+                            },
+                            MobileCRM.bridge.alert, null);
+                    }
+                    else {
+                        MobileCRM.bridge.alert("Quadra Link Error: Unable to load Service Call details.");
+                    }
+
+                    if (entityForm.entity.properties.employeeid) {
+                        MobileCRM.DynamicEntity.loadById(
+                            "employee",
+                            entityForm.entity.properties["employeeid"].id,
+                            function (employee) {
+                                gpemployeeid = employee.properties["gpemployeeid"];
+                            },
+                            MobileCRM.bridge.alert, null);
+                    }
+                    else {
+                        MobileCRM.bridge.alert("Quadra Link Error: Unable to load Employee details.");
+                    }
+                },
+                MobileCRM.bridge.alert, null);
+        }
+
+        // ----- EXECUTIONS -----
+        function createQuadraLinkItem() {
+            // Create the Quadra linkItem on the Resolution tab
+            MobileCRM.UI.EntityForm.requestObject(function (entityForm) {
+                // Only enable for service call appointments
+                if (entityForm.entity.properties['gpappointmenttype'] === 1) {
+                    var detailView = entityForm.getDetailView("Resolution");
+                    var linkItem = detailView.getItemByName("QuadraLink");
+                    if (linkItem) {
+                        // The item was already inserted on the form.
+                        // Just set the value property and bind the handler.
+                        linkItem.isVisible = true;
+                        linkItem.isEnabled = false;
+                        linkItem.label = "Quadra";
+                        detailView.registerClickHandler(linkItem, onLinkItemClick);
+                        loadLinkItemValue();
+                    }
+                    else {
+                        // create MobileCRM.UI.DetailViewItems.LinkItem
+                        linkItem = new MobileCRM.UI.DetailViewItems.LinkItem("QuadraLink", "Quadra");
+                        linkItem.value = "Create Recommendation";
+                        detailView.registerClickHandler(linkItem, onLinkItemClick);
+                        detailView.insertItem(linkItem, detailView.getItemIndex('isinternal')); // Above Internal Note Switch
+                    }
+                }
+            }, MobileCRM.bridge.alert, null);
+        }
+        function loadLinkItemValue() {
+            MobileCRM.UI.EntityForm.requestObject(function (entityForm) {
+                var dv = entityForm.getDetailView("Resolution");
+                var linkItem = dv.getItemByName("QuadraLink");
+                linkItem.setTypedValue("value", "System.String", "Create Recommendation"); // The type must be set explicitly for LinkItem
+            }, MobileCRM.bridge.alert);
+        }
+        function onLinkItemClick() {
+            MobileCRM.UI.EntityForm.requestObject(
+                function (apptCompletionForm) {
+                    MobileCRM.UI.IFrameForm.show("Quadra",
+                        "file:///features/QuadraQuote/index.html", false,
+                        options = {
+                            customerNumber: gpcustomernumber,
+                            addressCode: gplocationnumber,
+                            employeeId: gpemployeeid,
+                            serviceCallId: gpservicecallid,
+                            contractNumber: contractid,
+                            callerName: gpcallername,
+                            callerEmail: gpcalleremailaddress,
+                            callerPhone: gpcallerphone,
+                            equipmentId: gpequipmentid
+                        }
+                    );
+                },
+                MobileCRM.bridge.alert, null);
+
+        }
+
+        function setResolutionNote(data) {
+            MobileCRM.UI.EntityForm.requestObject(
+                function (entityForm) {
+                    var detailView = entityForm.getDetailView("Resolution");
+                    var item = detailView.getItemByName("resolutionnote");
+                    if (item) {
+                        if (item.value) {
+                            if (item.value.trim().length > 0) {   // Resolution Note already has text
+                                if (item.value.indexOf(createSuccessMsg) > -1 ||
+                                    item.value.indexOf(multipleCreateSuccessMsg) > -1) {
+                                    // Resolution Note already has recommendation
+                                    // Get and sort current note line items
+                                    genText = [];
+                                    recommendations = [];
+                                    splitNote = item.value.split("\n");
+                                    splitNote.forEach(function (line) {
+                                        if (line.indexOf("ID ") === 0)
+                                            recommendations.push(line);
+                                        else if (line.indexOf(createSuccessMsg) === -1 &&
+                                            line.indexOf(multipleCreateSuccessMsg) === -1
+                                            && line.trim().length > 0)
+                                            genText.push(line);
+                                    });
+                                    splitData = data.split("\n");
+                                    recommendations.push(splitData[1]);
+
+                                    // Fill Resolution note - start with general text, end with resolutions
+                                    item.value = "";
+                                    genText.forEach(function (line) {
+                                        item.value += line + '\n';
+                                    });
+                                    item.value += genText.length > 0 ? '\n' : '';
+                                    item.value += multipleCreateSuccessMsg + '\n';
+                                    recommendations.forEach(function (line) {
+                                        item.value += line + '\n';
+                                    });
+                                }
+                                else    // Resolution Note has text, but no Recommendations
+                                    item.value = item.value + '\n\n' + data + '\n';
+                            }
+                            else    // Resolution Note is Empty
+                                item.value = data + '\n';
+                        }
+                        else
+                            item.value = data + '\n';
+                    }
+                },
+                MobileCRM.bridge.alert, null);
+        }
+    </script>
+</body>
+</html>

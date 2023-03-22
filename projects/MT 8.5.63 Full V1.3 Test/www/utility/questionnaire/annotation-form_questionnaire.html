@@ -1,0 +1,57 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <!-- Activate IE9 document mode, if available -->
+    <meta charset="utf-8" http-equiv="X-UA-Compatible" content="IE=edge" />
+    <!-- Defined iOS viewport -->
+    <meta name="viewport" content="initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=false">
+    <!-- Disable iOS Phone No Detection -->
+    <meta name="format-detection" content="telephone=no" />
+    <!-- DevExtreme dependencies -->
+    <script type="text/javascript" src="../../scripts/jquery-3.3.1.min.js"></script>
+    <!-- A DevExtreme library -->
+    <script type="text/javascript" src="../../scripts/dx.all.js"></script>
+    <!-- Offline HTML JavaScript Bridge-->
+    <script type="text/javascript" src="../../scripts/JSBridge.js"></script>
+    <script type="text/javascript" src="../../scripts/k2aMethods.js"></script>
+    <script type="text/javascript" src="../../enum/Schema.js"></script>
+    <script type="text/javascript" src="../../enum/setupoption.js"></script>
+    <title>Entity Form</title>
+</head>
+<body>
+    <script>
+        //============== INITIAL SETTINGS ================
+        var entityName = SCHEMA.annotation.name;
+
+        $(function () {
+            //============== ANDROID CHECK ================
+            MobileCRM.Platform.preventBackButton(btnBackClicked);
+
+            loadSetupOptions(loadFormOptions);
+        });
+
+        //============== LOAD OPTIONS ================
+        function loadFormOptions() {
+            MobileCRM.UI.EntityForm.requestObject(function (entityForm) {
+                var entityProps = entityForm.entity.properties;
+
+                if (entityForm.form.showTitle) {    // Update Form Caption
+                    if (entityProps.objectid && entityProps.objectid.entityName === "resco_questionnaire") {
+                        if (entityProps.isdocument) {
+                            if (entityProps.mimetype === 'image/png') {
+                                entityForm.form.caption = "Signature";
+                            }
+                            else {
+                                entityForm.form.caption = "Inspection Report";
+                            }
+                        }
+                        else {
+                            entityForm.form.caption = "Capture Signature";
+                        }
+                    }
+                }
+            }, MobileCRM.bridge.alert);
+        }
+    </script>
+</body>
+</html>

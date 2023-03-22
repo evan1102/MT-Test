@@ -1,0 +1,689 @@
+﻿<fetchcollection>
+  <fetch version="1.0">
+    <entity name="vendor"/>
+  </fetch>
+  <fetch version="1.0">
+    <entity name="appointment">
+      <filter type="and">
+        <condition attribute="ownerid" operator="eq-userid"/>
+        <condition attribute="gptechnicianid" operator="ne" value="UNASSIGNED"/>
+        <filter type="or">
+          <condition attribute="startdate" operator="last-x-months" value="2"/>
+          <condition attribute="startdate" operator="next-x-months" value="2"/>
+        </filter>
+      </filter>
+      <link-entity name="appointmentstatus" alias="L0" from="id" to="appointmentstatusid" link-type="inner">
+        <filter type="and">
+          <condition attribute="name" operator="ne" value="RE-ASSIGN"/>
+        </filter>
+      </link-entity>
+    </entity>
+  </fetch>
+  <fetch version="1.0">
+    <entity name="appointmentstatustimestamp">
+      <link-entity name="appointment" alias="L0" from="id" to="appointmentid" link-type="inner">
+        <filter type="and">
+          <condition attribute="ownerid" operator="eq-userid"/>
+        </filter>
+      </link-entity>
+    </entity>
+  </fetch>
+  <fetch version="1.0">
+    <entity name="purchaseorderdetail">
+      <link-entity name="servicecall" alias="s" from="id" to="servicecallid" link-type="inner">
+        <link-entity name="appointment" alias="a" from="servicecallid" to="id" link-type="inner">
+          <filter type="and">
+            <condition attribute="ownerid" operator="eq-userid"/>
+          </filter>
+        </link-entity>
+      </link-entity>
+    </entity>
+  </fetch>
+  <fetch version="1.0">
+    <entity name="purchaseorder">
+      <link-entity name="purchaseorderdetail" alias="L0" from="purchaseorderid" to="id" link-type="inner">
+        <link-entity name="servicecall" alias="s" from="id" to="servicecallid" link-type="inner">
+          <link-entity name="appointment" alias="a" from="servicecallid" to="id" link-type="inner">
+            <filter type="and">
+              <condition attribute="ownerid" operator="eq-userid"/>
+            </filter>
+          </link-entity>
+        </link-entity>
+      </link-entity>
+    </entity>
+  </fetch>
+  <fetch version="1.0">
+    <entity name="purchaseorderreceipt">
+      <link-entity name="appointment" alias="L0" from="id" to="appointmentid" link-type="inner">
+        <filter type="and">
+          <condition attribute="ownerid" operator="eq-userid"/>
+        </filter>
+      </link-entity>
+    </entity>
+  </fetch>
+  <fetch version="1.0">
+    <entity name="purchaseorderreceiptdetail">
+      <link-entity name="purchaseorderreceipt" alias="por" from="id" to="purchaseorderreceiptid" link-type="inner">
+        <link-entity name="appointment" alias="L0" from="id" to="appointmentid" link-type="inner">
+          <filter type="and">
+            <condition attribute="ownerid" operator="eq-userid"/>
+          </filter>
+        </link-entity>
+      </link-entity>
+    </entity>
+  </fetch>
+  <fetch version="1.0">
+    <entity name="servicecall">
+      <link-entity name="appointment" alias="L0" from="servicecallid" to="id" link-type="inner">
+        <filter type="and">
+          <condition attribute="ownerid" operator="eq-userid"/>
+          <condition attribute="gptechnicianid" operator="ne" value="UNASSIGNED"/>
+          <filter type="or">
+            <condition attribute="startdate" operator="last-x-months" value="2"/>
+            <condition attribute="startdate" operator="next-x-months" value="2"/>
+          </filter>
+        </filter>
+        <link-entity name="appointmentstatus" alias="L1" from="id" to="appointmentstatusid" link-type="inner">
+          <filter type="and">
+            <condition attribute="name" operator="ne" value="RE-ASSIGN"/>
+          </filter>
+        </link-entity>
+      </link-entity>
+    </entity>
+  </fetch>
+  <fetch version="1.0">
+    <entity name="consumedinventory">
+      <link-entity name="appointment" alias="L0" from="id" to="appointmentid" link-type="inner">
+        <filter type="and">
+          <condition attribute="ownerid" operator="eq-userid"/>
+        </filter>
+        <link-entity name="location" alias="L1" from="id" to="locationid" link-type="inner">
+          <link-entity name="customer" alias="L2" from="id" to="customerid" link-type="inner"/>
+        </link-entity>
+      </link-entity>
+    </entity>
+  </fetch>
+  <fetch version="1.0">
+    <entity name="jobsafetytask">
+      <link-entity name="appointment" alias="L0" from="id" to="appointmentid" link-type="inner">
+        <filter type="and">
+          <condition attribute="ownerid" operator="eq-userid"/>
+          <condition attribute="gptechnicianid" operator="ne" value="UNASSIGNED"/>
+          <filter type="or">
+            <condition attribute="startdate" operator="last-x-months" value="1"/>
+            <condition attribute="startdate" operator="next-x-months" value="1"/>
+          </filter>
+        </filter>
+        <link-entity name="appointmentstatus" alias="L1" from="id" to="appointmentstatusid" link-type="inner">
+          <filter type="and">
+            <condition attribute="name" operator="ne" value="RE-ASSIGN"/>
+            <condition attribute="name" operator="ne" value="COMPLETE"/>
+          </filter>
+        </link-entity>
+      </link-entity>
+    </entity>
+  </fetch>
+  <fetch version="1.0">
+    <entity name="jobsafetytaskresponse">
+      <link-entity name="jobsafetytask" alias="L0" from="id" to="jobsafetytaskid" link-type="inner">
+        <link-entity name="appointment" alias="L1" from="id" to="appointmentid" link-type="inner">
+          <filter type="and">
+            <condition attribute="ownerid" operator="eq-userid"/>
+            <condition attribute="gptechnicianid" operator="ne" value="UNASSIGNED"/>
+            <filter type="or">
+              <condition attribute="startdate" operator="last-x-months" value="1"/>
+              <condition attribute="startdate" operator="next-x-months" value="1"/>
+            </filter>
+          </filter>
+          <link-entity name="appointmentstatus" alias="L2" from="id" to="appointmentstatusid" link-type="inner">
+            <filter type="and">
+              <condition attribute="name" operator="ne" value="RE-ASSIGN"/>
+              <condition attribute="name" operator="ne" value="COMPLETE"/>
+            </filter>
+          </link-entity>
+        </link-entity>
+      </link-entity>
+    </entity>
+  </fetch>
+  <fetch version="1.0">
+    <entity name="job">
+      <link-entity name="appointment" alias="L0" from="jobid" to="id" link-type="inner">
+        <filter type="and">
+          <condition attribute="ownerid" operator="eq-userid"/>
+        </filter>
+        <link-entity name="location" alias="L1" from="id" to="locationid" link-type="inner">
+          <link-entity name="customer" alias="L2" from="id" to="customerid" link-type="inner"/>
+        </link-entity>
+      </link-entity>
+    </entity>
+  </fetch>
+  <fetch version="1.0">
+    <entity name="customer">
+      <link-entity name="location" alias="L0" from="customerid" to="id" link-type="inner">
+        <link-entity name="appointment" alias="L1" from="locationid" to="id" link-type="inner">
+          <filter type="and">
+            <condition attribute="ownerid" operator="eq-userid"/>
+            <condition attribute="gptechnicianid" operator="ne" value="UNASSIGNED"/>
+            <filter type="or">
+              <condition attribute="startdate" operator="last-x-months" value="2"/>
+              <condition attribute="startdate" operator="next-x-months" value="2"/>
+            </filter>
+          </filter>
+          <link-entity name="appointmentstatus" alias="L2" from="id" to="appointmentstatusid" link-type="inner">
+            <filter type="and">
+              <condition attribute="name" operator="ne" value="RE-ASSIGN"/>
+              <condition attribute="name" operator="ne" value="COMPLETE"/>
+            </filter>
+          </link-entity>
+        </link-entity>
+      </link-entity>
+    </entity>
+  </fetch>
+  <fetch version="1.0">
+    <entity name="location">
+      <link-entity name="appointment" alias="L0" from="locationid" to="id" link-type="inner">
+        <filter type="and">
+          <condition attribute="locationid" operator="not-null"/>
+          <condition attribute="ownerid" operator="eq-userid"/>
+        </filter>
+        <link-entity name="appointmentstatus" alias="L1" from="id" to="appointmentstatusid" link-type="inner">
+          <filter type="and">
+            <condition attribute="name" operator="ne" value="RE-ASSIGN"/>
+            <condition attribute="name" operator="ne" value="COMPLETE"/>
+          </filter>
+        </link-entity>
+      </link-entity>
+    </entity>
+  </fetch>
+  <fetch version="1.0">
+    <entity name="equipment">
+      <link-entity name="location" alias="location" from="id" to="locationid" link-type="inner">
+        <link-entity name="servicecall" alias="L0" from="locationid" to="id" link-type="inner">
+          <link-entity name="appointment" alias="L1" from="servicecallid" to="id" link-type="inner">
+            <filter type="and">
+              <condition attribute="ownerid" operator="eq-userid"/>
+            </filter>
+          </link-entity>
+        </link-entity>
+        <link-entity name="customer" alias="L2" from="id" to="customerid" link-type="inner"/>
+      </link-entity>
+    </entity>
+  </fetch>
+  <fetch version="1.0">
+    <entity name="building">
+      <link-entity name="equipment" alias="L0" from="buildingid" to="id" link-type="inner">
+        <link-entity name="location" alias="L1" from="id" to="locationid" link-type="inner">
+          <link-entity name="customer" alias="L2" from="id" to="customerid" link-type="inner"/>
+          <link-entity name="appointment" alias="L3" from="locationid" to="id" link-type="inner">
+            <filter type="and">
+              <condition attribute="ownerid" operator="eq-userid"/>
+              <condition attribute="locationid" operator="not-null"/>
+            </filter>
+            <link-entity name="appointmentstatus" alias="L4" from="id" to="appointmentstatusid" link-type="inner">
+              <filter type="and">
+                <condition attribute="name" operator="ne" value="RE-ASSIGN"/>
+                <condition attribute="name" operator="ne" value="COMPLETE"/>
+              </filter>
+            </link-entity>
+          </link-entity>
+        </link-entity>
+      </link-entity>
+    </entity>
+  </fetch>
+  <fetch version="1.0">
+    <entity name="refrigeranttracking">
+      <link-entity name="equipment" alias="e" from="id" to="equipmentid" link-type="inner">
+        <link-entity name="location" alias="l" from="id" to="locationid" link-type="inner">
+          <link-entity name="servicecall" alias="s" from="locationid" to="id" link-type="inner">
+            <link-entity name="appointment" alias="L0" from="servicecallid" to="id" link-type="inner">
+              <filter type="and">
+                <condition attribute="ownerid" operator="eq-userid"/>
+              </filter>
+            </link-entity>
+          </link-entity>
+        </link-entity>
+      </link-entity>
+    </entity>
+  </fetch>
+  <fetch version="1.0">
+    <entity name="task">
+      <link-entity name="servicecall" alias="L0" from="id" to="servicecallid" link-type="inner">
+        <link-entity name="appointment" alias="L1" from="servicecallid" to="id" link-type="inner">
+          <filter type="and">
+            <condition attribute="ownerid" operator="eq-userid"/>
+            <condition attribute="gptechnicianid" operator="ne" value="UNASSIGNED"/>
+            <filter type="or">
+              <condition attribute="startdate" operator="last-x-months" value="2"/>
+              <condition attribute="startdate" operator="next-x-months" value="2"/>
+            </filter>
+          </filter>
+          <link-entity name="appointmentstatus" alias="L2" from="id" to="appointmentstatusid" link-type="inner">
+            <filter type="and">
+              <condition attribute="name" operator="ne" value="RE-ASSIGN"/>
+              <condition attribute="name" operator="ne" value="COMPLETE"/>
+            </filter>
+          </link-entity>
+        </link-entity>
+      </link-entity>
+    </entity>
+  </fetch>
+  <fetch version="1.0">
+    <entity name="taskresponse">
+      <link-entity name="task" alias="L0" from="id" to="taskid" link-type="inner">
+        <link-entity name="servicecall" alias="L1" from="id" to="servicecallid" link-type="inner">
+          <link-entity name="appointment" alias="L2" from="servicecallid" to="id" link-type="inner">
+            <filter type="and">
+              <condition attribute="ownerid" operator="eq-userid"/>
+              <condition attribute="gptechnicianid" operator="ne" value="UNASSIGNED"/>
+              <filter type="or">
+                <condition attribute="startdate" operator="last-x-months" value="1"/>
+                <condition attribute="startdate" operator="next-x-months" value="1"/>
+              </filter>
+            </filter>
+            <link-entity name="appointmentstatus" alias="L3" from="id" to="appointmentstatusid" link-type="inner">
+              <filter type="and">
+                <condition attribute="name" operator="ne" value="RE-ASSIGN"/>
+                <condition attribute="name" operator="ne" value="COMPLETE"/>
+              </filter>
+            </link-entity>
+          </link-entity>
+        </link-entity>
+      </link-entity>
+    </entity>
+  </fetch>
+  <fetch version="1.0">
+    <entity name="subtask">
+      <link-entity name="task" alias="L0" from="id" to="taskid" link-type="inner">
+        <link-entity name="servicecall" alias="L1" from="id" to="servicecallid" link-type="inner">
+          <link-entity name="appointment" alias="L2" from="servicecallid" to="id" link-type="inner">
+            <filter type="and">
+              <condition attribute="ownerid" operator="eq-userid"/>
+              <condition attribute="gptechnicianid" operator="ne" value="UNASSIGNED"/>
+              <filter type="or">
+                <condition attribute="startdate" operator="last-x-months" value="1"/>
+                <condition attribute="startdate" operator="next-x-months" value="1"/>
+              </filter>
+            </filter>
+            <link-entity name="appointmentstatus" alias="L3" from="id" to="appointmentstatusid" link-type="inner">
+              <filter type="and">
+                <condition attribute="name" operator="ne" value="RE-ASSIGN"/>
+                <condition attribute="name" operator="ne" value="COMPLETE"/>
+              </filter>
+            </link-entity>
+          </link-entity>
+        </link-entity>
+      </link-entity>
+    </entity>
+  </fetch>
+  <fetch version="1.0">
+    <entity name="meterreading">
+      <link-entity name="equipment" alias="e" from="id" to="equipmentid" link-type="inner">
+        <link-entity name="location" alias="l" from="id" to="locationid" link-type="inner">
+          <link-entity name="servicecall" alias="s" from="locationid" to="id" link-type="inner">
+            <link-entity name="appointment" alias="L0" from="servicecallid" to="id" link-type="inner">
+              <filter type="and">
+                <condition attribute="ownerid" operator="eq-userid"/>
+              </filter>
+            </link-entity>
+          </link-entity>
+        </link-entity>
+      </link-entity>
+    </entity>
+  </fetch>
+  <fetch version="1.0">
+    <entity name="contract">
+      <link-entity name="location" alias="L0" from="id" to="locationid" link-type="inner">
+        <link-entity name="customer" alias="L1" from="id" to="customerid" link-type="inner"/>
+        <link-entity name="appointment" alias="L2" from="locationid" to="id" link-type="inner">
+          <filter type="and">
+            <condition attribute="ownerid" operator="eq-userid"/>
+            <condition attribute="locationid" operator="not-null"/>
+          </filter>
+          <link-entity name="appointmentstatus" alias="L3" from="id" to="appointmentstatusid" link-type="inner">
+            <filter type="and">
+              <condition attribute="name" operator="ne" value="RE-ASSIGN"/>
+              <condition attribute="name" operator="ne" value="COMPLETE"/>
+            </filter>
+          </link-entity>
+        </link-entity>
+      </link-entity>
+    </entity>
+  </fetch>
+  <fetch version="1.0">
+    <entity name="contractequipment">
+      <link-entity name="equipment" alias="L0" from="id" to="equipmentid" link-type="inner">
+        <link-entity name="location" alias="L1" from="id" to="locationid" link-type="inner">
+          <link-entity name="customer" alias="L2" from="id" to="customerid" link-type="inner"/>
+          <link-entity name="appointment" alias="L3" from="locationid" to="id" link-type="inner">
+            <filter type="and">
+              <condition attribute="ownerid" operator="eq-userid"/>
+              <condition attribute="locationid" operator="not-null"/>
+            </filter>
+            <link-entity name="appointmentstatus" alias="L4" from="id" to="appointmentstatusid" link-type="inner">
+              <filter type="and">
+                <condition attribute="name" operator="ne" value="RE-ASSIGN"/>
+                <condition attribute="name" operator="ne" value="COMPLETE"/>
+              </filter>
+            </link-entity>
+          </link-entity>
+        </link-entity>
+      </link-entity>
+    </entity>
+  </fetch>
+  <fetch version="1.0">
+    <entity name="sublocation">
+      <link-entity name="location" alias="L0" from="id" to="locationid" link-type="inner">
+        <link-entity name="customer" alias="L1" from="id" to="customerid" link-type="inner"/>
+        <link-entity name="appointment" alias="L2" from="locationid" to="id" link-type="inner">
+          <filter type="and">
+            <condition attribute="ownerid" operator="eq-userid"/>
+            <condition attribute="locationid" operator="not-null"/>
+          </filter>
+          <link-entity name="appointmentstatus" alias="L3" from="id" to="appointmentstatusid" link-type="inner">
+            <filter type="and">
+              <condition attribute="name" operator="ne" value="RE-ASSIGN"/>
+              <condition attribute="name" operator="ne" value="COMPLETE"/>
+            </filter>
+          </link-entity>
+        </link-entity>
+      </link-entity>
+    </entity>
+  </fetch>
+  <fetch version="1.0">
+    <entity name="locationcontact">
+      <link-entity name="location" alias="L0" from="id" to="locationid" link-type="inner">
+        <link-entity name="appointment" alias="L1" from="locationid" to="id" link-type="inner">
+          <filter type="and">
+            <condition attribute="ownerid" operator="eq-userid"/>
+          </filter>
+        </link-entity>
+      </link-entity>
+    </entity>
+  </fetch>
+  <fetch version="1.0">
+    <entity name="signature">
+      <link-entity name="appointment" alias="L0" from="id" to="appointmentid" link-type="inner">
+        <filter type="and">
+          <condition attribute="ownerid" operator="eq-userid"/>
+        </filter>
+      </link-entity>
+    </entity>
+  </fetch>
+  <fetch version="1.0">
+    <entity name="signatureattribute">
+      <link-entity name="signature" alias="L0" from="id" to="signatureid" link-type="inner">
+        <link-entity name="appointment" alias="L1" from="id" to="appointmentid" link-type="inner">
+          <filter type="and">
+            <condition attribute="ownerid" operator="eq-userid"/>
+          </filter>
+        </link-entity>
+      </link-entity>
+    </entity>
+  </fetch>
+  <fetch version="1.0">
+    <entity name="timelog">
+      <link-entity name="appointment" alias="L0" from="id" to="appointmentid" link-type="inner">
+        <filter type="and">
+          <condition attribute="ownerid" operator="eq-userid"/>
+        </filter>
+      </link-entity>
+    </entity>
+  </fetch>
+  <fetch version="1.0">
+    <entity name="changeorder">
+      <link-entity name="job" alias="L0" from="id" to="jobid" link-type="inner">
+        <link-entity name="appointment" alias="L1" from="jobid" to="id" link-type="inner">
+          <filter type="and">
+            <condition attribute="ownerid" operator="eq-userid"/>
+          </filter>
+        </link-entity>
+      </link-entity>
+    </entity>
+  </fetch>
+  <fetch version="1.0">
+    <entity name="changeorderdetail">
+      <link-entity name="changeorder" alias="L0" from="id" to="changeorderid" link-type="inner">
+        <link-entity name="job" alias="L1" from="id" to="jobid" link-type="inner">
+          <link-entity name="appointment" alias="L2" from="jobid" to="id" link-type="inner">
+            <filter type="and">
+              <condition attribute="ownerid" operator="eq-userid"/>
+            </filter>
+          </link-entity>
+        </link-entity>
+      </link-entity>
+    </entity>
+  </fetch>
+  <fetch version="1.0">
+    <entity name="jobcostcode">
+      <link-entity name="job" alias="L0" from="id" to="jobid" link-type="inner">
+        <link-entity name="customer" alias="L1" from="id" to="customerid" link-type="inner"/>
+        <link-entity name="appointment" alias="L2" from="jobid" to="id" link-type="inner">
+          <filter type="and">
+            <condition attribute="ownerid" operator="eq-userid"/>
+          </filter>
+        </link-entity>
+      </link-entity>
+    </entity>
+  </fetch>
+  <fetch version="1.0">
+    <entity name="payment">
+      <link-entity name="invoice" alias="L0" from="id" to="invoiceid" link-type="inner">
+        <filter type="and">
+          <condition attribute="ownerid" operator="eq-userid"/>
+          <filter type="or">
+            <condition attribute="transactiondate" operator="last-x-days" value="21"/>
+            <condition attribute="transactiondate" operator="next-x-days" value="7"/>
+          </filter>
+        </filter>
+      </link-entity>
+    </entity>
+  </fetch>
+  <fetch version="1.0">
+    <entity name="technicianbranch">
+      <filter type="and">
+        <condition attribute="ownerid" operator="eq-userid"/>
+      </filter>
+    </entity>
+  </fetch>
+  <fetch version="1.0">
+    <entity name="techniciansite">
+      <filter type="and">
+        <condition attribute="ownerid" operator="eq-userid"/>
+      </filter>
+    </entity>
+  </fetch>
+  <fetch version="1.0">
+    <entity name="siteinventory">
+      <link-entity name="techniciansite" from="gpsiteid" to="gpsiteid">
+        <filter type="and">
+          <condition attribute="ownerid" operator="eq-userid"/>
+        </filter>
+      </link-entity>
+    </entity>
+  </fetch>
+  <fetch version="1.0">
+    <entity name="laborexpense">
+      <filter type="and">
+        <condition attribute="ownerid" operator="eq-userid"/>
+        <filter type="or">
+          <condition attribute="transactiondate" operator="last-x-days" value="21"/>
+          <condition attribute="transactiondate" operator="next-x-days" value="7"/>
+        </filter>
+      </filter>
+    </entity>
+  </fetch>
+  <fetch version="1.0">
+    <entity name="systemuser">
+      <filter type="and">
+        <condition attribute="id" operator="eq-userid"/>
+      </filter>
+    </entity>
+  </fetch>
+  <fetch version="1.0">
+    <entity name="workcrew">
+      <filter type="and">
+        <condition attribute="ownerid" operator="eq-userid"/>
+      </filter>
+    </entity>
+  </fetch>
+  <fetch version="1.0">
+    <entity name="invoice">
+      <filter type="and">
+        <condition attribute="ownerid" operator="eq-userid"/>
+        <filter type="or">
+          <condition attribute="transactiondate" operator="last-x-days" value="21"/>
+          <condition attribute="transactiondate" operator="next-x-days" value="7"/>
+        </filter>
+      </filter>
+    </entity>
+  </fetch>
+  <fetch version="1.0">
+    <entity name="report">
+      <filter type="and">
+        <condition attribute="ownerid" operator="eq-userid"/>
+      </filter>
+    </entity>
+  </fetch>
+  <fetch version="1.0">
+    <entity name="workcrewemployee">
+      <link-entity name="workcrew" from="id" to="workcrewid">
+        <filter type="and">
+          <condition attribute="ownerid" operator="eq-userid"/>
+        </filter>
+      </link-entity>
+    </entity>
+  </fetch>
+  <fetch version="1.0">
+    <entity name="timesheetreport">
+      <filter type="and">
+        <condition attribute="name" operator="eq" value="dummyValue"/>
+      </filter>
+    </entity>
+  </fetch>
+  <fetch version="1.0">
+    <entity name="additionalwork">
+      <filter type="and">
+        <condition attribute="name" operator="eq" value="dummyValue"/>
+      </filter>
+    </entity>
+  </fetch>
+  <fetch version="1.0">
+    <entity name="servicecallhistory">
+      <filter type="and">
+        <condition attribute="name" operator="eq" value="dummyvalue"/>
+      </filter>
+    </entity>
+  </fetch>
+  <fetch version="1.0">
+    <entity name="annotation">
+      <filter type="and">
+        <filter type="or">
+          <condition attribute="isdocument" operator="eq" value="0"/>
+          <filter type="and">
+            <condition attribute="isdocument" operator="eq" value="1"/>
+            <filter type="or">
+              <condition attribute="gpnotetype" operator="not-null"/>
+              <filter type="and">
+                <condition attribute="subject" operator="not-like" value="%Appointment Summary Report%"/>
+                <condition attribute="subject" operator="not-like" value="%Job Appt Summary Report%"/>
+                <condition attribute="gpnotetype" operator="null"/>
+                <filter type="or">
+                  <condition attribute="createdon" operator="this-week"/>
+                  <condition attribute="createdon" operator="last-week"/>
+                </filter>
+              </filter>
+            </filter>
+          </filter>
+        </filter>
+      </filter>
+    </entity>
+  </fetch>
+  <fetch version="1.0">
+    <entity name="resco_question">
+      <link-entity name="resco_questionnaire" alias="L0" from="resco_questionnaireid" to="resco_questionnaireid" link-type="inner">
+        <filter type="and">
+          <filter type="or">
+            <condition attribute="resco_istemplate" operator="eq" value="1"/>
+            <filter type="and">
+              <condition attribute="ownerid" operator="eq-userid"/>
+              <filter type="or">
+                <condition attribute="createdon" operator="this-week"/>
+                <condition attribute="createdon" operator="last-week"/>
+              </filter>
+            </filter>
+          </filter>
+        </filter>
+      </link-entity>
+    </entity>
+  </fetch>
+  <fetch version="1.0">
+    <entity name="resco_questiongroup">
+      <link-entity name="resco_questionnaire" alias="L0" from="resco_questionnaireid" to="resco_questionnaireid" link-type="inner">
+        <filter type="and">
+          <filter type="or">
+            <condition attribute="resco_istemplate" operator="eq" value="1"/>
+            <filter type="and">
+              <condition attribute="ownerid" operator="eq-userid"/>
+              <filter type="or">
+                <condition attribute="createdon" operator="this-week"/>
+                <condition attribute="createdon" operator="last-week"/>
+              </filter>
+            </filter>
+          </filter>
+        </filter>
+      </link-entity>
+    </entity>
+  </fetch>
+  <fetch version="1.0">
+    <entity name="resco_questionnaire">
+      <filter type="and">
+        <filter type="or">
+          <filter type="and">
+            <condition attribute="resco_istemplate" operator="eq" value="1"/>
+            <filter type="or">
+              <condition attribute="statuscode" operator="eq" value="1"/>
+              <condition attribute="statuscode" operator="eq" value="473220002"/>
+              <filter type="and">
+                <condition attribute="statuscode" operator="eq" value="473220003"/>
+                <condition attribute="resco_version" operator="ge" value="1"/>
+              </filter>
+            </filter>
+          </filter>
+          <filter type="and">
+            <condition attribute="resco_istemplate" operator="eq" value="0"/>
+            <condition attribute="ownerid" operator="eq-userid"/>
+            <filter type="or">
+              <condition attribute="createdon" operator="this-week"/>
+              <condition attribute="createdon" operator="last-week"/>
+            </filter>
+          </filter>
+        </filter>
+      </filter>
+    </entity>
+  </fetch>
+  <fetch version="1.0">
+    <entity name="resco_questionnairefolder">
+      <link-entity name="resco_questionnaire" alias="L0" from="resco_folderid" to="resco_questionnairefolderid" link-type="inner">
+        <filter type="and">
+          <filter type="or">
+            <condition attribute="resco_istemplate" operator="eq" value="1"/>
+            <filter type="and">
+              <condition attribute="ownerid" operator="eq-userid"/>
+              <filter type="or">
+                <condition attribute="createdon" operator="this-week"/>
+                <condition attribute="createdon" operator="last-week"/>
+              </filter>
+            </filter>
+          </filter>
+        </filter>
+      </link-entity>
+    </entity>
+  </fetch>
+  <fetch version="1.0">
+    <entity name="setupoptionuser">
+      <filter type="and">
+        <condition attribute="ownerid" operator="eq-userid"/>
+      </filter>
+    </entity>
+  </fetch>
+</fetchcollection>

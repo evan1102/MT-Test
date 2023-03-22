@@ -1,0 +1,62 @@
+﻿<EntityForm xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:dummy="0" flexi="0" fleximode="0" fullscreen="0" resize="0" version="2">
+  <IsContactForm>false</IsContactForm>
+  <EntityName>appointment</EntityName>
+  <CamelCase>appointment</CamelCase>
+  <WorkflowLoad>&lt;?xml version="1.0" ?&gt;&lt;Workflow e="true" isvalid="true" syntaxVersion="11" version="0"&gt;&lt;function e="false"&gt;&lt;var&gt;Tabs.formCommands.IsVisible&lt;/var&gt;&lt;func&gt;Assign&lt;/func&gt;&lt;arg&gt;Boolean:False&lt;/arg&gt;&lt;/function&gt;&lt;function e="false"&gt;&lt;var&gt;Form.latitude.IsVisible&lt;/var&gt;&lt;func&gt;Assign&lt;/func&gt;&lt;arg&gt;Boolean:False&lt;/arg&gt;&lt;/function&gt;&lt;function e="false"&gt;&lt;var&gt;Form.longitude.IsVisible&lt;/var&gt;&lt;func&gt;Assign&lt;/func&gt;&lt;arg&gt;Boolean:False&lt;/arg&gt;&lt;/function&gt;&lt;definition e="false"&gt;&lt;var&gt;UseJobSafetyTasks&lt;/var&gt;&lt;func&gt;LoadFetch&lt;/func&gt;&lt;type&gt;Entity&lt;/type&gt;&lt;arg&gt;String:setupoption&lt;/arg&gt;&lt;arg&gt;Fetch:&amp;lt;fetch version=&amp;quot;1.0&amp;quot;&amp;gt;&amp;lt;entity name=&amp;quot;setupoption&amp;quot;&amp;gt;&amp;lt;filter type=&amp;quot;and&amp;quot;&amp;gt;&amp;lt;condition attribute=&amp;quot;name&amp;quot; operator=&amp;quot;eq&amp;quot; value=&amp;quot;UseJobSafetyTasks&amp;quot;/&amp;gt;&amp;lt;/filter&amp;gt;&amp;lt;/entity&amp;gt;&amp;lt;/fetch&amp;gt;&lt;/arg&gt;&lt;/definition&gt;&lt;definition e="false"&gt;&lt;var&gt;UseBOBIntegration&lt;/var&gt;&lt;func&gt;LoadFetch&lt;/func&gt;&lt;type&gt;Entity&lt;/type&gt;&lt;arg&gt;String:setupoption&lt;/arg&gt;&lt;arg&gt;Fetch:&amp;lt;fetch version=&amp;quot;1.0&amp;quot;&amp;gt;&amp;lt;entity name=&amp;quot;setupoption&amp;quot;&amp;gt;&amp;lt;filter type=&amp;quot;and&amp;quot;&amp;gt;&amp;lt;condition attribute=&amp;quot;name&amp;quot; operator=&amp;quot;eq&amp;quot; value=&amp;quot;UseBOBIntegration&amp;quot;/&amp;gt;&amp;lt;/filter&amp;gt;&amp;lt;/entity&amp;gt;&amp;lt;/fetch&amp;gt;&lt;/arg&gt;&lt;/definition&gt;&lt;branch e="false" info="BOB Tab Visibility" &gt;&lt;if e="true"&gt;&lt;conditions e="true" op="And"&gt;&lt;condition e="false"&gt;&lt;var&gt;UseBOBIntegration.@this&lt;/var&gt;&lt;op&gt;ContainsData&lt;/op&gt;&lt;/condition&gt;&lt;condition e="false"&gt;&lt;var&gt;UseBOBIntegration.optionvalue&lt;/var&gt;&lt;op&gt;Equal&lt;/op&gt;&lt;arg&gt;String:True&lt;/arg&gt;&lt;/condition&gt;&lt;/conditions&gt;&lt;action&gt;&lt;function e="false"&gt;&lt;var&gt;Tabs.bobdata.IsVisible&lt;/var&gt;&lt;func&gt;Assign&lt;/func&gt;&lt;arg&gt;Boolean:True&lt;/arg&gt;&lt;/function&gt;&lt;/action&gt;&lt;/if&gt;&lt;if e="true"&gt;&lt;conditions e="true" op="And"&gt;&lt;/conditions&gt;&lt;action&gt;&lt;function e="false"&gt;&lt;var&gt;Tabs.bobdata.IsVisible&lt;/var&gt;&lt;func&gt;Assign&lt;/func&gt;&lt;arg&gt;Boolean:False&lt;/arg&gt;&lt;/function&gt;&lt;/action&gt;&lt;/if&gt;&lt;/branch&gt;&lt;/Workflow&gt;</WorkflowLoad>
+  <WorkflowItemChanged>&lt;?xml version="1.0" encoding="utf-16"?&gt;&lt;Workflow e="true" isvalid="true" syntaxVersion="7" version="0"&gt;&lt;branch e="true"&gt;&lt;if e="true"&gt;&lt;conditions e="true" op="And"&gt;&lt;condition e="false"&gt;&lt;var&gt;ChangedItem&lt;/var&gt;&lt;arg&gt;String:estimatehours&lt;/arg&gt;&lt;op&gt;Equal&lt;/op&gt;&lt;/condition&gt;&lt;/conditions&gt;&lt;action e="true"&gt;&lt;branch e="true"&gt;&lt;if e="true"&gt;&lt;conditions e="true" op="And"&gt;&lt;condition e="false"&gt;&lt;var&gt;Entity.estimatehours&lt;/var&gt;&lt;arg&gt;Integer:24&lt;/arg&gt;&lt;op&gt;GreaterThan&lt;/op&gt;&lt;/condition&gt;&lt;/conditions&gt;&lt;action e="true"&gt;&lt;function e="false"&gt;&lt;var&gt;Entity.estimatehours&lt;/var&gt;&lt;arg&gt;Integer:24&lt;/arg&gt;&lt;func&gt;Assign&lt;/func&gt;&lt;/function&gt;&lt;/action&gt;&lt;/if&gt;&lt;/branch&gt;&lt;/action&gt;&lt;/if&gt;&lt;/branch&gt;&lt;/Workflow&gt;</WorkflowItemChanged>
+  <WorkflowSave>&lt;?xml version="1.0" encoding="utf-16"?&gt;&lt;Workflow e="true" isvalid="true" syntaxVersion="7" version="0"&gt;&lt;branch e="true"&gt;&lt;if e="true"&gt;&lt;conditions e="true" op="And"&gt;&lt;condition e="false"&gt;&lt;var&gt;Entity.estimatehours&lt;/var&gt;&lt;arg&gt;Integer:24&lt;/arg&gt;&lt;op&gt;GreaterThan&lt;/op&gt;&lt;/condition&gt;&lt;/conditions&gt;&lt;action e="true"&gt;&lt;function e="false"&gt;&lt;var&gt;Entity.estimatehours&lt;/var&gt;&lt;arg&gt;Integer:24&lt;/arg&gt;&lt;func&gt;Assign&lt;/func&gt;&lt;/function&gt;&lt;/action&gt;&lt;/if&gt;&lt;/branch&gt;&lt;/Workflow&gt;</WorkflowSave>
+  <SharedVariables>&lt;SharedVariables&gt;&lt;Variables&gt;&lt;/Variables&gt;&lt;/SharedVariables&gt;</SharedVariables>
+  <PrimaryCommands>custom_getGPS|Update GPS||custom_navigateTo|Navigate To||Complete||</PrimaryCommands>
+  <SharedVariableNames/>
+  <ClassBinding>
+    <SerializedClassBinding name="#Duration" label="Duration" type="String"/>
+  </ClassBinding>
+  <EnabledWorkflows>OnLoadEnabled OnChangeEnabled OnSaveEnabled</EnabledWorkflows>
+  <SerializedChildrenV2>
+    <FormTab xsi:type="DetailTab" NameModified="0" IconModified="0" EntityIconName="MobileCrm\Images.MonoTouch\Tabs\appointment@2x.png" IsIconNameReadOnly="0">
+      <Name>appointment</Name>
+      <SerializedChildren>
+        <DetailItem SchemaName="servicecallid"/>
+        <DetailItem SchemaName="gpappointmentid"/>
+        <DetailItem separator="true" xsi:type="SeparatorDetailItem">
+          <IsConstant>true</IsConstant>
+        </DetailItem>
+        <DetailItem SchemaName="startdate"/>
+        <DetailItem SchemaName="estimatehours"/>
+        <DetailItem SchemaName="description" Style="MultiLine"/>
+        <DetailItem SchemaName="appointmentstatusid"/>
+        <DetailItem SchemaName="ownerid"/>
+        <DetailItem SchemaName="latitude"/>
+        <DetailItem SchemaName="longitude"/>
+      </SerializedChildren>
+    </FormTab>
+    <FormTab xsi:type="IFrameTab" NameModified="0" IconModified="0" EntityIconName="MobileCrm\Images.MonoTouch\Tabs\bobdata@2x.png" IsIconNameReadOnly="0">
+      <Name>bobdata</Name>
+      <Url>file://entity/bobdata/fault-list.html</Url>
+    </FormTab>
+    <FormTab xsi:type="IFrameTab" NameModified="0" IconModified="0" EntityIconName="MobileCrm\Images.MonoTouch\Tabs\annotation@2x.png" IsIconNameReadOnly="0">
+      <Name>annotation</Name>
+      <Url>file://entity/notes/notes-list.html</Url>
+    </FormTab>
+    <FormTab xsi:type="IFrameTab" NameModified="0" IconModified="0" EntityIconName="MobileCrm\Images.MonoTouch\Tabs\jobsafetytask@2x.png" IsIconNameReadOnly="0">
+      <Name>jobsafetytask</Name>
+      <Url>file://entity/jobsafetytask/jobsafetytask-list.html</Url>
+      <IsVisible>false</IsVisible>
+    </FormTab>
+    <FormTab xsi:type="MapTab" flexiHeight="3" flexiWidth="1" NameModified="0" IconModified="0" EntityIconName="MobileCrm\Images.MonoTouch\Tabs\Map@2x.png" IsIconNameReadOnly="0">
+      <Name>Map</Name>
+      <CoordinatesBinding>latitude;longitude</CoordinatesBinding>
+    </FormTab>
+    <FormTab xsi:type="IFrameTab" NameModified="0" IconModified="0" EntityIconName="MobileCrm\Images.MonoTouch\Tabs\General@2x.png" IsIconNameReadOnly="0">
+      <Name>formCommands</Name>
+      <Url>file://entity/appointment/appointment-form_default-service.html</Url>
+      <DelayLoad>false</DelayLoad>
+    </FormTab>
+    <FormTab xsi:type="IFrameTab" NameModified="0" IconModified="0" EntityIconName="MobileCrm\Images.MonoTouch\Tabs\General@2x.png" IsIconNameReadOnly="0">
+      <Name>XOi Deep Linking</Name>
+      <Url>file://features/SEEWorkflow/xoi-deeplinking.html</Url>
+      <IsVisible>false</IsVisible>
+      <DelayLoad>false</DelayLoad>
+    </FormTab>
+  </SerializedChildrenV2>
+</EntityForm>

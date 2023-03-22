@@ -1,0 +1,45 @@
+﻿<EntityForm xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:dummy="0" flexi="0" fleximode="0" fullscreen="0" resize="0" version="2">
+  <IsContactForm>false</IsContactForm>
+  <EntityName>appointment</EntityName>
+  <CamelCase>appointment</CamelCase>
+  <WorkflowLoad>&lt;?xml version="1.0" ?&gt;&lt;Workflow e="true" isvalid="true" syntaxVersion="11" version="0"&gt;&lt;function e="false"&gt;&lt;var&gt;Commands.custom_getGPS.IsEnabled&lt;/var&gt;&lt;func&gt;Assign&lt;/func&gt;&lt;arg&gt;Boolean:True&lt;/arg&gt;&lt;/function&gt;&lt;function e="false"&gt;&lt;var&gt;Commands.custom_navigateTo.IsEnabled&lt;/var&gt;&lt;func&gt;Assign&lt;/func&gt;&lt;arg&gt;Boolean:True&lt;/arg&gt;&lt;/function&gt;&lt;function e="false"&gt;&lt;var&gt;Tabs.formCommands.IsVisible&lt;/var&gt;&lt;func&gt;Assign&lt;/func&gt;&lt;arg&gt;Boolean:False&lt;/arg&gt;&lt;/function&gt;&lt;function e="false"&gt;&lt;var&gt;Form.latitude.IsVisible&lt;/var&gt;&lt;func&gt;Assign&lt;/func&gt;&lt;arg&gt;Boolean:False&lt;/arg&gt;&lt;/function&gt;&lt;function e="false"&gt;&lt;var&gt;Form.longitude.IsVisible&lt;/var&gt;&lt;func&gt;Assign&lt;/func&gt;&lt;arg&gt;Boolean:False&lt;/arg&gt;&lt;/function&gt;&lt;branch e="true" info="" &gt;&lt;if e="true"&gt;&lt;conditions e="true" op="And"&gt;&lt;condition e="false"&gt;&lt;var&gt;Entity.IsNew&lt;/var&gt;&lt;op&gt;Equal&lt;/op&gt;&lt;arg&gt;Boolean:True&lt;/arg&gt;&lt;/condition&gt;&lt;/conditions&gt;&lt;action&gt;&lt;function e="false"&gt;&lt;var&gt;Shared.assignToMe&lt;/var&gt;&lt;func&gt;Assign&lt;/func&gt;&lt;arg&gt;Boolean:True&lt;/arg&gt;&lt;/function&gt;&lt;/action&gt;&lt;/if&gt;&lt;/branch&gt;&lt;/Workflow&gt;</WorkflowLoad>
+  <WorkflowItemChanged>&lt;?xml version="1.0" ?&gt;&lt;Workflow e="true" isvalid="true" syntaxVersion="11" version="0"&gt;&lt;branch e="true" info="" &gt;&lt;if e="true"&gt;&lt;conditions e="true" op="And"&gt;&lt;condition e="false"&gt;&lt;var&gt;ChangedItem&lt;/var&gt;&lt;op&gt;Equal&lt;/op&gt;&lt;arg&gt;String:estimatehours&lt;/arg&gt;&lt;/condition&gt;&lt;/conditions&gt;&lt;action&gt;&lt;branch e="true" info="" &gt;&lt;if e="true"&gt;&lt;conditions e="true" op="And"&gt;&lt;condition e="false"&gt;&lt;var&gt;Entity.estimatehours&lt;/var&gt;&lt;op&gt;GreaterThan&lt;/op&gt;&lt;arg&gt;Decimal:24&lt;/arg&gt;&lt;/condition&gt;&lt;/conditions&gt;&lt;action&gt;&lt;function e="false"&gt;&lt;var&gt;Entity.estimatehours&lt;/var&gt;&lt;func&gt;Assign&lt;/func&gt;&lt;arg&gt;Decimal:24&lt;/arg&gt;&lt;/function&gt;&lt;/action&gt;&lt;/if&gt;&lt;/branch&gt;&lt;/action&gt;&lt;/if&gt;&lt;/branch&gt;&lt;/Workflow&gt;</WorkflowItemChanged>
+  <SharedVariables>&lt;SharedVariables&gt;&lt;Variables&gt;&lt;SharedVariable usage="OnLoadEnabled"&gt;&lt;Name&gt;assignToMe&lt;/Name&gt;&lt;CrmType&gt;Boolean&lt;/CrmType&gt;&lt;/SharedVariable&gt;&lt;/Variables&gt;&lt;/SharedVariables&gt;</SharedVariables>
+  <PrimaryCommands>custom_getGPS|Update GPS||custom_navigateTo|Navigate To|</PrimaryCommands>
+  <SharedVariableNames>
+    <string>assignToMe</string>
+  </SharedVariableNames>
+  <EnabledWorkflows>OnLoadEnabled OnChangeEnabled OnSaveEnabled OnExecuteCommand OnCanExecuteCommand OnExecuteButton</EnabledWorkflows>
+  <SerializedChildrenV2>
+    <FormTab xsi:type="DetailTab" NameModified="0" IconModified="0" EntityIconName="MobileCrm\Images.MonoTouch\Tabs\appointment@2x.png" IsIconNameReadOnly="0">
+      <Name>appointment</Name>
+      <SerializedChildren>
+        <DetailItem SchemaName="gpjobnumber"/>
+        <DetailItem SchemaName="gpservicecallid"/>
+        <DetailItem SchemaName="gpappointmentid"/>
+        <DetailItem SchemaName="assignToMe"/>
+        <DetailItem separator="true" xsi:type="SeparatorDetailItem">
+          <IsConstant>true</IsConstant>
+        </DetailItem>
+        <DetailItem SchemaName="jobcostcodeid"/>
+        <DetailItem SchemaName="startdate"/>
+        <DetailItem SchemaName="estimatehours"/>
+        <DetailItem SchemaName="description" Style="MultiLine"/>
+        <DetailItem SchemaName="appointmentstatusid"/>
+        <DetailItem SchemaName="gptechnicianid"/>
+        <DetailItem SchemaName="ownerid"/>
+        <DetailItem SchemaName="latitude"/>
+        <DetailItem SchemaName="longitude"/>
+      </SerializedChildren>
+    </FormTab>
+    <FormTab xsi:type="MapTab" NameModified="0" IconModified="0" EntityIconName="MobileCrm\Images.MonoTouch\Tabs\Map@2x.png" IsIconNameReadOnly="0">
+      <Name>Map</Name>
+      <CoordinatesBinding>latitude;longitude</CoordinatesBinding>
+    </FormTab>
+    <FormTab xsi:type="IFrameTab" NameModified="0" IconModified="0" EntityIconName="MobileCrm\Images.MonoTouch\Tabs\General@2x.png" IsIconNameReadOnly="0">
+      <Name>formCommands</Name>
+      <Url>file://entity/appointment/appointment-form_pending.html</Url>
+      <DelayLoad>false</DelayLoad>
+    </FormTab>
+  </SerializedChildrenV2>
+</EntityForm>

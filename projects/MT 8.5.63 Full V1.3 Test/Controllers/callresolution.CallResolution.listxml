@@ -1,0 +1,61 @@
+﻿<EntityList>
+  <Attributes>
+    <EntityName>callresolution</EntityName>
+    <CamelCase>callresolution</CamelCase>
+    <VisualStudioProjectId>00000000-0000-0000-0000-000000000000</VisualStudioProjectId>
+    <ClassBinding/>
+  </Attributes>
+  <Name>CallResolution</Name>
+  <Kind>List</Kind>
+  <IsDefault>true</IsDefault>
+  <AutoWideWidth>0</AutoWideWidth>
+  <OrderBy>name</OrderBy>
+  <SerializedBindings>
+    <string>createdby</string>
+    <string>createdon</string>
+    <string>description</string>
+    <string>id</string>
+    <string>modifiedby</string>
+    <string>modifiedon</string>
+    <string>name</string>
+  </SerializedBindings>
+  <MaxColumns>0</MaxColumns>
+  <Fetch version="1.0">
+    <entity name="callresolution">
+      <filter type="and">
+        <filter type="or">
+          <condition attribute="id" operator="eq" value="966a76b0-ecb6-4445-b668-c0761594efc7" uitype="callresolution" uiname="RTN"/>
+          <condition attribute="id" operator="eq" value="26a69ddd-8f86-4494-91bd-3b573596345e" uitype="callresolution" uiname="WC"/>
+        </filter>
+      </filter>
+    </entity>
+  </Fetch>
+  <Search>
+    <attribute schema="description" method="Contains"/>
+    <attribute schema="name" method="BeginsWith"/>
+  </Search>
+  <SerializedTemplates>
+    <RowTemplate>
+      <DesignWidth>240</DesignWidth>
+      <DesignHeight>40</DesignHeight>
+      <Name>Default</Name>
+      <Width>240</Width>
+      <Height>40</Height>
+      <SerializedChildren>
+        <CellTemplate SchemaName="name">
+          <StyleName>primary</StyleName>
+          <Bounds>8,1,227,24</Bounds>
+          <CellKind>0</CellKind>
+          <Anchor>13</Anchor>
+        </CellTemplate>
+        <CellTemplate SchemaName="description">
+          <StyleName>gray</StyleName>
+          <Bounds>8,26,227,11</Bounds>
+          <CellKind>0</CellKind>
+          <Anchor>13</Anchor>
+        </CellTemplate>
+      </SerializedChildren>
+    </RowTemplate>
+  </SerializedTemplates>
+  <CustomProperties/>
+</EntityList>

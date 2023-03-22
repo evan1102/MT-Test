@@ -1,0 +1,284 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <!-- Activate IE9 document mode, if available -->
+    <meta charset="utf-8" http-equiv="X-UA-Compatible" content="IE=edge" />
+    <!-- Defined iOS viewport -->
+    <meta name="viewport" content="initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=false">
+    <!-- Disable iOS Phone No Detection -->
+    <meta name="format-detection" content="telephone=no" />
+    <!-- DevExtreme dependencies -->
+    <script type="text/javascript" src="../../scripts/jquery-3.3.1.min.js"></script>
+    <!-- DevExtreme themes -->
+    <link rel="stylesheet" type="text/css" href="../../css/dx.common.css" />
+    <link rel="stylesheet" type="text/css" href="../../css/dx.light.css" />
+    <!-- A DevExtreme library -->
+    <script type="text/javascript" src="../../scripts/dx.all.js"></script>
+    <!-- Offline HTML JavaScript Bridge-->
+    <script type="text/javascript" src="../../scripts/JSBridge.js"></script>
+    <script type="text/javascript" src="../../scripts/k2aMethods.js"></script>
+    <script type="text/javascript" src="../../enum/Schema.js"></script>
+    <script type="text/javascript" src="../../enum/setupoption.js"></script>
+    <script type="text/javascript" src="changeorder.js"></script>
+    <!-- Offline HTML Template Factory-->
+    <script type="text/javascript" src="../../templates/listItem-factory.js"></script>
+    <script type="text/javascript" src="../../templates/toolbar-factory.js"></script>
+    <!-- Offline HTML Styling -->
+    <link rel="stylesheet" type="text/css" href="../../css/k2a.css" />
+    <title>Entity List</title>
+</head>
+<body>
+    <div id="toast"></div>
+    <div class="fixedPosition">
+        <div id="mainToolbar"></div><br>
+        <div id="listToolbar"></div>
+        <div id="mainScrollView">
+            <div id='mainList'></div>
+        </div>
+        <div id="filterPopup"></div>
+    </div>
+    <script>
+        //============== INITIAL SETTINGS ================
+        var entityName = SCHEMA.changeorder.name;
+        var sortDesc = false, sortSelector = SCHEMA.changeorder.Properties.gpchangeordernumber;
+        var isLookupList, lookupID;
+        //============== OFFLINE/ONLINE DATA ================
+        var entityListData;
+        //============== SELECTED DATA ================
+        var selected = { entityName: null };
+        //============== FETCH DATA ================
+        var requiredSetupOptions = [
+            SETUPOPTION.UseChangeOrder
+        ];
+        var entityAttributes = [
+            SCHEMA.changeorder.Properties.id,
+            SCHEMA.changeorder.Properties.gpchangeordernumber,
+            SCHEMA.changeorder.Properties.changeorderstatus,
+            SCHEMA.changeorder.Properties.changeorderdescription,
+            SCHEMA.changeorder.Properties.postingstatus,
+            SCHEMA.changeorder.Properties.changeordertype,
+            SCHEMA.changeorder.Properties.changeorderamount,
+            SCHEMA.changeorder.Properties.jobid
+        ];
+        var listSortItems = [
+            SCHEMA.changeorder.Properties.gpchangeordernumber,
+            SCHEMA.changeorder.Properties.changeorderstatus,
+            SCHEMA.changeorder.Properties.changeorderdescription,
+            SCHEMA.changeorder.Properties.postingstatus,
+            SCHEMA.changeorder.Properties.changeordertype,
+            SCHEMA.changeorder.Properties.changeorderamount
+        ];
+        var listSearchItems = [
+            SCHEMA.changeorder.Properties.gpchangeordernumber,
+            SCHEMA.changeorder.Properties.changeorderstatus,
+            SCHEMA.changeorder.Properties.changeorderdescription,
+            SCHEMA.changeorder.Properties.postingstatus,
+            SCHEMA.changeorder.Properties.changeordertype,
+            SCHEMA.changeorder.Properties.changeorderamount
+        ];
+        var listFilterItems = [
+            { dataField: SCHEMA.changeorder.Properties.gpchangeordernumber, dataType: FilterDataType.string },
+            { dataField: SCHEMA.changeorder.Properties.changeorderstatus, dataType: FilterDataType.string },
+            { dataField: SCHEMA.changeorder.Properties.changeorderdescription, dataType: FilterDataType.string },
+            { dataField: SCHEMA.changeorder.Properties.postingstatus, dataType: FilterDataType.string },
+            { dataField: SCHEMA.changeorder.Properties.changeordertype, dataType: FilterDataType.string },
+            { dataField: SCHEMA.changeorder.Properties.changeorderamount, dataType: FilterDataType.number }
+        ];
+        var listItemTemplate = function (data, _, element) {
+            element.append(
+                $("<span>").append(data.gpchangeordernumber).css("font-size", "large"),
+                $("<span>").append(getChangeOrderStatusDisplayValue(data.changeorderstatus)).css("float", "right"),
+                $("<br>"),
+                $("<span>").append(data.changeorderdescription),
+                $("<span>").append(getPostingStatus(data.postingstatus)).css("float", "right"),
+                $("<br>"),
+                $("<span>").append(getContractType(data.changeordertype)),
+                $("<span>").append(parseFloat(data.changeorderamount).toFixed(2)).css("float", "right")
+            );
+        };
+        //============== TOOLBAR ITEMS ================
+        var mainToolbarItems = [
+            ToolbarItemType.title, ToolbarItemType.btnNew
+        ];
+        var listToolbarItems = [
+            ToolbarItemType.btnSort, ToolbarItemType.selectSort, ToolbarItemType.btnFilter
+        ];
+
+        $(function () {
+            //============== LOCALIZATION ================
+            MobileCRM.Localization.initialize(function (localization) {
+
+                //============== ANDROID CHECK ================
+                MobileCRM.Platform.preventBackButton(btnBackClicked);
+
+                //============== LOADPANEL ================
+                loading = MobileCRM.UI.Form.showPleaseWait(MobileCRM.Localization.get("Msg.Loading"));
+
+                //============== SCROLLVIEW ================
+                mainScrollView = $("#mainScrollView").dxScrollView({
+                    showScrollbar: "always",
+                    height: function () { return window.innerHeight - 80; },
+                    width: '100%'
+                }).dxScrollView("instance");
+                $(window).resize(function () {
+                    checkIsMultiPanel(mainToolbar);
+                    repaintScrollView(mainScrollView);
+                });
+
+                //============== TOOLBARS ================
+                mainToolbar = $("#mainToolbar").dxToolbar({
+                    items: (new ToolbarFactory()).addItems(mainToolbarItems)
+                }).dxToolbar("instance");
+                listToolbar = $("#listToolbar").dxToolbar({
+                    items: (new ToolbarFactory()).addItems(listToolbarItems)
+                }).dxToolbar("instance");
+
+                //============== LIST ================
+                mainList = (new ListFactory()).createItem("#mainList", entityName, [
+                    { name: 'searchExpr', value: listSearchItems },
+                    { name: 'itemTemplate', value: listItemTemplate }
+                ]);
+
+                //============== EVENT HANDLERS ================
+                MobileCRM.bridge.onGlobalEvent("EntityFormClosed", function (closedForm) {
+                    if (closedForm.entity && closedForm.entity.entityName === entityName)
+                        fetchListEntityData();
+                }, true);
+                MobileCRM.Configuration.requestObject(function (config) {
+                    MobileCRM.bridge.onGlobalEvent("SyncFinished", fetchListEntityData, !config.settings.requireSyncLogin);
+                }, MobileCRM.bridge.alert);
+
+                loadSetupOptions(loadListOptions);
+            }, alertError);
+        });
+
+        //============== LOAD OPTIONS ================
+        function loadListOptions() {
+            MobileCRM.UI.EntityForm.requestObject(function (form) {
+                if (form) {
+                    isLookupList = true;
+                    lookupID = form.entity.properties.jobid;
+                    loadToolbarOptions();
+                    loadListItemOptions();
+                } else {
+                    loadToolbarOptions();
+                    loadListItemOptions();
+                }
+            }, alertError, null);
+        }
+        function loadToolbarOptions() {
+            if (typeof listFilterItems !== 'undefined' && listFilterItems.length > 0)
+                (new FilterFactory()).createFilterPopup(mainList, listToolbar);
+
+            var title = MobileCRM.Localization.get("DetailView." + entityName);
+            updateToolbarItem(mainToolbar, ToolbarItemType.title, "html", "<b>" + title + "</b>");
+
+            loadSortItemsLocalization(listSortItems).then(function (sortDataSource) {
+                updateToolbarItem(listToolbar, ToolbarItemType.selectSort, "options.dataSource", sortDataSource);
+                updateToolbarItem(listToolbar, ToolbarItemType.selectSort, "options.value", sortSelector);
+            });
+            checkIsMultiPanel(mainToolbar);
+        }
+        function loadListItemOptions() {
+            if (setupOptions.UseChangeOrder) {
+                fetchListEntityData();
+            }
+            else {
+                disableList();
+            }
+        }
+
+        function disableList() {
+            mainList.option("disabled", true);
+            mainToolbar.option("disabled", true);
+            listToolbar.option("disabled", true);
+            loading.close();
+            showToast(MobileCRM.Localization.get("Alert.ListDisabled"), "error");
+        }
+
+        //============== LOAD DATA ================
+        function fetchListEntityData() {
+            var entity = new MobileCRM.FetchXml.Entity(entityName);
+            $(entityAttributes).each(function (index, attribute) {
+                entity.addAttribute(attribute);
+            });
+            entity.orderBy(sortSelector, sortDesc);
+
+            if (isLookupList) {
+                entity.addFilter().where(SCHEMA.changeorder.Properties.jobid, 'eq', lookupID.id);
+            }
+
+            var fetch = new MobileCRM.FetchXml.Fetch(entity);
+            fetch.execute("JSON", function (res) {
+                loadListData(mainList, res);
+                entityListData = res;
+                loading.close();
+            }, alertError);
+        }
+
+        //============== TOOLBAR FUNCTIONS ================
+        function btnNewClicked() {
+            getTechnicianID(function (technicianId) {
+                MobileCRM.UI.EntityForm.requestObject(
+                    function (entityForm) {
+                        var appt = entityForm.entity;
+                        var promise = getInitializeData(technicianId, appt.properties.jobid.id);
+                        promise.then(function (data) {
+                            var target = new MobileCRM.Reference(SCHEMA.job.name, appt.properties.jobid.id);
+                            var relationShip = new MobileCRM.Relationship(SCHEMA.changeorder.Properties.jobid, target, null, null);
+                            MobileCRM.UI.FormManager.showNewDialog(
+                                SCHEMA.changeorder.name,
+                                relationShip,
+                                {
+                                    "@initialize": data
+                                });
+                        })
+                    }, MobileCRM.bridge.alert, null
+                );
+            });
+        }
+        function btnSortClicked() {
+            loadListData(mainList, entityListData);
+        }
+        function sortSelected() {
+            loadListData(mainList, entityListData);
+        }
+
+        //============== LIST ITEM FUNCTIONS ================
+        function listItemClicked() {
+            viewEntity();
+        }
+
+        //============== LIST EXECUTIONS ================
+        function viewEntity() {
+            MobileCRM.UI.FormManager.showEditDialog(entityName, selected[entityName].id);
+        }
+
+        function getInitializeData(technicianId, jobId) {
+            var deferred = $.Deferred();
+
+            MobileCRM.DynamicEntity.loadById(
+                SCHEMA.job.name,
+                jobId,
+                function (entity) {
+                    var data = {
+                        name: "TEMP00" + entityListData.length,
+                        gpchangeordernumber: "TEMP00" + entityListData.length,
+                        gpjobnumber: entity.properties.gpjobnumber,
+                        changeorderstatus: 2,
+                        changeordertype: 1,
+                        postingstatus: 0,
+                        gptechnicianid: technicianId
+                    };
+                    return deferred.resolve(data);
+                },
+                function (error) {
+                    MobileCRM.bridge.alert(error);
+                    return deferred.resolve(null);
+                }, null
+            )
+            return deferred.promise();
+        }
+    </script>
+</body>
+</html>

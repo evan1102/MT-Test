@@ -1,0 +1,83 @@
+﻿<EntityForm xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:dummy="0" flexi="2" fleximode="1" fullscreen="0" resize="0" version="2">
+  <IsContactForm>false</IsContactForm>
+  <EntityName>servicecall</EntityName>
+  <CamelCase>servicecall</CamelCase>
+  <WorkflowLoad>&lt;?xml version="1.0" ?&gt;&lt;Workflow e="true" isvalid="true" syntaxVersion="11" version="0"&gt;&lt;definition e="false"&gt;&lt;var&gt;UseBOBIntegration&lt;/var&gt;&lt;func&gt;LoadFetch&lt;/func&gt;&lt;type&gt;Entity&lt;/type&gt;&lt;arg&gt;String:setupoption&lt;/arg&gt;&lt;arg&gt;Fetch:&amp;lt;fetch version=&amp;quot;1.0&amp;quot;&amp;gt;&amp;lt;entity name=&amp;quot;setupoption&amp;quot;&amp;gt;&amp;lt;filter type=&amp;quot;and&amp;quot;&amp;gt;&amp;lt;condition attribute=&amp;quot;name&amp;quot; operator=&amp;quot;eq&amp;quot; value=&amp;quot;UseBOBIntegration&amp;quot;/&amp;gt;&amp;lt;/filter&amp;gt;&amp;lt;/entity&amp;gt;&amp;lt;/fetch&amp;gt;&lt;/arg&gt;&lt;/definition&gt;&lt;definition e="false"&gt;&lt;var&gt;UseTaskMaterials&lt;/var&gt;&lt;func&gt;LoadFetch&lt;/func&gt;&lt;type&gt;Entity&lt;/type&gt;&lt;arg&gt;String:setupoption&lt;/arg&gt;&lt;arg&gt;Fetch:&amp;lt;fetch version=&amp;quot;1.0&amp;quot;&amp;gt;&amp;lt;entity name=&amp;quot;setupoption&amp;quot;&amp;gt;&amp;lt;filter type=&amp;quot;and&amp;quot;&amp;gt;&amp;lt;condition attribute=&amp;quot;name&amp;quot; operator=&amp;quot;eq&amp;quot; value=&amp;quot;UseTaskMaterials&amp;quot;/&amp;gt;&amp;lt;/filter&amp;gt;&amp;lt;/entity&amp;gt;&amp;lt;/fetch&amp;gt;&lt;/arg&gt;&lt;/definition&gt;&lt;function e="false"&gt;&lt;var&gt;Tabs.formCommands.IsVisible&lt;/var&gt;&lt;func&gt;Assign&lt;/func&gt;&lt;arg&gt;Boolean:False&lt;/arg&gt;&lt;/function&gt;&lt;branch e="false" info="BOB Tab Visibility" &gt;&lt;if e="true"&gt;&lt;conditions e="true" op="And"&gt;&lt;condition e="false"&gt;&lt;var&gt;UseBOBIntegration.@this&lt;/var&gt;&lt;op&gt;ContainsData&lt;/op&gt;&lt;/condition&gt;&lt;condition e="false"&gt;&lt;var&gt;UseBOBIntegration.optionvalue&lt;/var&gt;&lt;op&gt;Equal&lt;/op&gt;&lt;arg&gt;String:True&lt;/arg&gt;&lt;/condition&gt;&lt;/conditions&gt;&lt;action&gt;&lt;function e="false"&gt;&lt;var&gt;Tabs.bobdata.IsVisible&lt;/var&gt;&lt;func&gt;Assign&lt;/func&gt;&lt;arg&gt;Boolean:True&lt;/arg&gt;&lt;/function&gt;&lt;/action&gt;&lt;/if&gt;&lt;if e="true"&gt;&lt;conditions e="true" op="And"&gt;&lt;/conditions&gt;&lt;action&gt;&lt;function e="false"&gt;&lt;var&gt;Tabs.bobdata.IsVisible&lt;/var&gt;&lt;func&gt;Assign&lt;/func&gt;&lt;arg&gt;Boolean:False&lt;/arg&gt;&lt;/function&gt;&lt;/action&gt;&lt;/if&gt;&lt;/branch&gt;&lt;branch e="false" info="Task Materials Tab Visibility" &gt;&lt;if e="true"&gt;&lt;conditions e="true" op="And"&gt;&lt;condition e="false"&gt;&lt;var&gt;UseTaskMaterials.optionvalue&lt;/var&gt;&lt;op&gt;Equal&lt;/op&gt;&lt;arg&gt;String:true&lt;/arg&gt;&lt;/condition&gt;&lt;/conditions&gt;&lt;action&gt;&lt;function e="false"&gt;&lt;var&gt;Tabs.taskmaterial.IsVisible&lt;/var&gt;&lt;func&gt;Assign&lt;/func&gt;&lt;arg&gt;Boolean:True&lt;/arg&gt;&lt;/function&gt;&lt;/action&gt;&lt;/if&gt;&lt;if e="true"&gt;&lt;conditions e="true" op="And"&gt;&lt;/conditions&gt;&lt;action&gt;&lt;function e="false"&gt;&lt;var&gt;Tabs.taskmaterial.IsVisible&lt;/var&gt;&lt;func&gt;Assign&lt;/func&gt;&lt;arg&gt;Boolean:False&lt;/arg&gt;&lt;/function&gt;&lt;/action&gt;&lt;/if&gt;&lt;/branch&gt;&lt;branch e="true" info="Questionnaire Report Tab Visibility" &gt;&lt;if e="true"&gt;&lt;conditions e="true" op="And"&gt;&lt;condition e="false"&gt;&lt;var&gt;Configuration.roles&lt;/var&gt;&lt;op&gt;Contains&lt;/op&gt;&lt;arg&gt;String:Inspector&lt;/arg&gt;&lt;/condition&gt;&lt;/conditions&gt;&lt;action&gt;&lt;function e="false"&gt;&lt;var&gt;Tabs.report.IsVisible&lt;/var&gt;&lt;func&gt;Assign&lt;/func&gt;&lt;arg&gt;Boolean:True&lt;/arg&gt;&lt;/function&gt;&lt;/action&gt;&lt;/if&gt;&lt;if e="true"&gt;&lt;conditions e="true" op="And"&gt;&lt;/conditions&gt;&lt;action&gt;&lt;function e="false"&gt;&lt;var&gt;Tabs.report.IsVisible&lt;/var&gt;&lt;func&gt;Assign&lt;/func&gt;&lt;arg&gt;Boolean:False&lt;/arg&gt;&lt;/function&gt;&lt;/action&gt;&lt;/if&gt;&lt;/branch&gt;&lt;function e="false"&gt;&lt;var&gt;Form.gpuserdefine4.IsVisible&lt;/var&gt;&lt;func&gt;Assign&lt;/func&gt;&lt;arg&gt;Boolean:False&lt;/arg&gt;&lt;/function&gt;&lt;branch e="true" info="Check if caller fields are filled in" &gt;&lt;if e="true"&gt;&lt;conditions e="true" op="Or"&gt;&lt;condition e="false"&gt;&lt;var&gt;Entity.gpcallername&lt;/var&gt;&lt;op&gt;DoesNotContainData&lt;/op&gt;&lt;/condition&gt;&lt;condition e="false"&gt;&lt;var&gt;Entity.gpcalleremailaddress&lt;/var&gt;&lt;op&gt;DoesNotContainData&lt;/op&gt;&lt;/condition&gt;&lt;/conditions&gt;&lt;action&gt;&lt;saytext e="false"&gt;&lt;var&gt;&lt;/var&gt;&lt;text&gt;Contact information is required. Please enter contact name and email address before completing service call.&lt;/text&gt;&lt;/saytext&gt;&lt;/action&gt;&lt;/if&gt;&lt;/branch&gt;&lt;/Workflow&gt;</WorkflowLoad>
+  <SharedVariables>&lt;SharedVariables&gt;&lt;Variables&gt;&lt;/Variables&gt;&lt;/SharedVariables&gt;</SharedVariables>
+  <PrimaryCommands>!defcmd</PrimaryCommands>
+  <SharedVariableNames/>
+  <ClassBinding/>
+  <EnabledWorkflows>OnLoadEnabled OnChangeEnabled OnSaveEnabled</EnabledWorkflows>
+  <SerializedChildrenV2>
+    <FormTab xsi:type="DetailTab" NameModified="0" IconModified="0" EntityIconName="MobileCrm\Images.MonoTouch\Tabs\servicecall@2x.png" IsIconNameReadOnly="0">
+      <Name>servicecall</Name>
+      <SerializedChildren>
+        <DetailItem SchemaName="customerid"/>
+        <DetailItem SchemaName="locationid"/>
+        <DetailItem SchemaName="gpservicecallid"/>
+        <DetailItem separator="true" xsi:type="SeparatorDetailItem">
+          <IsConstant>true</IsConstant>
+        </DetailItem>
+        <DetailItem SchemaName="dateofcall"/>
+        <DetailItem SchemaName="calltypeid"/>
+        <DetailItem SchemaName="problemtypeid"/>
+        <DetailItem SchemaName="gpequipmentid"/>
+        <DetailItem SchemaName="purchaseorder"/>
+        <DetailItem SchemaName="contractid"/>
+        <DetailItem SchemaName="description" Style="MultiLine"/>
+        <DetailItem SchemaName="primarytechemployeeid"/>
+        <DetailItem SchemaName="priority"/>
+        <DetailItem SchemaName="callstatusid"/>
+        <DetailItem SchemaName="gpcallername"/>
+        <DetailItem SchemaName="gpcalleremailaddress"/>
+        <DetailItem SchemaName="gpcallerphone"/>
+        <DetailItem SchemaName="userdefine1id"/>
+        <DetailItem SchemaName="userdefine2id"/>
+        <DetailItem SchemaName="gpuserdefine2"/>
+        <DetailItem SchemaName="gpuserdefine3"/>
+        <DetailItem SchemaName="gpuserdefine4"/>
+      </SerializedChildren>
+    </FormTab>
+    <FormTab xsi:type="IFrameTab" NameModified="0" IconModified="0" EntityIconName="MobileCrm\Images.MonoTouch\Tabs\equipment@2x.png" IsIconNameReadOnly="0">
+      <Name>equipment</Name>
+      <Url>file://entity/equipment/equipment-list.html</Url>
+    </FormTab>
+    <FormTab xsi:type="IFrameTab" NameModified="0" IconModified="0" EntityIconName="MobileCrm\Images.MonoTouch\Tabs\task@2x.png" IsIconNameReadOnly="0">
+      <Name>task</Name>
+      <Url>file://entity/task/tasks.html</Url>
+    </FormTab>
+    <FormTab xsi:type="IFrameTab" NameModified="0" IconModified="0" EntityIconName="MobileCrm\Images.MonoTouch\Tabs\appointment@2x.png" IsIconNameReadOnly="0">
+      <Name>appointment</Name>
+      <Url>file://entity/appointment/appointment-list.html</Url>
+    </FormTab>
+    <FormTab xsi:type="IFrameTab" NameModified="0" IconModified="0" EntityIconName="MobileCrm\Images.MonoTouch\Tabs\annotation@2x.png" IsIconNameReadOnly="0">
+      <Name>annotation</Name>
+      <Url>file://entity/notes/notes-list.html</Url>
+    </FormTab>
+    <FormTab xsi:type="IFrameTab" NameModified="0" IconModified="0" EntityIconName="MobileCrm\Images.MonoTouch\Tabs\attachment@2x.png" IsIconNameReadOnly="0">
+      <Name>attachment</Name>
+      <Url>file://entity/attachment/attachment-list.html</Url>
+    </FormTab>
+    <FormTab xsi:type="IFrameTab" NameModified="0" IconModified="0" EntityIconName="MobileCrm\Images.MonoTouch\Tabs\taskmaterial@2x.png" IsIconNameReadOnly="0">
+      <Name>taskmaterial</Name>
+      <Url>file://entity/taskmaterial/task-material.html</Url>
+    </FormTab>
+    <FormTab xsi:type="IFrameTab" NameModified="0" IconModified="0" EntityIconName="MobileCrm\Images.MonoTouch\Tabs\bobdata@2x.png" IsIconNameReadOnly="0">
+      <Name>bobdata</Name>
+      <Url>file://entity/bobdata/fault-list.html</Url>
+    </FormTab>
+    <FormTab xsi:type="IFrameTab" NameModified="0" IconModified="0" EntityIconName="MobileCrm\Images.MonoTouch\Tabs\history@2x.png" IsIconNameReadOnly="0">
+      <Name>history</Name>
+      <Url>file://entity/servicecallhistory/servicecallhistory-list.html</Url>
+    </FormTab>
+    <FormTab xsi:type="IFrameTab" NameModified="0" IconModified="0" EntityIconName="MobileCrm\Images.MonoTouch\Tabs\report@2x.png" IsIconNameReadOnly="0">
+      <Name>report</Name>
+      <Url>file://utility/questionnaire/report-list_questionnaire.html</Url>
+    </FormTab>
+    <FormTab xsi:type="IFrameTab" NameModified="0" IconModified="0" EntityIconName="MobileCrm\Images.MonoTouch\Tabs\General@2x.png" IsIconNameReadOnly="0">
+      <Name>formCommands</Name>
+      <Url>file://entity/servicecall/servicecall-form_default.html</Url>
+      <DelayLoad>false</DelayLoad>
+    </FormTab>
+  </SerializedChildrenV2>
+</EntityForm>

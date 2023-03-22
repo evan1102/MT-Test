@@ -1,0 +1,337 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <!-- Activate IE9 document mode, if available -->
+    <meta charset="utf-8" http-equiv="X-UA-Compatible" content="IE=edge" />
+    <!-- Defined iOS viewport -->
+    <meta name="viewport" content="initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=false">
+    <!-- Disable iOS Phone No Detection -->
+    <meta name="format-detection" content="telephone=no" />
+    <!-- DevExtreme dependencies -->
+    <script type="text/javascript" src="../../scripts/jquery-3.3.1.min.js"></script>
+    <!-- Offline HTML JavaScript Bridge-->
+    <script type="text/javascript" src="../../scripts/JSBridge.js"></script>
+    <script type="text/javascript" src="../../scripts/k2aMethods.js"></script>
+    <script type="text/javascript" src="../../enum/Schema.js"></script>
+    <script type="text/javascript" src="../../enum/setupoption.js"></script>
+    <title>Entity Form</title>
+</head>
+<body>
+    <script>
+        //============== SELECTED DATA ================
+        var selected = { 'changeorder': null };
+
+        $(function () {
+            //============== ANDROID CHECK ================
+            MobileCRM.Platform.preventBackButton(btnBackClicked);
+
+            //============== EVENT LISTENERS ================
+            MobileCRM.UI.EntityForm.onItemChange(SCHEMA.changeorderdetail.Properties.jobcostcodeid, onJobCostIdChange, true, null);
+            MobileCRM.UI.EntityForm.onItemChange(SCHEMA.changeorderdetail.Properties.estimatedunits, onEstimatedUnitsChange, true, null);
+            MobileCRM.UI.EntityForm.onItemChange(SCHEMA.changeorderdetail.Properties.estimatedamountperunit, onEstimatedAmountPerUnitChange, true, null);
+            MobileCRM.UI.EntityForm.onPostSave(onPostSave, true, null);
+
+            loadFormOptions()
+                .then(loadFormItems, MobileCRM.bridge.alert)
+                .then(loadJobCostCodeFetchFilter, MobileCRM.bridge.alert);
+        });
+
+        //============== LOAD OPTIONS ================
+        function loadFormOptions() {
+            var deferred = $.Deferred();
+            MobileCRM.UI.EntityForm.requestObject(function (entityForm) {
+                var changeorderID = entityForm.entity.properties.changeorderid.id;
+
+                MobileCRM.DynamicEntity.loadById(SCHEMA.changeorder.name, changeorderID, function (entity) {
+
+                    selected.changeorder = entity.properties;
+                    return deferred.resolve();
+
+                }, function (err) { return deferred.reject("Load Change Order Error:\n" + err); });
+            }, function (err) { return deferred.reject("Request Entity Form Error:\n" + err); });
+
+            return deferred.promise();
+        }
+
+        function loadFormItems() {
+            var deferred = $.Deferred();
+
+            MobileCRM.Localization.initialize(function (localization) {
+                MobileCRM.UI.EntityForm.requestObject(function (entityForm) {
+
+                    var detailView = entityForm.getDetailView('General');
+                    detailView.items.forEach(function (item) {
+                        switch (item.name) {
+                            case SCHEMA.changeorderdetail.Properties.gpjobnumber:
+                            case SCHEMA.changeorderdetail.Properties.gpchangeordernumber:
+                                item.isEnabled = false;
+                                break;
+                            case SCHEMA.changeorderdetail.Properties.costelementid:
+                                item.isEnabled = false;
+                                break;
+                            case SCHEMA.changeorderdetail.Properties.costcodedescription:
+                                item.isVisible = false;
+                                item.isEnabled = false;
+                                break;
+                            case SCHEMA.changeorderdetail.Properties.estimatedamount:
+                                item.minimum = parseInt(item.maximum) * -1;
+                                item.isEnabled = false;
+                                break;
+                            case SCHEMA.changeorderdetail.Properties.estimatedamountperunit:
+                                item.decimalPlaces = 2;
+                                item.upDownVisible = entityForm.entity.isNew || (!entityForm.entity.isNew && selected.changeorder.postingstatus != 2);
+                                item.increment = 1;
+                                item.minimum = parseInt(item.maximum) * -1;
+                                item.isEnabled = entityForm.entity.isNew || (!entityForm.entity.isNew && selected.changeorder.postingstatus != 2);
+                                break;
+                            case SCHEMA.changeorderdetail.Properties.estimatedunits:
+                                item.decimalPlaces = 2;
+                                item.increment = 1;
+                                item.upDownVisible = entityForm.entity.isNew || (!entityForm.entity.isNew && selected.changeorder.postingstatus != 2);
+                                item.isEnabled = entityForm.entity.isNew || (!entityForm.entity.isNew && selected.changeorder.postingstatus != 2);
+                                break;
+                            case SCHEMA.changeorderdetail.Properties.jobcostcodeid:
+                                item.isVisible = true;
+                                item.isEnabled = entityForm.entity.isNew;
+                                item.errorMessage = item.value === undefined ? MobileCRM.Localization.get("Alert.FmtFieldNotEmpty").format(item.label) : '';
+                                item.validate = entityForm.entity.isNew;
+                                break;
+                            case SCHEMA.changeorderdetail.Properties.measurecodeid:
+                                item.isEnabled = entityForm.entity.isNew || (!entityForm.entity.isNew && selected.changeorder.postingstatus != 2);
+                        }
+                    });
+
+                    return deferred.resolve();
+                }, function (err) { return deferred.reject("Request Entity Form Error:\n" + err); });
+            }, function (err) { return deferred.reject("Localization Initialize Error:\n" + err); });
+
+            return deferred.promise();
+        }
+
+        function loadJobCostCodeFetchFilter() {
+            var fetchPromise = fetchChangeOrderDetailCostCodes(selected.changeorder.gpjobnumber, selected.changeorder.gpchangeordernumber)
+            fetchPromise.then(function (data) {
+                try {
+                    var fetch = "<fetch version='1.0'><entity name='jobcostcode'><filter type='and'>" +
+                        "<condition attribute='" + SCHEMA.jobcostcode.Properties.gpjobnumber + "' operator='eq' value='" + selected.changeorder.gpjobnumber + "' />";
+                    $.each(data, function (i, jobcostcode) {
+                        fetch += "<condition attribute='" + SCHEMA.jobcostcode.Properties.costcodealias + "' operator='ne' value='" + jobcostcode.properties.costcodealias + "' />";
+                    });
+                    fetch += "</filter></entity></fetch>";
+
+                    addFetchFilter(SCHEMA.changeorderdetail.Properties.jobcostcodeid, SCHEMA.jobcostcode.name, fetch, "General");
+                }
+                catch (e) { MobileCRM.bridge.alert("Load Job Cost Code Filter Error: " + e); }
+            }, MobileCRM.bridge.alert);
+        }
+
+        //============== LOAD DATA ================
+        function getChangeOrderDetail(jobcostcodeid, gpchangeordernumber) {
+            var deferred = $.Deferred();
+
+            data = { jobcostcode: null, changeorderdetail: null };
+            MobileCRM.DynamicEntity.loadById(SCHEMA.jobcostcode.name,
+                jobcostcodeid,
+                function (jobCostCodeEntity) {
+                    if (jobCostCodeEntity !== null) {
+                        data.jobcostcode = jobCostCodeEntity;
+                        var promise = fetchChangeOrderDetail(jobCostCodeEntity, gpchangeordernumber);
+                        promise.then(function (result) {
+                            data.changeorderdetail = result;
+                            return deferred.resolve(data);
+                        });
+                    }
+                    else {
+                        data.changeorderdetail = null;
+                        return deferred.resolve(data);
+                    }
+                },
+                function (error) {
+                    MobileCRM.bridge.alert(error);
+                    return deferred.resolve(data)
+                }, null);
+            return deferred.promise();
+        }
+
+        function fetchChangeOrderDetail(jobCostCode, gpchangeordernumber) {
+            var deferred = $.Deferred();
+
+            $(function () {
+                if (jobCostCode.properties.gpcostcodenumber1 === undefined || jobCostCode.properties.gpcostcodenumber1 === '') {
+                    return deferred.resolve(null);
+                }
+                else {
+                    var entity = new MobileCRM.FetchXml.Entity(SCHEMA.changeorderdetail.name);
+                    entity.addAttributes();
+                    entity.filter = new MobileCRM.FetchXml.Filter();
+                    entity.filter.whereIsNull('gpcostcodenumber1', 'eq', jobCostCode.properties.gpcostcodenumber1);
+                    entity.filter.whereIsNull('gpcostcodenumber2', 'eq', jobCostCode.properties.gpcostcodenumber2);
+                    entity.filter.whereIsNull('gpcostcodenumber3', 'eq', jobCostCode.properties.gpcostcodenumber3);
+                    entity.filter.whereIsNull('gpcostcodenumber4', 'eq', jobCostCode.properties.gpcostcodenumber4);
+                    entity.filter.whereIsNull('gpjobnumber', 'eq', jobCostCode.properties.gpjobnumber);
+                    entity.filter.whereIsNull('gpcostelement', 'eq', jobCostCode.properties.gpcostelement);
+                    entity.filter.whereIsNull('gpchangeordernumber', 'eq', gpchangeordernumber);
+                    entity.filter.type = 'and';
+
+                    var fetch = new MobileCRM.FetchXml.Fetch(entity);
+                    fetch.execute("DynamicEntities", function (res) {
+                        if (res.length === 1) {
+                            return deferred.resolve(res[0]);
+                        }
+                        else {
+                            return deferred.resolve(null);
+                        }
+
+                    }, function (error) {
+                        MobileCRM.bridge.alert(error);
+                        return deferred.resolve(null);
+                    });
+                }
+            })
+            return deferred.promise();
+        }
+
+        function fetchChangeOrderDetailCostCodes(jobNumber, changeOrderNumber) {
+            var deferred = $.Deferred();
+            var entity = new MobileCRM.FetchXml.Entity(SCHEMA.changeorderdetail.name);
+            entity.addAttributes();
+            entity.filter = new MobileCRM.FetchXml.Filter();
+            entity.filter.where('gpjobnumber', 'eq', jobNumber);
+            entity.filter.where('gpchangeordernumber', 'eq', changeOrderNumber);
+            entity.filter.type = 'and';
+
+            var fetch = new MobileCRM.FetchXml.Fetch(entity);
+            fetch.execute("DynamicEntities", function (res) {
+                if (res.length !== 0) {
+                    return deferred.resolve(res);
+                }
+                else {
+                    return deferred.resolve(null);
+                }
+            }, function (error) {
+                MobileCRM.bridge.alert(error);
+                return deferred.resolve(null);
+            });
+            return deferred.promise();
+        }
+
+        //============== EVENT LISTENERS ================
+        function onJobCostIdChange(entityForm) {
+            var changedItem = entityForm.context.changedItem;
+            var detailView = entityForm.getDetailView('General');
+            var item = detailView.getItemByName(changedItem);
+            if (item.value !== null) {
+                var gpchangeordernumber = detailView.getItemByName(SCHEMA.changeorderdetail.Properties.gpchangeordernumber).value;
+                MobileCRM.UI.EntityForm.requestObject(function (form) {
+                    var promise = getChangeOrderDetail(item.value.id, gpchangeordernumber);
+                    promise.then(function (data) {
+                        var estimatedamount, estimatedamountperunit, estimatedunits;
+                        if (data.changeorderdetail === null) {
+                            estimatedamount = 0;
+                            estimatedamountperunit = 0;
+                            estimatedunits = 0;
+                        }
+                        else {
+                            estimatedamount = data.changeorderdetail.properties.estimatedamount;
+                            estimatedamountperunit = data.changeorderdetail.properties.estimatedamountperunit;
+                            estimatedunits = data.changeorderdetail.properties.estimatedunits;
+                        }
+                        MobileCRM.UI.EntityForm.requestObject(function (form) {
+                            var detailView = form.getDetailView('General');
+                            detailView.getItemByName(SCHEMA.changeorderdetail.Properties.estimatedamount).value = estimatedamount;
+                            detailView.getItemByName(SCHEMA.changeorderdetail.Properties.estimatedunits).value = estimatedunits;
+                            detailView.getItemByName(SCHEMA.changeorderdetail.Properties.estimatedamountperunit).value = estimatedamountperunit;
+                            detailView.getItemByName(SCHEMA.changeorderdetail.Properties.costelementid).value = data.jobcostcode.properties.costelementid;
+                            detailView.getItemByName(SCHEMA.changeorderdetail.Properties.measurecodeid).value = data.jobcostcode.properties.measurecodeid;
+                        }, MobileCRM.bridge.alert, null);
+                    });
+                }, MobileCRM.bridge.alert, null);
+            }
+            else if (detailView.getItemByName(SCHEMA.changeorderdetail.Properties.costcodealias).value !== undefined ||
+                detailView.getItemByName(SCHEMA.changeorderdetail.Properties.costcodealias).value !== '') {
+                MobileCRM.UI.EntityForm.requestObject(function (form) {
+                    var detailView = form.getDetailView('General');
+                    detailView.getItemByName(SCHEMA.changeorderdetail.Properties.costcodedescription).isVisible = true;
+                    detailView.getItemByName(SCHEMA.changeorderdetail.Properties.jobcostcodeid).isVisible = false;
+                }, MobileCRM.bridge.alert, null);
+            }
+
+        }
+
+        function onEstimatedUnitsChange(entityForm) {
+            var changedItem = entityForm.context.changedItem;
+            var detailView = entityForm.getDetailView('General');
+            var item = detailView.getItemByName(changedItem);
+            if (item.value !== null) {
+                var estimatedAmountPerUnit = detailView.getItemByName(SCHEMA.changeorderdetail.Properties.estimatedamountperunit).value;
+                var promise = getEstimatedAmount(item.value, estimatedAmountPerUnit);
+                promise.then(function (estimatedAmount) {
+                    MobileCRM.UI.EntityForm.requestObject(function (form) {
+                        form.entity.properties.estimatedamount = estimatedAmount;
+                    }, MobileCRM.bridge.alert, null);
+                })
+            }
+        }
+
+        function onEstimatedAmountPerUnitChange(entityForm) {
+            var changedItem = entityForm.context.changedItem;
+            var detailView = entityForm.getDetailView('General');
+            var item = detailView.getItemByName(changedItem);
+            if (item.value !== null) {
+                var estimatedUnits = detailView.getItemByName(SCHEMA.changeorderdetail.Properties.estimatedunits).value;
+                var promise = getEstimatedAmount(estimatedUnits, item.value);
+                promise.then(function (estimatedAmount) {
+                    MobileCRM.UI.EntityForm.requestObject(function (form) {
+                        form.entity.properties.estimatedamount = estimatedAmount;
+                    }, MobileCRM.bridge.alert, null);
+
+                })
+            }
+        }
+
+        function getEstimatedAmount(units, amountPerUnit) {
+            var deferred = $.Deferred();
+            $(function () {
+                var estimatedAmount = parseFloat(units) * parseFloat(amountPerUnit);
+                return deferred.resolve(estimatedAmount.toFixed(2));
+            });
+            return deferred.promise();
+        }
+
+        function onPostSave(entityForm) {
+            var saveHandler = entityForm.suspendPostSave();
+            var promise = getChangeOrderDetail(entityForm.entity.properties.jobcostcodeid.id, entityForm.entity.properties.gpchangeordernumber);
+            promise.then(function (data) {
+                MobileCRM.DynamicEntity.loadById(SCHEMA.changeorderdetail.name,
+                    entityForm.entity.id,
+                    function (entity) {
+                        var units = parseFloat(entity.properties.estimatedunits);
+                        var amountPerUnit = parseFloat(entity.properties.estimatedamountperunit);
+                        entity.properties.estimatedamount = parseFloat(units * amountPerUnit).toFixed(2);
+                        entity.properties.gpcostelement = data.jobcostcode.properties.gpcostelement;
+                        entity.properties.name = data.jobcostcode.properties.costcodealias;
+                        entity.properties.costcodedescription = data.jobcostcode.properties.description;
+                        entity.properties.costcodealias = data.jobcostcode.properties.costcodealias;
+                        entity.properties.gpcostcodenumber1 = data.jobcostcode.properties.gpcostcodenumber1;
+                        entity.properties.gpcostcodenumber2 = data.jobcostcode.properties.gpcostcodenumber2;
+                        entity.properties.gpcostcodenumber3 = data.jobcostcode.properties.gpcostcodenumber3;
+                        entity.properties.gpcostcodenumber4 = data.jobcostcode.properties.gpcostcodenumber4;
+                        entity.save(function (error) {
+                            if (error) {
+                                saveHandler.resumePostSave(error);
+                            }
+                            else {
+                                setCleanAndClose();
+                            }
+                        });
+                    },
+                    function (error) {
+                        saveHander.resumePostSave(error);
+                    },
+                    null
+                )
+            });
+        }
+    </script>
+</body>
+</html>

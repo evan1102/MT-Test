@@ -1,0 +1,720 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <!-- Activate IE9 document mode, if available -->
+    <meta charset="utf-8" http-equiv="X-UA-Compatible" content="IE=edge" />
+    <!-- Defined iOS viewport -->
+    <meta name="viewport" content="initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=false">
+    <!-- Disable iOS Phone No Detection -->
+    <meta name="format-detection" content="telephone=no" />
+    <!-- DevExtreme dependencies -->
+    <script type="text/javascript" src="../../scripts/jquery-3.3.1.min.js"></script>
+    <!-- DevExtreme themes -->
+    <link rel="stylesheet" type="text/css" href="../../css/dx.common.css" />
+    <link rel="stylesheet" type="text/css" href="../../css/dx.light.css" />
+    <!-- A DevExtreme library -->
+    <script type="text/javascript" src="../../scripts/dx.all.js"></script>
+    <!-- Offline HTML JavaScript Bridge-->
+    <script type="text/javascript" src="../../scripts/JSBridge.js"></script>
+    <script type="text/javascript" src="../../scripts/k2aMethods.js"></script>
+    <script type="text/javascript" src="../../enum/Schema.js"></script>
+    <script type="text/javascript" src="../../enum/setupoption.js"></script>
+    <script type="text/javascript" src="completion-form.js"></script>
+    <!-- Offline HTML Template Factory-->
+    <script type="text/javascript" src="../../templates/formItem-factory.js"></script>
+    <script type="text/javascript" src="../../templates/toolbar-factory.js"></script>
+    <!-- Offline HTML Styling -->
+    <link rel="stylesheet" type="text/css" href="../../css/k2a.css" />
+    <!-- jSignature -->
+    <script type="text/javascript" src="../../scripts/flashcanvas.js"></script>
+    <script type="text/javascript" src="../../scripts/jSignature.min.js"></script>
+    <style>
+        .dx-item {
+            padding-left: 5px;
+            padding-right: 5px;
+        }
+    </style>
+    <title>Appointment Completion Summary</title>
+</head>
+<body>
+    <div id="reportHeader"></div>
+    <div id="reportForm"></div><br><hr>
+    <div id="signatures">
+        <span id="customerView" style="display:table; margin: 0 auto"></span><br>
+        <span id="customerBtn" style="display:table; margin: 0 auto"></span><br>
+        <span id="technicianView" style="display:table; margin: 0 auto"></span><br>
+        <span id="technicianBtn" style="display:table; margin: 0 auto"></span>
+    </div>
+    <div id="toast"></div>
+    <script>
+        //============== REPORT HEADER ================
+        headerImage = "<img src='../../images/service-summary-logo-color.png' class='logo' />";
+        imageMaxWidth = 285;
+        //============== SUMMARY DATA ================
+        var apptData, jobData, callData, taskData, timeEntriesData, invData, poData;
+        var summaryReportID, fieldInvoiceID, captureSignature = false, previousformMaximized = false;
+        //============== FETCH DATA ================
+        var requiredSetupOptions = [
+            SETUPOPTION.CompanyDatabaseVersion,
+            SETUPOPTION.ShowTasksForAppointments,
+            SETUPOPTION.UseLabor,
+            SETUPOPTION.UseExpense,
+            SETUPOPTION.UseFieldInvoicePreview,
+            SETUPOPTION.UseFieldInvoiceSignature,
+            SETUPOPTION.UseTravel,
+            SETUPOPTION.UseInventory,
+            SETUPOPTION.UsePurchaseOrder,
+            SETUPOPTION.UseTechnicianSignature,
+            SETUPOPTION.UseCustomerSignature
+        ];
+        //============== LOCALIZATION ================
+        var callDetailLocalization = "appointmentcompletion.SummaryCaption.Call";
+        var resolutionLocalization = "appointmentcompletion.SummaryCaption.Resolution";
+        var locLocalization = "appointmentcompletion.SummaryCaption.Location";
+        var taskLocalization = "appointmentcompletion.SummaryCaption.Task";
+        var timeEntriesLocalization = "appointmentcompletion.SummaryCaption.TimeEntries";
+        var invLocalization = "appointmentcompletion.SummaryCaption.Inventory";
+        var poLocalization = "appointmentcompletion.SummaryCaption.PO";
+
+        $(function () {
+            //============== HEADER ================
+            MobileCRM.Configuration.requestObject(function (config) {
+                reportHeader = $("#reportHeader").dxBox({
+                    direction: "row",
+                    width: "100%",
+                    crossAlign: "Center",
+                    align: "Center",
+                    items: [
+                        { ratio: 1, html: "<div id='headerImage' style='width:inherit'>" },
+                        { ratio: 0, baseSize: 5 },
+                        { ratio: 0, baseSize: 55, html: "<div id='refreshBtn'>" }
+                    ]
+                }).dxBox("instance");
+
+                refreshBtn = $("#refreshBtn").dxButton({
+                    icon: 'refresh',
+                    onClick: refreshSummary,
+                    visible: config.settings["useFlexiForms"]
+                }).dxButton("instance");
+
+                $(window).resize(function () {
+                    MobileCRM.bridge.getWindowSize(function (obj) {
+                        $(".logo").css("width", obj.width > imageMaxWidth + 80 ?
+                            imageMaxWidth + "px" : obj.width - 80 + "px");
+                    }, MobileCRM.bridge.alert);
+                });
+            }, MobileCRM.bridge.alert, null);
+
+            //============== LOADPANEL ================
+            loading = MobileCRM.UI.Form.showPleaseWait("Loading");
+
+            //============== FORMS ================
+            reportForm = $("#reportForm").dxForm({
+                items: apptItems,
+                readOnly: true
+            }).dxForm("instance");
+
+            //============== EVENT LISTENERS ================
+            MobileCRM.UI.EntityForm.onSelectedViewChanged(function (entityForm) {
+                if (entityForm.context.selectedView === "Summary")
+                    refreshSummary();
+            }, true);
+            MobileCRM.bridge.onGlobalEvent("LoadSignatureReportIDs", loadReportIDs, true);
+            MobileCRM.bridge.onGlobalEvent("IFrameFormClosed", function (iFrameForm) {
+                if (iFrameForm.form && iFrameForm.form.caption === "Signature") {
+                    checkForSignatureUpdate(summaryReportID);
+                    MobileCRM.UI.Form.requestObject(function (iFrameForm) {
+                        iFrameForm.isMaximized = previousformMaximized;
+                    }, MobileCRM.bridge.alert, null);
+                }
+            }, true, null);
+            MobileCRM.bridge.onGlobalEvent("CaptureSignature", scrollToSignatures, true);
+            MobileCRM.Configuration.requestObject(function (config) {
+                MobileCRM.bridge.onGlobalEvent("SyncFinished", refreshSummary, !config.settings.requireSyncLogin);
+            }, MobileCRM.bridge.alert);
+
+            loadSetupOptions(loadFormOptions);
+        });
+        //============== REFRESH SUMMARY ================
+        function refreshSummary() {
+            $("#headerImage").empty();
+            $("#reportForm").empty();
+            loadApptDetails().then(function () {
+                if (parseInt(apptData.gpappointmenttype) === 1)
+                    buildCallSummary();
+                else
+                    buildJobSummary();
+            }, alertError);
+        }
+
+        //============== SIGNATURE ================
+        window.onload = function () {
+            //============== VIEW ================
+            customerView = $("#customerView").dxBox({
+                direction: "row",
+                width: "90%",
+                visible: false,
+                items: [{
+                    html: "<fieldset id='customerFieldset'></fieldset>",
+                    ratio: 1
+                }]
+            }).dxBox("instance");
+            technicianView = $("#technicianView").dxBox({
+                direction: "row",
+                width: "90%",
+                visible: false,
+                items: [{
+                    html: "<fieldset id='technicianFieldset'></fieldset>",
+                    ratio: 1
+                }]
+            }).dxBox("instance");
+
+            //============== BUTTONS ================
+            customerBtn = $("#customerBtn").dxButton({
+                text: "Customer Signature",
+                icon: "edit",
+                type: "danger",
+                onClick: function (e) {
+                    MobileCRM.UI.Form.requestObject(function (form) {
+                        previousformMaximized = form.isMaximized;
+                    }, MobileCRM.bridge.alert, null);
+
+                    MobileCRM.UI.IFrameForm.show("Signature",
+                        "file:///entity/appointmentcompletion/signature.html", false,
+                        options = {
+                            type: "Customer", name: customername,
+                            reports: [(summaryReportID ? summaryReportID : ""),
+                            (fieldInvoiceID ? fieldInvoiceID : "")]
+                        });
+                },
+                visible: false
+            }).dxButton("instance");
+            technicianBtn = $("#technicianBtn").dxButton({
+                text: "Technician Signature",
+                icon: "edit",
+                type: "danger",
+                onClick: function (e) {
+                    MobileCRM.UI.Form.requestObject(function (form) {
+                        previousformMaximized = form.isMaximized;
+                    }, MobileCRM.bridge.alert, null);
+
+                    MobileCRM.UI.IFrameForm.show("Signature",
+                        "file:///entity/appointmentcompletion/signature.html", false,
+                        options = {
+                            type: "Technician", name: techName,
+                            reports: [(summaryReportID ? summaryReportID : ""),
+                            (fieldInvoiceID ? fieldInvoiceID : "")]
+                        });
+                },
+                visible: false
+            }).dxButton("instance");
+
+            $(".dx-button-danger.dx-button-mode-contained").css('background-color', '#eb2026');
+        }
+
+        //============== LOAD OPTIONS ================
+        function loadFormOptions() {
+            initializeCultureInfo().then(loadLocalization, alertError);
+            initializeSignatures();
+            initializeResolutionNote();
+            loadApptDetails().then(function () {
+                if (parseInt(apptData.gpappointmenttype) === 1)
+                    buildCallSummary();
+                else
+                    buildJobSummary();
+            }, alertError);
+        }
+
+        // --- LOCALIZATION DATA ---
+        function initializeCultureInfo() {
+            var deferred = $.Deferred();
+            MobileCRM.CultureInfo.initialize(function (currentCulture) {
+                var cultureInfo =
+                    "Display name: " + currentCulture.displayName + "\n" +
+                    "ISO name: " + currentCulture.ISOName + "\n" +
+                    "Native name: " + currentCulture.nativeName + "\n\n" +
+                    "Number format: " + JSON.stringify(currentCulture.numberFormat) + "\n\n" +
+                    "DateTime format: " + JSON.stringify(currentCulture.dateTimeFormat) + "\n" +
+                    "Right to left: " + currentCulture.isRightToLeft + "\n";
+                return deferred.resolve();
+            }, function (err) { return deferred.reject(err); });
+            return deferred.promise();
+        }
+        function loadLocalization() {
+            MobileCRM.Localization.initialize(function (localization) {
+                callDetailCaption = MobileCRM.Localization.get(callDetailLocalization);
+                resolutionCaption = MobileCRM.Localization.get(resolutionLocalization);
+                locCaption = MobileCRM.Localization.get(locLocalization);
+                taskCaption = MobileCRM.Localization.get(taskLocalization);
+                timeEntriesCaption = MobileCRM.Localization.get(timeEntriesLocalization);
+                invCaption = MobileCRM.Localization.get(invLocalization);
+                poCaption = MobileCRM.Localization.get(poLocalization);
+
+                // --- FORM GROUP CAPTION ---
+                callDetailGroup.caption = checkNulls(callDetailCaption, callDetailLocalization);
+                callResolutionGroup.caption = checkNulls(resolutionCaption, resolutionLocalization);
+                locGroup.caption = checkNulls(locCaption, locLocalization);
+
+                // --- LIST HEADERS ---
+                taskHeader = "<hr><h2>" + checkNulls(taskCaption, taskLocalization) + "</h2>";
+                timeEntriesHeader = "<hr><h2>" + checkNulls(timeEntriesCaption, timeEntriesLocalization) + "</h2>";
+                invHeader = "<hr><h2>" + checkNulls(invCaption, invLocalization) + "</h2>";
+                poHeader = "<hr><h2>" + checkNulls(poCaption, poLocalization) + "</h2>";
+            }, MobileCRM.bridge.alert);
+        }
+        function checkNulls(caption, blankLocalization) {
+            if (caption === blankLocalization)
+                return "";
+            else
+                return caption;
+        }
+
+        // --- SIGNATURE DATA ---
+        function initializeSignatures() {
+            technicianBtn.option("visible", setupOptions.UseTechnicianSignature);
+            customerBtn.option("visible", setupOptions.UseCustomerSignature);
+            if (setupOptions.UseTechnicianSignature)
+                loadTechnicianName();
+            if (setupOptions.UseCustomerSignature || setupOptions.UseTechnicianSignature)
+                loadReportIDs();
+        }
+        function loadTechnicianName() {
+            var entity = new MobileCRM.FetchXml.Entity(SCHEMA.systemuser.name);
+            entity.addAttribute('name');
+
+            var fetch = new MobileCRM.FetchXml.Fetch(entity);
+            fetch.execute("JSON", function (res) {
+                techName = res[0] ? res[0].name : "";
+            }, alertError);
+        }
+        function loadReportIDs() {
+            MobileCRM.UI.EntityForm.requestObject(function (entityForm) {
+                var entity = new MobileCRM.FetchXml.Entity(SCHEMA.report.name);
+                entity.addAttribute('id');
+                entity.addAttribute('name');
+                entity.addFilter().where("appointmentid", 'eq', entityForm.entity.id);
+
+                var fetch = new MobileCRM.FetchXml.Fetch(entity);
+                fetch.execute("JSON", function (res) {
+                    res.forEach(function (report) {
+                        if (report.name.toUpperCase().indexOf("SUMMARY") !== -1) {
+                            summaryReportID = report.id;
+                            checkForSignatureUpdate(summaryReportID);
+                        }
+                        else if (report.name.toUpperCase().indexOf("FIELD") !== -1) {
+                            if (setupOptions.UseFieldInvoiceSignature && !setupOptions.UseFieldInvoicePreview)
+                                fieldInvoiceID = report.id;
+                        }
+                    });
+                }, alertError);
+            }, alertError);
+        }
+        function checkForSignatureUpdate(reportID) {
+            if (!reportID) return;
+            MobileCRM.DynamicEntity.loadById("report", reportID, function (report) {
+                customername = report.properties["customername"];
+                customersignature = report.properties["customersignature"];
+                technicianname = report.properties["technicianname"];
+                techniciansignature = report.properties["techniciansignature"];
+
+                if (customername && customersignature)
+                    updateSignatureView(
+                        customerView,
+                        "#customerFieldset",
+                        "Customer: " + customername,
+                        "image/svg+xml;base64," + customersignature,
+                        customerBtn);
+
+                if (technicianname && techniciansignature)
+                    updateSignatureView(
+                        technicianView,
+                        "#technicianFieldset",
+                        "Technician: " + technicianname,
+                        "image/svg+xml;base64," + techniciansignature,
+                        technicianBtn);
+
+            }, MobileCRM.bridge.alert, null);
+        }
+        function updateSignatureView(sigView, fieldsetID, fieldsetLabel, signature, sigBtn) {
+            $(fieldsetID).empty();
+            $(fieldsetID).append(
+                $("<legend>").append(fieldsetLabel),
+                $("<img>").attr("src", "data:" + signature).css({ 'max-width': '100%', 'height': 'auto' })
+            );
+
+            sigView.option("visible", true);
+            sigBtn.option("type", "success");
+            $('.dx-button-success.dx-button-mode-contained').css('background-color', '#5cb85c');
+            sigView.focus();
+        }
+        function scrollToSignatures() {
+            $('html,body').animate({
+                scrollTop: $("#technicianBtn").offset().top - 10
+            });
+            MobileCRM.UI.EntityForm.requestObject(function (entityForm) {
+                entityForm.entity.properties.captureSignature = false;
+            }, MobileCRM.bridge.alert);
+        }
+
+        // --- SUMMARY DATA ---
+        function initializeResolutionNote() {
+            var version = setupOptions.CompanyDatabaseVersion.split(".")
+            var sigYear = version[0];
+            var sigRelease = version[2];
+            showResolutionNote = (parseInt(sigYear) >= 18 && parseInt(sigRelease) >= 3) ||
+                parseInt(sigYear) > 18 ? true : false;
+        }
+        function loadApptDetails() {
+            var deferred = $.Deferred();
+            MobileCRM.UI.EntityForm.requestObject(function (entityForm) {
+                apptData = entityForm.entity.properties;
+                return deferred.resolve();
+            }, function (err) { return deferred.reject(err); });
+            return deferred.promise();
+        }
+
+        //============== LOAD DATA ================
+        function buildCallSummary() {
+            loadCallDetails().then(function () {
+                var itemsDeferred = [
+                    buildTaskSummary(),
+                    buildTimeEntriesSummary(),
+                    buildInventorySummary(),
+                    buildPurchaseOrderSummary()
+                ];
+
+                $.when.apply($, itemsDeferred)
+                    .then(compileReports, alertError);
+            }, alertError);
+        }
+        function loadCallDetails() {
+            var deferred = $.Deferred();
+            if (!apptData.gpservicecallid)
+                return deferred.resolve();
+
+            var entity = new MobileCRM.FetchXml.Entity(SCHEMA.servicecall.name);
+            entity.addAttributes();
+
+            var linkLocation = entity.addLink("location", "id", "locationid", "outer");
+            linkLocation.addAttributes();
+            linkLocation.alias = 'location{k2a}';
+
+            var linkCustomer = entity.addLink("customer", "id", "customerid", "outer");
+            linkCustomer.addAttributes();
+            linkCustomer.alias = 'customer{k2a}';
+
+            var linkResolution = entity.addLink("callresolution", "id", "callresolutionid", "outer");
+            linkResolution.addAttributes();
+            linkResolution.alias = 'callresolution{k2a}';
+
+            entity.addFilter().where("gpservicecallid", "eq", apptData.gpservicecallid);
+
+            var fetch = new MobileCRM.FetchXml.Fetch(entity);
+            fetch.execute("JSON", function (res) {
+                if (res.length > 0)
+                    callData = JSON.parse(JSON.stringify(res[0]).replace(/{k2a}./g, "_"));
+                return deferred.resolve();
+            }, function (err) { return deferred.reject(err); });
+            return deferred.promise();
+        }
+
+        function buildJobSummary() {
+            loadJobDetails().then(function () {
+                var itemsDeferred = [
+                    buildTimeEntriesSummary(),
+                    buildInventorySummary()
+                ];
+
+                $.when.apply($, itemsDeferred)
+                    .then(compileReports, alertError);
+            }, alertError);
+        }
+        function loadJobDetails() {
+            var deferred = $.Deferred();
+            if (!apptData.gpjobnumber)
+                return deferred.resolve();
+
+            var entity = new MobileCRM.FetchXml.Entity(SCHEMA.job.name);
+            entity.addAttributes();
+            entity.addFilter().where('gpjobnumber', 'eq', apptData.gpjobnumber);
+
+            var linkLocation = entity.addLink("location", "id", "locationid", "outer");
+            linkLocation.addAttributes();
+            linkLocation.alias = 'location_';
+
+            var linkCustomer = entity.addLink("customer", "id", "customerid", "outer");
+            linkCustomer.addAttributes();
+            linkCustomer.alias = 'customer_';
+
+            var fetch = new MobileCRM.FetchXml.Fetch(entity);
+            fetch.execute("JSON", function (res) {
+                if (res.length > 0)
+                    jobData = JSON.parse(JSON.stringify(res[0]).replace(/_./g, "_"));
+                return deferred.resolve();
+            }, function (err) { return deferred.reject(err); });
+            return deferred.promise();
+        }
+
+        function buildTaskSummary() {
+            var deferred = $.Deferred();
+            if (!apptData.gpservicecallid || !setupOptions.ShowTasksForAppointments)
+                return deferred.resolve();
+
+            var entity = new MobileCRM.FetchXml.Entity(SCHEMA.task.name);
+            entity.addAttributes();
+            entity.orderBy("gptaskcode");
+
+            var linkTaskStatus = entity.addLink("taskstatus", "id", "taskstatusid");
+            linkTaskStatus.addAttributes();
+            linkTaskStatus.alias = 'taskstatus{k2a}';
+
+            var linkTaskResponse = entity.addLink("taskresponse", "taskid", "id", "outer");
+            linkTaskResponse.addAttributes();
+            linkTaskResponse.alias = 'taskresponse{k2a}';
+
+            var callFilter = new MobileCRM.FetchXml.Filter();
+            callFilter.where("gpservicecallid", "eq", apptData.gpservicecallid);
+            var levelFilter = new MobileCRM.FetchXml.Filter();
+            levelFilter.where("recordlevel", "eq", 4);
+
+            entity.filter = new MobileCRM.FetchXml.Filter();
+            entity.filter.type = 'and';
+            entity.filter.filters.push(callFilter, levelFilter);
+
+            var fetch = new MobileCRM.FetchXml.Fetch(entity);
+            fetch.execute("JSON", function (res) {
+                if (res.length > 0) 
+                    taskData = JSON.parse(JSON.stringify(res).replace(/{k2a}./g, "_"));
+
+                $(taskData).each(function(i, task) {
+                    task.gpequipmentid_gptaskcode = (task.gpequipmentid ? + "" + task.gpequipmentid + " - " : "")  +
+                        (task.gptaskcode ? task.gptaskcode : "");                        
+                });
+                return deferred.resolve();
+            }, function (err) { return deferred.reject(err); });
+            return deferred.promise();
+        }
+        function buildTimeEntriesSummary() {
+            var deferred = $.Deferred();
+
+            var entity = new MobileCRM.FetchXml.Entity("laborexpense");
+            entity.addAttributes();
+
+            var empLinkEntity = entity.addLink("employee", "id", "employeeid", "outer");
+            empLinkEntity.addAttributes();
+            empLinkEntity.alias = 'employee{k2a}';
+
+            var paycodeLinkEntity = entity.addLink("paycode", "id", "paycodeid", "outer");
+            paycodeLinkEntity.addAttributes();
+            paycodeLinkEntity.alias = 'paycode{k2a}';
+
+            entity.filter = new MobileCRM.FetchXml.Filter();
+            entity.filter.type = "and";
+
+            apptFilter = new MobileCRM.FetchXml.Filter();
+            apptFilter.where("appointmentid", "eq", apptData.id ? apptData.id : " ");
+            entity.filter.filters.push(apptFilter);
+
+            if (!setupOptions.UseLabor) {
+                laborFilter = new MobileCRM.FetchXml.Filter();
+                laborFilter.where("costtype", "ne", "1");
+                entity.filter.filters.push(laborFilter);
+            }
+            if (!setupOptions.UseExpense) {
+                expenseFilter = new MobileCRM.FetchXml.Filter();
+                expenseFilter.where("costtype", "ne", "2");
+                entity.filter.filters.push(expenseFilter);
+            }
+            if (!setupOptions.UseTravel) {
+                travelFilter = new MobileCRM.FetchXml.Filter();
+                travelFilter.where("costtype", "ne", "3");
+                entity.filter.filters.push(travelFilter);
+            }
+
+            var fetch = new MobileCRM.FetchXml.Fetch(entity);
+            fetch.execute("JSON", function (res) {
+                if (res.length > 0)
+                    timeEntriesData = JSON.parse(JSON.stringify(res).replace(/{k2a}./g, "_"));
+                return deferred.resolve();
+            }, function (err) { return deferred.reject(err); });
+            return deferred.promise();
+        }
+        function buildInventorySummary() {
+            var deferred = $.Deferred();
+            var entity = new MobileCRM.FetchXml.Entity("consumedinventory");
+            entity.addAttributes();
+            entity.addFilter().where("appointmentid", "eq", apptData.id ? apptData.id : " ");
+
+            var fetch = new MobileCRM.FetchXml.Fetch(entity);
+            fetch.execute("JSON", function (res) {
+                if (res.length > 0)
+                    invData = res;
+                return deferred.resolve();
+            }, function (err) { return deferred.reject(err); });
+            return deferred.promise();
+        }
+        function buildPurchaseOrderSummary() {
+            var deferred = $.Deferred();
+
+            var entity = new MobileCRM.FetchXml.Entity(SCHEMA.purchaseorderdetail.name);
+            entity.addAttributes();
+
+            var callFilter = new MobileCRM.FetchXml.Filter();
+            callFilter.where("servicecallid", "eq", apptData.servicecallid ? apptData.servicecallid.id : " ");
+
+            var apptFilter = new MobileCRM.FetchXml.Filter();
+            apptFilter.where("appointmentid", "eq", apptData.id ? apptData.id : " ");
+            var apptNullFilter = new MobileCRM.FetchXml.Filter();
+            apptNullFilter.where("appointmentid", "null");
+
+            var callApptFilter = new MobileCRM.FetchXml.Filter();
+            callApptFilter.type = 'and';
+            callApptFilter.filters.push(callFilter, apptFilter);
+
+            var callApptNullFilter = new MobileCRM.FetchXml.Filter();
+            callApptNullFilter.type = 'and';
+            callApptNullFilter.filters.push(callFilter, apptNullFilter);
+
+            entity.filter = new MobileCRM.FetchXml.Filter();
+            entity.filter.type = 'or';
+            entity.filter.filters.push(callApptFilter, callApptNullFilter);
+
+            var fetch = new MobileCRM.FetchXml.Fetch(entity);
+            fetch.execute("JSON", function (res) {
+                if (res.length > 0)
+                    poData = res;
+                return deferred.resolve('PO Done');
+            }, function (err) { return deferred.reject(err); });
+            return deferred.promise();
+        }
+
+        function compileReports() {
+            $("#headerImage").append(headerImage);
+            MobileCRM.bridge.getWindowSize(function (obj) {
+                $(".logo").css("width", obj.width > imageMaxWidth + 80 ?
+                    imageMaxWidth + "px" : obj.width - 80 + "px");
+            });
+            reportForm.option("formData", apptData);
+
+            // --- ITEM SUMMARIES ---
+            if (jobData) {
+                jobItems[0].items[4].visible = showResolutionNote;
+                createItemForm(mergeData(apptData, jobData), "jobForm", jobItems);
+            }
+            if (callData) {
+                createItemForm(mergeData(apptData, callData), "callForm", callItems);
+                if (callData.callresolutionid)
+                    createItemForm(callData, "resolutionForm", resolutionItems);
+            }
+
+            // --- COLLECTION SUMMARIES ---
+            if (taskData)
+                createSubGroupList(taskHeader, taskData, taskGroupBy, taskGroupHeader,
+                    taskSubGroupBy, taskSubGroupTemplate, taskSubGroupItemTemplate, true, "taskList");
+            if (timeEntriesData && (setupOptions.UseLabor || setupOptions.UseExpense || setupOptions.UseTravel))
+                createSubGroupList(timeEntriesHeader, timeEntriesData, timeEntriesGroupBy, timeEntriesGroupHeader,
+                    timeEntriesSubGroupBy, timeEntriesSubGroupTemplate, timeEntriesSubGroupItemTemplate, false, "timeList");
+            if (invData && setupOptions.UseInventory)
+                createList(invHeader, invData, invItemTemplate);
+            if (poData && setupOptions.UsePurchaseOrder)
+                createList(poHeader, poData, poItemTemplate, poGroupBy, poGroupTemplate);
+
+            afterFormValuesLoaded();
+            loading.close();
+        }
+        function mergeData(addTo, addFrom) {
+            for (var item in addFrom) {
+                addTo[item] = addFrom[item];
+            }
+            return addTo;
+        }
+        function createItemForm(data, divID, formItems) {
+            $("#reportForm").append(
+                $("<div id='" + divID + "'>").dxForm({
+                    formData: data,
+                    items: formItems,
+                    readOnly: true
+                })
+            );
+        }
+
+        function createCollectionForms(data, itemGroup, genericCaption, itemGroupCaption, formItems) {
+            for (var i = 0; i < data.length; i++) {
+                itemGroup.caption = itemGroupCaption === null || itemGroupCaption === "" ?
+                    genericCaption : genericCaption + data[i][itemGroupCaption];
+                $("#reportForm").append(
+                    $("<div>").dxForm({
+                        formData: data[i],
+                        readOnly: true,
+                        items: formItems
+                    })
+                );
+            }
+        }
+        function createList(header, data, itemTemplate, groupBy, groupTemplate, collapsed, listID) {
+            $("#reportForm").append(
+                $("<div>").append(header),
+                $("<div id='" + listID + "'>").dxList({
+                    dataSource: new DevExpress.data.DataSource({
+                        store: data,
+                        group: groupBy ? groupBy : null,
+                        paginate: false
+                    }),
+                    hoverStateEnabled: false,
+                    bounceEnabled: false,
+                    collapsibleGroups: listID ? true : false,
+                    grouped: groupBy ? true : false,
+                    groupTemplate: groupBy ? groupTemplate : null,
+                    itemTemplate: itemTemplate,
+                    onGroupRendered: function (e) {
+                        if (groupBy && collapsed) {
+                            e.component.collapseGroup(e.groupIndex);
+                        }
+                    }
+                })
+            );
+        }
+        function createSubGroupList(header, data, groupBy, groupHeader, subGroupBy, subGroupTemplate, subGroupItemTemplate, collapsed, listID) {
+            $("#reportForm").append(
+                $("<div>").append(header),
+                $("<span style='float:right'>").append(
+                    $("<span>").dxButton({
+                        stylingMode: "text",
+                        text: collapsed ? "Expand All" : "Collapse All",
+                        icon: collapsed ? "spindown" : "spinup",
+                        type: "default",
+                        onClick: function () {
+                            var currentlyCollapsed = this.option("text") === "Expand All" ? true : false;
+                            this.option("text", currentlyCollapsed ? "Collapse All" : "Expand All");
+                            this.option("icon", currentlyCollapsed ? "spinup" : "spindown");
+                            $("div[id*=" + listID + "]").each(function (index) {
+                                $(this).dxList("instance").option("onGroupRendered", function (e) {
+                                    if (currentlyCollapsed)
+                                        e.component.expandGroup(e.groupIndex);
+                                    else
+                                        e.component.collapseGroup(e.groupIndex);
+                                });
+                                $(this).dxList("instance").reload();
+                            });
+                        }
+                    })
+                )
+            );
+            fullData = new DevExpress.data.DataSource({ store: data, paginate: false });
+            fullData.group(groupBy);
+            fullData.load().done(function (data) {
+                Object.keys(data).forEach(function (group) {
+                    createList(groupHeader(data[group]), data[group].items, subGroupItemTemplate, subGroupBy, subGroupTemplate, collapsed, listID)
+                });
+            });
+        }
+
+        function afterFormValuesLoaded() {
+            MobileCRM.UI.EntityForm.requestObject(function (entityForm) {
+                if (entityForm.entity.properties.captureSignature)
+                    scrollToSignatures();
+            }, MobileCRM.bridge.alert);
+        }
+    </script>
+</body>
+</html>

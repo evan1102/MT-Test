@@ -1,0 +1,398 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <!-- Activate IE9 document mode, if available -->
+    <meta charset="utf-8" http-equiv="X-UA-Compatible" content="IE=edge" />
+    <!-- Defined iOS viewport -->
+    <meta name="viewport" content="initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=false">
+    <!-- Disable iOS Phone No Detection -->
+    <meta name="format-detection" content="telephone=no" />
+    <!-- DevExtreme dependencies -->
+    <script type="text/javascript" src="../../scripts/jquery-3.3.1.min.js"></script>
+    <!-- A DevExtreme library -->
+    <script type="text/javascript" src="../../scripts/dx.all.js"></script>
+    <!-- Offline HTML JavaScript Bridge-->
+    <script type="text/javascript" src="../../scripts/JSBridge.js"></script>
+    <script type="text/javascript" src="../../scripts/k2aMethods.js"></script>
+    <script type="text/javascript" src="../../enum/Schema.js"></script>
+    <script type="text/javascript" src="../../enum/setupoption.js"></script>
+    <script type="text/javascript" src="appointment-form_complete.js"></script>
+    <title>Entity Form</title>
+</head>
+<body>
+    <script>
+        //============== INITIAL SETTINGS ================
+        var entityName = SCHEMA.appointment.name;
+        var detailViewName = "Resolution";
+        //============== SELECTED DATA ================
+        var selected = { 'job': null };
+        //============== FETCH DATA ================
+        var requiredSetupOptions = [
+            SETUPOPTION.CompanyDatabaseVersion,
+            SETUPOPTION.CustomerSignatureValidationLevel,
+            SETUPOPTION.ExpenseValidationLevel,
+            SETUPOPTION.InventoryValidationLevel,
+            SETUPOPTION.LaborValidationLevel,
+            SETUPOPTION.ReportEmailMode,
+            SETUPOPTION.TechnicianSignatureValidationLevel,
+            SETUPOPTION.TravelValidationLevel,
+            SETUPOPTION.UseContactManagement,
+            SETUPOPTION.UseCustomerSignature,
+            SETUPOPTION.UseEventBasedSync,
+            SETUPOPTION.UseExpense,
+            SETUPOPTION.UseInventory,
+            SETUPOPTION.UseLabor,
+            SETUPOPTION.UsePurchaseOrderReceipt,
+            SETUPOPTION.UseTechnicianSignature,
+            SETUPOPTION.UseTimeLog,
+            SETUPOPTION.UseTravel
+        ];
+
+        $(function () {
+            //============== ANDROID CHECK ================
+            MobileCRM.Platform.preventBackButton(btnBackClicked);
+
+            loadSetupOptions(loadFormOptions);
+
+            MobileCRM.UI.EntityForm.onChange(formValueChanged, true);
+            MobileCRM.UI.EntityForm.onCommand("Complete", validateAppointmentInformation, true);
+            MobileCRM.bridge.onGlobalEvent("ConfirmCompletion", function (args) {
+                if (args.appointmentID === selected[entityName].id)
+                    confirmCompletion();
+            }, true);
+            MobileCRM.bridge.onGlobalEvent("CloseApptForm", function (args) {
+                // Close complete form to open default form
+                if (args.formType === "COMPLETE" && args.entityID === selected[entityName].id) {
+                    MobileCRM.UI.EntityForm.requestObject(function (entityForm) {
+                        if (entityForm.canClose)
+                            MobileCRM.bridge.raiseGlobalEvent("OpenApptForm",
+                                { entityID: args.entityID, formType: "DEFAULT" });
+                        MobileCRM.bridge.closeForm();
+                    }, MobileCRM.bridge.alert);
+                }
+            }, true);
+        });
+
+        //============== LOAD OPTIONS ================
+        function loadFormOptions() {
+            MobileCRM.UI.EntityForm.requestObject(function (entityForm) {
+                selected[entityName] = entityForm.entity.properties;
+                selected.job = entityForm.entity.properties.jobid;
+
+                loadFormItems(entityForm);
+                setInspectionTabVisibility();
+            }, MobileCRM.bridge.alert, null);
+        }
+        function setInspectionTabVisibility() {
+            MobileCRM.Application.checkUserRoles(["Inspector"], function (roleCount) {
+                MobileCRM.UI.EntityForm.requestObject(function (entityForm) {
+                    entityForm.setTabVisibility("Inspections", roleCount === 1);
+                }, alertError);
+            }, function (err) { alertError("Check User Roles Error: " + err); });
+        }
+
+        function loadFormItems(entityForm) {
+            // Load Form Items
+            var detailView = entityForm.getDetailView(detailViewName);
+            var formItems = [];
+            $(detailView.items).each(function (index, item) {
+                item.errorMessage = null;
+                formItems[item.name] = item;
+            });
+
+            // Set Form Item Visibility
+            formItems.jobid.isVisible = false;
+            var version = setupOptions.CompanyDatabaseVersion.split(".");
+            var year = parseInt(version[0]);
+            var release = parseInt(version[2]);
+            var afterVersion = (year >= 18 && release >= 3) || year > 18;   // Version 18.0.3
+            formItems.isinternal.isVisible = afterVersion;
+            formItems.resolutionnote.isVisible = afterVersion;
+
+            // Set Form Item Options
+            formItems.name.isEnabled = false;
+            formItems.jobid.isEnabled = false;
+
+            // Create Form Items
+            createLinkItem("Job", "jobLinkItem", 1, selected.job.primaryName, "Normal", jobLinkClicked)
+                .then(loadFormValues, MobileCRM.bridge.alert);
+        }
+        function createLinkItem(label, name, position, value, style, onClick) {
+            var deferred = $.Deferred();
+            MobileCRM.UI.EntityForm.requestObject(function (entityForm) {
+                var detailView = entityForm.getDetailView(detailViewName);
+                var linkItem = detailView.getItemByName(name);
+
+                if (linkItem) {
+                    linkItem.setTypedValue("value", "System.String", value);
+                    if (onClick)
+                        detailView.registerClickHandler(linkItem, onClick);
+
+                    return deferred.resolve();
+                }
+                else {
+                    linkItem = new MobileCRM.UI.DetailViewItems.LinkItem(name, label);
+                    linkItem.value = value;
+                    linkItem.style = style;
+                    if (onClick)
+                        detailView.registerClickHandler(linkItem, onClick);
+                    detailView.insertItem(linkItem, position);
+                    return deferred.resolve();
+                }
+            }, function (err) { return deferred.reject(err); });
+            return deferred.promise();
+        }
+
+        //============== LOAD DATA ================
+        function loadFormValues() {
+            MobileCRM.UI.EntityForm.requestObject(function (entityForm) {
+                if (!entityForm.entity.properties.completiondate ||
+                    entityForm.entity.properties.completiondate.getFullYear() <= 1900)
+                    entityForm.entity.properties.completiondate = new Date();
+
+                if (setupOptions.UseCustomerSignature || setupOptions.UseTechnicianSignature)
+                    initializeSummaryReport();
+
+                MobileCRM.UI.EntityForm.save();
+            }, MobileCRM.bridge.alert);
+        }
+
+        function fetchJob(jobID) {
+            var deferred = $.Deferred();
+            if (!jobID)
+                return deferred.reject("Missing Job ID");
+
+            MobileCRM.DynamicEntity.loadById('job', jobID,
+                function (job) { return deferred.resolve(job.properties); },
+                function (err) { return deferred.reject(err); }
+            );
+            return deferred.promise();
+        }
+
+        // ----- Report Util -----
+        function initializeFinalReports() {
+            var deferred = $.Deferred();
+            initializeSummaryReport().then(
+                function () { return deferred.resolve(); },
+                function (err) { return deferred.reject(err); }
+            );
+            return deferred.promise();
+        }
+
+        //============== TOOLBAR FUNCTIONS ================
+        // ----- Form Validation -----
+        function validateAppointmentInformation() {
+            var itemsDeferred = [
+                checkTimeLog(),
+                checkTimeEntries(),
+                checkInventory(),
+                checkSignatures()
+            ];
+
+            $.when.apply($, itemsDeferred).then(combineValidationItems, MobileCRM.bridge.alert)
+                .then(function (trackedValidationFields) {
+
+                    if (trackedValidationFields[ValidationLevel.Required].length > 0) {
+                        showValidationPrompt(ValidationLevel.Required, trackedValidationFields[ValidationLevel.Required]);
+                    }
+                    else if (trackedValidationFields[ValidationLevel.Warning].length > 0) {
+                        trackedValidationFields[ValidationLevel.Warning].push(Validation.CompleteAppointment, "Cancel");
+                        showValidationPrompt(ValidationLevel.Warning, trackedValidationFields[ValidationLevel.Warning]);
+                    }
+                    else {
+                        initializeSummaryReport().then(function () {
+                            if (parseInt(setupOptions.ReportEmailMode) === 3)
+                                promptEmailForCompletion();
+                            else
+                                confirmCompletion();
+                        }, MobileCRM.bridge.alert);
+                    }
+                }, MobileCRM.bridge.alert);
+        }
+
+        //============== FORM ITEM FUNCTIONS ================
+        function jobLinkClicked() {
+            if (selected.job) {
+                MobileCRM.bridge.raiseGlobalEvent("CloseApptForm",
+                    { entityID: selected[entityName].id, formType: "COMPLETE" });
+                MobileCRM.UI.FormManager.showEditDialog(entityName, selected[entityName].id);
+            }
+        }
+
+        //============== FORM EXECUTIONS ================
+        function completeAppointment(createNew) {
+            setAppointmentComplete().then(function (appointment) {
+                var itemsDeferred = [
+                    updateAppointmentStatusTimeStamp(appointment),
+                    createResolutionAnnotation(appointment),
+                    requestReportPreviews(appointment),
+                    updateLocationContacts()
+                    //, generateTimesheetReport(appointment)    // Uncomment line to turn on automatic generation of timesheets
+                ];
+
+                $.when.apply($, itemsDeferred).then(function () {
+                    if (createNew) {    // do not sync after complete, but open new appointment form
+                        if (selected.job) {
+                            var target = new MobileCRM.Reference('job', selected.job.id);
+                            var relationship = new MobileCRM.Relationship("jobid", target);
+                            MobileCRM.UI.FormManager.showNewDialog('appointment', relationship, {
+                                iFrameOptions: { completedAppointmentID: appointment.id }
+                            });
+                            MobileCRM.bridge.closeForm();
+                        }
+                    }
+                    else {
+                        MobileCRM.Configuration.requestObject(function (config) {
+                            if (setupOptions.UseEventBasedSync) {
+                                MobileCRM.Application.synchronize(false);
+                                if (!config.settings.requireSyncLogin)
+                                    MobileCRM.bridge.closeForm();
+                            }
+                            else
+                                MobileCRM.bridge.closeForm();
+                        }, MobileCRM.bridge.alert);
+                    }
+                }, MobileCRM.bridge.alert);
+            }, MobileCRM.bridge.alert);
+        }
+
+        function createResolutionAnnotation(appointment) {
+            var deferred = $.Deferred();
+            if (!appointment.resolutionnote)
+                return deferred.resolve("No Resolution Note");
+
+            var itemsDeferred = [
+                fetchResolutionAnnotationID(appointment),
+                fetchSystemUser(),
+                checkIsInternal(),
+                fetchJob(appointment.jobid.id)
+            ];
+
+            $.when.apply($, itemsDeferred).then(function () {
+                var annotationID = arguments[0];
+                var systemuser = arguments[1];
+                var isinternal = arguments[2];
+                var job = arguments[3];
+                var entity = new MobileCRM.DynamicEntity("annotation", annotationID);
+
+                entity.properties.gpnotetype = "A";
+                entity.properties.gpreferenceid = appointment.gpappointmentid;
+                entity.properties.objectid = new MobileCRM.DynamicEntity("appointment", appointment.id);
+
+                entity.properties.isinternal = isinternal;
+                entity.properties.notetext = appointment.resolutionnote;
+                entity.properties.modifieduser = systemuser.gptechnicianid;
+                entity.properties.modifieddate = new Date();
+                entity.properties.ownerid = new MobileCRM.DynamicEntity("systemuser", systemuser.id);
+
+                entity.properties.gpcustomernumber = job.gpcustomernumber;
+                entity.properties.gplocationnumber = job.gplocationnumber;
+                entity.properties.gpjobnumber = job.gpjobnumber;
+
+                entity.properties.subject = "Resolution";
+                entity.properties.filesize = 0;
+                entity.properties.priority = 0;
+
+                entity.save(function (err) {
+                    if (err)
+                        return deferred.reject(err);
+                    else
+                        // Clear resolutionnote from Appointment
+                        MobileCRM.DynamicEntity.loadById(entityName, appointment.id, function (completeAppt) {
+                            completeAppt.properties.resolutionnote = null;
+                            completeAppt.save(function (err) {
+                                if (err)
+                                    return deferred.reject(err);
+                                else
+                                    return deferred.resolve("Annotation Complete");
+                            });
+                        }, function (err) { return deferred.reject(err); });
+                });
+            }, function (err) { return deferred.reject(err); });
+
+            return deferred.promise();
+        }
+        function fetchResolutionAnnotationID(appointment) {
+            var deferred = $.Deferred();
+
+            var entity = new MobileCRM.FetchXml.Entity(SCHEMA.annotation.name);
+            entity.addAttribute('id');
+
+            entity.addFilter().where('subject', 'eq', "Resolution");
+            entity.addFilter().where('objectid', 'eq', appointment.id);
+            entity.addFilter().where('gpnotetype', 'eq', "A");
+            entity.filter.type = 'and';
+
+            var fetch = new MobileCRM.FetchXml.Fetch(entity);
+            fetch.execute("JSON", function (res) {
+                return deferred.resolve(res[0] ? res[0].id : null);
+            }, function (err) { return deferred.reject(err); });
+            return deferred.promise();
+        }
+
+        function generateTimesheetReport(appointment) {
+            var deferred = $.Deferred();
+            if (!appointment)
+                return deferred.reject("Timesheet Report Error: Missing Appointment Details");
+
+            var itemsDeferred = [
+                fetchLaborNameList(appointment.id),
+                fetchSystemUser()
+            ];
+
+            $.when.apply($, itemsDeferred).then(function () {
+                var nameList = arguments[0];
+                var systemuser = arguments[1];
+                getWorkWeekDates(function () {
+                    var report = new MobileCRM.DynamicEntity("timesheetreportrequest");
+                    report.properties.transactionenddate = workWeekDates.currWeekEnd;
+
+                    report.properties.name = SCHEMA.timesheetreportrequest.name;
+                    report.properties.transactiontype = "JOB COST";
+                    report.properties.gpappointmentid = appointment.gpappointmentid;
+                    report.properties.gpjobnumber = appointment.gpjobnumber;
+                    report.properties.gpcostcodealias = appointment.gpcostcodealias;
+
+                    report.properties.signature = "";
+                    report.properties.isattachment = true; // this is used on the server side to determine if it's a job summary
+                    report.properties.gptechnicianid = systemuser.gptechnicianid;
+                    report.properties.employeelist = nameList.join("~");
+
+                    report.save(function (err) {
+                        if (err)
+                            return deferred.reject(err);
+                        else
+                            return deferred.resolve("Timesheet Report Requested");
+                    });
+                });
+
+            }, function (err) { return deferred.reject(err); });
+
+            return deferred.promise();
+        }
+        function fetchLaborNameList(apptID) {
+            var deferred = $.Deferred();
+            if (!apptID)
+                return deferred.reject("Name List Error: Missing Appointment ID");
+
+            var entity = new MobileCRM.FetchXml.Entity(SCHEMA.employee.name);
+            entity.addAttribute('gpemployeeid');
+
+            var laborLinkEntity = entity.addLink("laborexpense", "employeeid", "id", "inner");
+            laborLinkEntity.addFilter().where('appointmentid', 'eq', apptID);
+
+            var fetch = new MobileCRM.FetchXml.Fetch(entity);
+            fetch.execute("JSON", function (res) {
+                var nameList = [];
+                $(res).each(function (i, employee) {
+                    if (nameList.indexOf(employee.gpemployeeid) < 0)
+                        nameList.push(employee.gpemployeeid);
+                });
+
+                return deferred.resolve(nameList);
+            }, function (err) { return deferred.reject(err); });
+            return deferred.promise();
+        }
+    </script>
+</body>
+</html>

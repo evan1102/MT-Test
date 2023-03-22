@@ -1,0 +1,387 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <!-- Activate IE9 document mode, if available -->
+    <meta charset="utf-8" http-equiv="X-UA-Compatible" content="IE=edge" />
+    <!-- Defined iOS viewport -->
+    <meta name="viewport" content="initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=false">
+    <!-- Disable iOS Phone No Detection -->
+    <meta name="format-detection" content="telephone=no" />
+    <!-- DevExtreme dependencies -->
+    <script type="text/javascript" src="../../scripts/jquery-3.3.1.min.js"></script>
+    <!-- DevExtreme themes -->
+    <link rel="stylesheet" type="text/css" href="../../css/dx.common.css" />
+    <link rel="stylesheet" type="text/css" href="../../css/dx.light.css" />
+    <!-- A DevExtreme library -->
+    <script type="text/javascript" src="../../scripts/dx.all.js"></script>
+    <!-- Offline HTML JavaScript Bridge-->
+    <script type="text/javascript" src="../../scripts/JSBridge.js"></script>
+    <script type="text/javascript" src="../../scripts/k2aMethods.js"></script>
+    <script type="text/javascript" src="../../enum/Schema.js"></script>
+    <script type="text/javascript" src="../../enum/setupoption.js"></script>
+    <!-- Offline HTML Template Factory-->
+    <script type="text/javascript" src="../../templates/listItem-factory.js"></script>
+    <script type="text/javascript" src="../../templates/toolbar-factory.js"></script>
+    <!-- Offline HTML Styling -->
+    <link rel="stylesheet" type="text/css" href="../../css/k2a.css" />
+    <title>Entity List</title>
+</head>
+<body>
+    <div id="toast"></div>
+    <div class="fixedPosition">
+        <div id="mainToolbar"></div><br>
+        <div id="listToolbar"></div>
+        <div id="mainScrollView">
+            <div id='mainList'></div>
+        </div>
+        <div id="actionSheet"></div>
+        <div id="filterPopup"></div>
+    </div>
+
+    <script>
+        //============== INITIAL SETTINGS ================
+        var entityName = SCHEMA.refrigeranttracking.name;
+        var sortDesc = false, sortSelector = SCHEMA.refrigeranttracking.Properties.name;
+        //============== OFFLINE DATA ================
+        var entityListData;
+        //============== SELECTED DATA ================
+        var selected = { entityName: null, equipment: null, servicecall: null };
+        //============== FETCH DATA ================
+        var requiredSetupOptions = [SETUPOPTION.CompanyDatabaseVersion];
+        var entityAttributes = [
+            SCHEMA.refrigeranttracking.Properties.id,
+            SCHEMA.refrigeranttracking.Properties.name,
+            SCHEMA.refrigeranttracking.Properties.cylindernumber,
+            SCHEMA.refrigeranttracking.Properties.employeeid,
+            SCHEMA.refrigeranttracking.Properties.servicedatetime,
+            SCHEMA.refrigeranttracking.Properties.optimalcharge,
+            SCHEMA.refrigeranttracking.Properties.recharged,
+            SCHEMA.refrigeranttracking.Properties.epaleakratemaxpercent,
+            SCHEMA.refrigeranttracking.Properties.added,
+            SCHEMA.refrigeranttracking.Properties.currentleakrate,
+            SCHEMA.refrigeranttracking.Properties.rtreferenceid
+        ];
+        var refrigerantEquipmentTypeAttributes = [
+            SCHEMA.refrigerantequipmenttype.Properties.id,
+            SCHEMA.refrigerantequipmenttype.Properties.name
+        ];
+        var employeeAttributes = [
+            SCHEMA.employee.Properties.id,
+            SCHEMA.employee.Properties.employeename
+        ];
+        var listSortItems = [
+            SCHEMA.refrigeranttracking.Properties.name,
+            SCHEMA.refrigeranttracking.Properties.employeeid,
+            SCHEMA.refrigeranttracking.Properties.currentleakrate,
+            "maxexceeded",
+            SCHEMA.refrigeranttracking.Properties.epaleakratemaxpercent,
+            SCHEMA.refrigeranttracking.Properties.added,
+            SCHEMA.refrigeranttracking.Properties.optimalcharge,
+            SCHEMA.refrigeranttracking.Properties.recharged,
+            SCHEMA.refrigeranttracking.Properties.servicedatetime
+        ];
+        var listSearchItems = [SCHEMA.refrigeranttracking.Properties.name, 'ret_name', 'employee_employeename'];
+        var listFilterItems = [
+            { dataField: SCHEMA.refrigeranttracking.Properties.name, dataType: FilterDataType.string },
+            { dataField: SCHEMA.refrigeranttracking.Properties.employeeid, dataType: FilterDataType.string },
+            { dataField: SCHEMA.refrigeranttracking.Properties.currentleakrate, dataType: FilterDataType.number },
+            { dataField: "maxexceeded", dataType: FilterDataType.boolean },
+            { dataField: SCHEMA.refrigeranttracking.Properties.epaleakratemaxpercent, dataType: FilterDataType.number },
+            { dataField: SCHEMA.refrigeranttracking.Properties.added, dataType: FilterDataType.number },
+            { dataField: SCHEMA.refrigeranttracking.Properties.optimalcharge, dataType: FilterDataType.number },
+            { dataField: SCHEMA.refrigeranttracking.Properties.recharged, dataType: FilterDataType.number },
+            { dataField: SCHEMA.refrigeranttracking.Properties.servicedatetime, dataType: FilterDataType.datetime }
+        ];
+        var listItemTemplate = function (data, _, element) {
+            var labels = {};
+            labels.optimalcharge = MobileCRM.Localization.get(entityName + "." + SCHEMA.refrigeranttracking.Properties.optimalcharge);
+            labels.recharged = MobileCRM.Localization.get(entityName + "." + SCHEMA.refrigeranttracking.Properties.recharged);
+            labels.maxleakrate = MobileCRM.Localization.get(entityName + ".maxleakrate");
+            labels.added = MobileCRM.Localization.get(entityName + "." + SCHEMA.refrigeranttracking.Properties.added);
+            labels.leakrate = MobileCRM.Localization.get(entityName + "." + SCHEMA.refrigeranttracking.Properties.currentleakrate);
+            labels.maxexceeded = MobileCRM.Localization.get(entityName + ".maxexceeded");
+
+            element.append(
+                $("<span>").append(data.name).css("font-size", "large"),
+                $("<span>").append(data.cylindernumber).css("float", "right"),
+                $("<br>"),
+                $("<span>").append(data.employee_employeename),
+                $("<span>").append(formatDateTime(data.servicedatetime)).css("float", "right"),
+                $("<br>"),
+                $("<span>").append(data.ret_name),
+                $("<br>"),
+                $("<span>").append(
+                    $("<span>").append(labels.optimalcharge + ": "),
+                    $("<span>").append(parseFloat(data.optimalcharge).toFixed(2))
+                ),
+                $("<span>").append(
+                    $("<span>").append(labels.recharged + ": ").css("margin-left", "10px"),
+                    $("<span>").append(data.recharged ? parseFloat(data.recharged).toFixed(2) : "")
+                ).css("float", "right"),
+                $("<br>"),
+                $("<span>").append(
+                    $("<span>").append(labels.maxleakrate + ": "),
+                    $("<span>").append(parseFloat(data.epaleakratemaxpercent).toFixed(2))
+                ),
+                $("<span>").append(
+                    $("<span>").append(labels.added + ": ").css("margin-left", "10px"),
+                    $("<span>").append(data.added ? parseFloat(data.added).toFixed(2) : "")
+                ).css("float", "right"),
+                $("<br>"),
+                $("<span>").append(
+                    $("<span>").append(labels.leakrate + ": "),
+                    $("<span>").append(data.currentleakrate ? parseFloat(data.currentleakrate).toFixed(2) : "")
+                ),
+                $("<span>").append(
+                    $("<span>").append(labels.maxexceeded + ": ").css("margin-left", "10px"),
+                    $("<span>").append(data.maxexceeded ? 'True' : 'False')
+                ).css("float", "right")
+
+            );
+        };
+        //============== TOOLBAR ITEMS ================
+        var mainToolbarItems = [
+            ToolbarItemType.title, ToolbarItemType.btnNew
+        ];
+        var listToolbarItems = [
+            ToolbarItemType.btnSort, ToolbarItemType.selectSort, ToolbarItemType.btnFilter
+        ];
+        //============== LIST ACTION ITEMS ================
+        var actionItems = [
+            { text: "View", onClick: viewEntity }
+        ];
+
+        $(function () {
+            //============== LOCALIZATION ================
+            MobileCRM.Localization.initialize(function (localization) {
+
+                //============== ANDROID CHECK ================
+                MobileCRM.Platform.preventBackButton(btnBackClicked);
+
+                //============== LOADPANEL ================
+                loading = MobileCRM.UI.Form.showPleaseWait(MobileCRM.Localization.get("Msg.Loading"));
+
+                //============== SCROLLVIEW ================
+                mainScrollView = $("#mainScrollView").dxScrollView({
+                    showScrollbar: "always",
+                    height: function () { return window.innerHeight - 80; },
+                    width: '100%'
+                }).dxScrollView("instance");
+                $(window).resize(function () {
+                    checkIsMultiPanel(mainToolbar); // Update toolbar if needed
+                    repaintScrollView(mainScrollView);
+                });
+
+                //============== TOOLBARS ================
+                mainToolbar = $("#mainToolbar").dxToolbar({
+                    items: (new ToolbarFactory()).addItems(mainToolbarItems)
+                }).dxToolbar("instance");
+                listToolbar = $("#listToolbar").dxToolbar({
+                    items: (new ToolbarFactory()).addItems(listToolbarItems)
+                }).dxToolbar("instance");
+
+                //============== LIST ================
+                mainList = (new ListFactory()).createItem("#mainList", entityName, [
+                    { name: 'searchExpr', value: listSearchItems },
+                    { name: 'itemTemplate', value: listItemTemplate }
+                ]);
+
+                //============== ACTION SHEETS ================
+                actionSheet = (new ActionSheetFactory()).createItem(actionItems, "#actionSheet");
+
+                //============== EVENT HANDLERS ================
+                MobileCRM.bridge.onGlobalEvent("EntityFormClosed", function (closedForm) {
+                    if (closedForm.entity && closedForm.entity.entityName === entityName)
+                        fetchListEntityData();
+                }, true);
+                MobileCRM.Configuration.requestObject(function (config) {
+                    MobileCRM.bridge.onGlobalEvent("SyncFinished", fetchListEntityData, !config.settings.requireSyncLogin);
+                }, MobileCRM.bridge.alert);
+
+                loadSetupOptions(loadListOptions);
+            }, alertError);
+        });
+
+        //============== LOAD OPTIONS ================
+        function loadListOptions() {
+            MobileCRM.UI.EntityForm.requestObject(function (entityForm) {
+                selected.equipment = entityForm.entity.properties;
+                if (entityForm.iFrameOptions && entityForm.iFrameOptions.callingObject) {
+                    if (entityForm.iFrameOptions.callingObject.entityName === SCHEMA.servicecall.name) {
+                        selected.servicecall = entityForm.iFrameOptions.callingObject;
+                    }
+                }
+
+                loadToolbarOptions();
+                loadListItemOptions();
+            }, alertError);
+        }
+        function loadToolbarOptions() {
+            updateToolbarItem(mainToolbar, ToolbarItemType.title, "html",
+                "<b>" + MobileCRM.Localization.get(entityName) + "</b>");
+
+            if (typeof listFilterItems !== 'undefined' && listFilterItems.length > 0)
+                (new FilterFactory()).createFilterPopup(mainList, listToolbar);
+
+            loadSortItemsLocalization(listSortItems).then(function (sortDataSource) {
+                updateToolbarItem(listToolbar, ToolbarItemType.selectSort, "options.dataSource", sortDataSource);
+                updateToolbarItem(listToolbar, ToolbarItemType.selectSort, "options.value", sortSelector);
+            });
+        }
+        function loadListItemOptions() {
+            fetchListEntityData();
+        }
+
+        //============== LOAD DATA ================
+        function fetchListEntityData() {
+            var entity = new MobileCRM.FetchXml.Entity(entityName);
+            $(entityAttributes).each(function (index, attribute) {
+                entity.addAttribute(attribute);
+            });
+            entity.orderBy(sortSelector, sortDesc);
+
+            if (selected.servicecall) {
+                entity.addFilter().where(SCHEMA.refrigeranttracking.Properties.servicecallid, 'eq', selected.servicecall.id);
+            }
+            if (selected.equipment) {
+                entity.addFilter().where(SCHEMA.refrigeranttracking.Properties.equipmentid, 'eq', selected.equipment.id);
+            }
+
+            // Link: Refrigerant Equipment Type
+            var retLink = entity.addLink(SCHEMA.refrigerantequipmenttype.name, SCHEMA.refrigerantequipmenttype.Properties.id, SCHEMA.refrigeranttracking.Properties.rtreferenceid, "outer");
+            $(refrigerantEquipmentTypeAttributes).each(function (index, attribute) {
+                retLink.addAttribute(attribute);
+            });
+            retLink.alias = 'ret';
+
+            // Link: Employee
+            var employeeLink = entity.addLink(SCHEMA.employee.name, SCHEMA.employee.Properties.id, SCHEMA.refrigeranttracking.Properties.employeeid);
+            $(employeeAttributes).each(function (index, attribute) {
+                employeeLink.addAttribute(attribute);
+            });
+            employeeLink.alias = SCHEMA.employee.name;
+
+            var fetch = new MobileCRM.FetchXml.Fetch(entity);
+            fetch.execute("JSON", function (res) {
+                $(res).each(function (i, rt) {
+                    rt.servicedatetime = new Date(rt.servicedatetime);
+
+                    // For list search to work can not have "." in attribute name
+                    $(refrigerantEquipmentTypeAttributes).each(function (index, attr) {
+                        rt[retLink.alias + "_" + attr] = rt[retLink.alias + "." + attr]
+                    });
+                    $(employeeAttributes).each(function (index, attr) {
+                        rt[employeeLink.alias + "_" + attr] = rt[employeeLink.alias + "." + attr]
+                    });
+
+                    rt.maxexceeded = parseFloat(rt.currentleakrate) > parseFloat(rt.epaleakratemaxpercent);
+                });
+
+                loadListData(mainList, res);
+                entityListData = res;
+                loading.close();
+            }, alertError);
+        }
+
+        //============== TOOLBAR FUNCTIONS ================
+        function btnSortClicked() {
+            loadListData(mainList, entityListData);
+        }
+        function sortSelected() {
+            loadListData(mainList, entityListData);
+        }
+
+        function btnNewClicked() {
+            if (!selected.equipment) {
+                MobileCRM.bridge.alert("Unable to open form: Missing equipment details");
+                return;
+            }
+
+            getTechnicianID(function (gptechnicianid) {
+                getEmployee(gptechnicianid).then(function (employee) {
+                    getRefrigerantType().then(function (refrigeranttype) {
+                        MobileCRM.Localization.initialize(function (localization) {
+                            var call = selected.servicecall ?
+                                new MobileCRM.DynamicEntity(SCHEMA.servicecall.name, selected.servicecall.id, selected.servicecall.primaryName) : null;
+
+                            var target = new MobileCRM.Reference(SCHEMA.equipment.name, selected.equipment.id);
+                            var relationship = new MobileCRM.Relationship(SCHEMA.refrigeranttracking.Properties.equipmentid, target, null, null);
+                            MobileCRM.UI.FormManager.showNewDialog(entityName, relationship, {
+                                "@initialize": {
+                                    name: MobileCRM.Localization.get("PendingString"),
+                                    createddatetime: new Date(),
+                                    servicedatetime: new Date(),
+                                    createdtechnicianid: gptechnicianid,
+                                    servicecallid: call,
+                                    optimalcharge: selected.equipment.optimalcharge,
+                                    employeeid: employee,
+                                    epacertification: employee.properties.epacertification,
+                                    refrigeranttypeid: refrigeranttype
+                                }
+                            });
+                        }, MobileCRM.bridge.alert);
+                    }, MobileCRM.bridge.alert);
+                }, MobileCRM.bridge.alert);
+            });
+        }
+        function getEmployee(gptechnicianid) {
+            var deferred = $.Deferred();
+            if (!gptechnicianid) {
+                return deferred.reject("Get Employee Error: Missing gptechnicianid");
+            }
+
+            var entity = new MobileCRM.FetchXml.Entity(SCHEMA.employee.name);
+            entity.addAttribute(SCHEMA.employee.Properties.id);
+            entity.addAttribute(SCHEMA.employee.Properties.name);
+            entity.addAttribute(SCHEMA.employee.Properties.epacertification);
+            entity.addFilter().where(SCHEMA.employee.Properties.gptechnicianid, 'eq', gptechnicianid);
+
+            var fetch = new MobileCRM.FetchXml.Fetch(entity);
+            fetch.execute("DynamicEntities", function (res) {
+                if (res.length === 1) {
+                    return deferred.resolve(res[0]);
+                }
+                else {
+                    return deferred.reject("Fetch Employee Error: Returned " + res.length + " results");
+                }
+            }, function (err) { return deferred.reject("Fetch Employee Error: " + err); });
+            return deferred.promise();
+        }
+        function getRefrigerantType() {
+            var deferred = $.Deferred();
+            if (!selected.equipment || !selected.equipment.refrigeranttypeid) {
+                return deferred.resolve(null);
+            }
+
+            var entity = new MobileCRM.FetchXml.Entity(SCHEMA.refrigeranttype.name);
+            entity.addAttribute(SCHEMA.refrigeranttype.Properties.id);
+            entity.addAttribute(SCHEMA.refrigeranttype.Properties.name);
+            entity.addFilter().where(SCHEMA.refrigeranttype.Properties.gptypeid, 'eq', selected.equipment.refrigeranttypeid);
+
+            var fetch = new MobileCRM.FetchXml.Fetch(entity);
+            fetch.execute("DynamicEntities", function (res) {
+                if (res.length === 1) {
+                    return deferred.resolve(res[0]);
+                }
+                else if (res.length === 0) {
+                    return deferred.resolve(null);
+                }
+                else {
+                    return deferred.reject("Fetch Refrigerant Type Error: Returned " + res.length + " results");
+                }
+            }, function (err) { return deferred.reject("Fetch Refrigerant Type Error: " + err); });
+            return deferred.promise();
+        }
+
+        //============== LIST ITEM FUNCTIONS ================
+        function listItemClicked() {
+            viewEntity();
+        }
+
+        //============== LIST EXECUTIONS ================
+        function viewEntity() {
+            MobileCRM.UI.FormManager.showEditDialog(entityName, selected[entityName].id);
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,469 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <!-- Activate IE9 document mode, if available -->
+    <meta charset="utf-8" http-equiv="X-UA-Compatible" content="IE=edge" />
+    <!-- Defined iOS viewport -->
+    <meta name="viewport" content="initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=false">
+    <!-- Disable iOS Phone No Detection -->
+    <meta name="format-detection" content="telephone=no" />
+    <!-- DevExtreme dependencies -->
+    <script type="text/javascript" src="../../scripts/jquery-3.3.1.min.js"></script>
+    <!-- DevExtreme themes -->
+    <link rel="stylesheet" type="text/css" href="../../css/dx.common.css" />
+    <link rel="stylesheet" type="text/css" href="../../css/dx.light.css" />
+    <!-- A DevExtreme library -->
+    <script type="text/javascript" src="../../scripts/dx.all.js"></script>
+    <!-- Offline HTML JavaScript Bridge-->
+    <script type="text/javascript" src="../../scripts/JSBridge.js"></script>
+    <script type="text/javascript" src="../../scripts/k2aMethods.js"></script>
+    <script type="text/javascript" src="../../enum/Schema.js"></script>
+    <script type="text/javascript" src="../../enum/setupoption.js"></script>
+    <!-- Offline HTML Template Factory-->
+    <script type="text/javascript" src="../../templates/formItem-factory.js"></script>
+    <script type="text/javascript" src="../../templates/toolbar-factory.js"></script>
+    <!-- Offline HTML Styling -->
+    <link rel="stylesheet" type="text/css" href="../../css/k2a.css" />
+    <title>Entity Form</title>
+    <style>
+        #detailAccordion .dx-accordion-item-title {
+            font-weight: normal;
+            background-color: #337ab7 !important;
+        }
+    </style>
+</head>
+<body>
+    <div id="toast"></div>
+    <div id='poSummary'></div><hr />
+    <div class="fixedPosition">
+        <div id="mainScrollView">
+            <div id='tabAccordion'>
+                <div id='poReceipt'>
+                    <div id='receiptForm'></div>
+                </div>
+                <div id='receiptDetail'>
+                    <div id='detailToolbar'></div>
+                    <div id='detailAccordion'></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+        //============== INITIAL SETTINGS ================
+        var entityName = SCHEMA.purchaseorderreceipt.name, isProcessed = false;
+        //============== DATA ================
+        var detailData, selected = { appointment: null };
+        //============== FETCH DATA ================
+        var detailAttributes = [
+            SCHEMA.purchaseorderreceiptdetail.Properties.id,
+            SCHEMA.purchaseorderreceiptdetail.Properties.name,
+            SCHEMA.purchaseorderreceiptdetail.Properties.isselected,
+            SCHEMA.purchaseorderreceiptdetail.Properties.quantity,
+            SCHEMA.purchaseorderreceiptdetail.Properties.unitofmeasureid,
+            SCHEMA.purchaseorderreceiptdetail.Properties.itemnumber,
+            SCHEMA.purchaseorderreceiptdetail.Properties.itemdescription,
+            SCHEMA.purchaseorderreceiptdetail.Properties.vendoritemnumber,
+            SCHEMA.purchaseorderreceiptdetail.Properties.vendoritemdescription
+        ];
+        //============== TOOLBAR ITEMS ================
+        var detailToolbarItems = [{
+            name: 'btnReceiveAll',
+            location: 'after',
+            locateInMenu: 'never',
+            widget: 'dxButton',
+            options: {
+                text: "Action.ReceiveAll",
+                type: 'default',
+                stylingMode: 'text',
+                onClick: receiveAllDetails
+            }
+        }];
+        //============== FORM ITEMS ================
+        var formItems = [
+            { dataField: SCHEMA.purchaseorderreceipt.Properties.transactiondate, editorType: EditorType.dxDateBox },
+            { dataField: SCHEMA.purchaseorderreceipt.Properties.freightamount, editorType: EditorType.dxNumberBox },
+            { dataField: SCHEMA.purchaseorderreceipt.Properties.miscellaneousamount, editorType: EditorType.dxNumberBox },
+            { dataField: SCHEMA.purchaseorderreceipt.Properties.vendordocumentnumber, editorType: EditorType.dxTextBox }
+
+        ];
+        var formItemOptions = {
+            transactiondate: {
+                validationMsg: "Alert.FmtFieldNotEmpty",
+                type: 'date', onInput: setDirty, onValueChanged: setDirty
+            },
+            freightamount: { step: 0.25, onValueChanged: setDirty, valueChangeEvent: 'keyup' },
+            miscellaneousamount: { step: 0.25, onValueChanged: setDirty, valueChangeEvent: 'keyup' },
+            vendordocumentnumber: {
+                validationMsg: "Alert.FmtFieldNotEmpty",
+                maxLength: 20,
+                elementAttr: { 'class': 'uppercase' }, valueChangeEvent: "blur",
+                onInput: setDirty, onValueChanged: setDirty
+            }
+        };
+        var detailFormItems = [{
+            dataField: SCHEMA.purchaseorderreceiptdetail.Properties.isselected,
+            editorType: 'dxSwitch',
+            editorOptions: {
+                switchedOffText: SCHEMA.purchaseorderreceiptdetail.name + "." + SCHEMA.purchaseorderreceiptdetail.Properties.isselected + ".0",
+                switchedOnText: SCHEMA.purchaseorderreceiptdetail.name + "." + SCHEMA.purchaseorderreceiptdetail.Properties.isselected + ".1",
+                onValueChanged: setDirty
+            }
+        }, {
+            dataField: SCHEMA.purchaseorderreceiptdetail.Properties.quantity,
+            editorType: 'dxNumberBox',
+            editorOptions: {
+                showSpinButtons: true,
+                useLargeSpinButtons: true,
+                format: "#,##0.00",
+                min: 0,
+                onInput: setDirty,
+                onValueChanged: quantityChanged
+            }
+        }, {
+            dataField: SCHEMA.purchaseorderreceiptdetail.Properties.unitofmeasureid,
+            editorOptions: {
+                readOnly: true
+            }
+        }];
+        var requiredFormItems = [
+            SCHEMA.purchaseorderreceipt.Properties.transactiondate,
+            SCHEMA.purchaseorderreceipt.Properties.vendordocumentnumber
+        ];
+
+        $(function () {
+            //============== LOCALIZATION ================
+            MobileCRM.Localization.initialize(function (localization) {
+
+                //============== ANDROID CHECK ================
+                MobileCRM.Platform.preventBackButton(btnBackClicked);
+
+                //============== SCROLLVIEW ================
+                mainScrollView = $("#mainScrollView").dxScrollView({
+                    showScrollbar: "always",
+                    height: function () { return window.innerHeight - 10; },
+                    width: '100%'
+                }).dxScrollView("instance");
+                $(window).resize(function () {
+                    try {
+                        MobileCRM.bridge.getWindowSize(function (obj) {
+                            mainScrollView.option("height", obj.height - 10);
+                        }, MobileCRM.bridge.alert);
+                    }
+                    catch (e) { }
+                });
+
+                //============== TOOLBARS ================
+                detailToolbar = $("#detailToolbar").dxToolbar({}).dxToolbar("instance");
+
+                //============== PO SUMMARY ================
+                poSummary = $("#poSummary").dxList({
+                    itemTemplate: function (data, _, element) {
+                        var indicator = parseInt(data.gpproductindicator);
+                        var jobLabel = MobileCRM.Localization.get(entityName + "." + SCHEMA.purchaseorderreceipt.Properties.gpjobnumber + "." + indicator);
+                        var lblPoNumber = MobileCRM.Localization.get(entityName + "." + SCHEMA.purchaseorderreceipt.Properties.gppurchaseordernumber);
+                        var lblProcessed = MobileCRM.Localization.get(entityName + "." + SCHEMA.purchaseorderreceipt.Properties.isprocessed);
+                        var isProcessed = MobileCRM.Localization.get(entityName + "." + SCHEMA.purchaseorderreceipt.Properties.isprocessed + (JSON.parse(data.isprocessed) ? ".1" : ".0"));
+                        var lblVendor = MobileCRM.Localization.get(entityName + "." + SCHEMA.purchaseorderreceipt.Properties.vendorid);
+
+                        element.append(
+                            $("<span>").append(lblPoNumber + ": ").addClass('listItemLabel'),
+                            $("<span>").append(lblProcessed + ": ").addClass('listItemLabel').css('float', 'right'),
+                            $("<br>"),
+                            $("<span>").append(data.gppurchaseordernumber).css("font-size", "large"),
+                            $("<span>").append(isProcessed).css({ 'float': 'right', "font-size": "medium" }),
+                            $("<br>"),
+                            $("<span>").append(lblVendor + ": ").addClass('listItemLabel'),
+                            $("<span>").append(jobLabel + ": ").addClass('listItemLabel').css("float", "right"),
+                            $("<br>"),
+                            $("<span>").append(data.vendorid ? data.vendorid.primaryName : "").css("font-size", "medium"),
+                            $("<span>").append(data.gpjobnumber).css({ "float": "right", "font-size": "medium" })
+                        );
+                    },
+                    selectionMode: 'none'
+                }).dxList("instance");
+
+                //============== FORM ================
+                receiptForm = $("#receiptForm").dxForm({}).dxForm("instance");
+
+                //============== ACCORDION ================
+                detailAccordion = $("#detailAccordion").dxAccordion({
+                    collapsible: true,
+                    selectedIndex: -1,
+                    itemTitleTemplate: function (data, _, element) {
+                        element.append(
+                            $("<span>").append(data.itemnumber),
+                            $("<span>").append(
+                                $("<span>").append("Qty: ").css('font-size', 'x-small'),
+                                $("<span>").append(parseFloat(data.quantity).toFixed(2))
+                            ).css("float", "right")
+                        );
+                    },
+                    itemTemplate: function (data, i, element) {
+                        element.append(
+                            $("<div>").dxForm({
+                                formData: data,
+                                readOnly: isProcessed,
+                                items: detailFormItems
+                            }),
+                            $("<div>").dxList({
+                                dataSource: [data],
+                                itemTemplate: function (data, i, element) {
+                                    var lblItemNum = MobileCRM.Localization.get(SCHEMA.purchaseorderreceiptdetail.name + "." + SCHEMA.purchaseorderreceiptdetail.Properties.itemnumber);
+                                    var lblItemDesc = MobileCRM.Localization.get(SCHEMA.purchaseorderreceiptdetail.name + "." + SCHEMA.purchaseorderreceiptdetail.Properties.itemdescription);
+                                    var lblVendorItemNum = MobileCRM.Localization.get(SCHEMA.purchaseorderreceiptdetail.name + "." + SCHEMA.purchaseorderreceiptdetail.Properties.vendoritemnumber);
+                                    var lblVendorItemDesc = MobileCRM.Localization.get(SCHEMA.purchaseorderreceiptdetail.name + "." + SCHEMA.purchaseorderreceiptdetail.Properties.vendoritemdescription);
+                                    element.append(
+                                        $("<div>").append(lblItemNum + ': ').addClass('listItemLabel'),
+                                        $("<div>").append(data.itemnumber).css({ "font-size": "small", "margin-bottom": "5px" }),
+                                        $("<div>").append(lblItemDesc + ': ').addClass('listItemLabel'),
+                                        $("<div>").append(data.itemdescription).css({ "font-size": "small", "margin-bottom": "5px" }),
+                                        $("<div>").append(lblVendorItemNum + ': ').addClass('listItemLabel'),
+                                        $("<div>").append(data.vendoritemnumber).css({ "font-size": "small", "margin-bottom": "5px" }),
+                                        $("<div>").append(lblVendorItemDesc + ': ').addClass('listItemLabel'),
+                                        $("<div>").append(data.vendoritemdescription).css({ "font-size": "small", "margin-bottom": "5px" })
+                                    );
+                                }
+                            })
+                        )
+                    },
+                }).dxAccordion('instance');
+                tabAccordion = $("#tabAccordion").dxAccordion({
+                    dataSource: [
+                        { title: MobileCRM.Localization.get(SCHEMA.purchaseorderreceipt.name) },
+                        { title: MobileCRM.Localization.get(SCHEMA.purchaseorderreceiptdetail.name) }
+                    ],
+                    collapsible: true,
+                    selectedIndex: 0,
+                    multiple: true,
+                    itemTitleTemplate: function (data, i, element) {
+                        element.append(data.title);
+                    },
+                    itemTemplate: function (data, i, element) {
+                        if (data.title === MobileCRM.Localization.get(SCHEMA.purchaseorderreceipt.name)) {
+                            element.append(
+                                receiptForm.element()
+                            );
+                        }
+                        if (data.title === MobileCRM.Localization.get(SCHEMA.purchaseorderreceiptdetail.name)) {
+                            element.append(
+                                detailToolbar.element(),
+                                detailAccordion.element()
+                            )
+                        }
+                    }
+                }).dxAccordion('instance');
+                tabAccordion.expandItem(1); // All items expanded upon page load
+
+                loadFormOptions();
+            }, alertError);
+        });
+
+        //============== LOAD OPTIONS ================
+        function loadFormOptions() {
+            MobileCRM.UI.EntityForm.requestObject(function (entityForm) {
+                selected[entityName] = entityForm.entity.properties;
+                poSummary.option('dataSource', [entityForm.entity.properties]);
+                isProcessed = JSON.parse(selected[entityName].isprocessed);
+                if (!isProcessed)
+                    MobileCRM.UI.EntityForm.onSave(btnSaveClicked, true);
+
+                if (entityForm.iFrameOptions)
+                    selected.appointment = entityForm.iFrameOptions.appointment;
+
+                loadToolbarOptions();
+                loadFormItems();
+            }, alertError);
+        }
+        function loadToolbarOptions() {
+            detailToolbarItems[0].options.text = MobileCRM.Localization.get(detailToolbarItems[0].options.text);
+            detailToolbar.option("items", detailToolbarItems);
+        }
+        function loadFormItems() {
+            // Load formItems
+            var twoWeeksAgo = new Date((new Date()).setDate((new Date()).getDate() - 15));
+            formItemOptions.transactiondate.min = twoWeeksAgo;
+            receiptForm.option("items", (new FormItemFactory()).createAndUpdateItems(formItems, formItemOptions));
+
+            // Update formItem Options
+            $(requiredFormItems).each(function (index, itemName) {
+                receiptForm.itemOption(itemName, 'isRequired', true);
+            });
+
+            // Update detailFormItems Labels
+            $(detailFormItems).each(function (index, item) {
+                item.label = { text: MobileCRM.Localization.get(SCHEMA.purchaseorderreceiptdetail.name + "." + item.dataField) }
+                if (item.editorOptions.switchedOffText) {
+                    item.editorOptions.switchedOffText = MobileCRM.Localization.get(item.editorOptions.switchedOffText)
+                }
+                if (item.editorOptions.switchedOnText) {
+                    item.editorOptions.switchedOnText = MobileCRM.Localization.get(item.editorOptions.switchedOnText)
+                }
+            });
+
+            if (isProcessed) {
+                receiptForm.option('readOnly', true);
+                $("#detailToolbar").css('display', 'none');
+            }
+
+            loadFormValues();
+        }
+
+        //============== LOAD DATA ================
+        function loadFormValues() {
+            var twoWeeksAgo = new Date((new Date()).setDate((new Date()).getDate() - 15));
+            if (!selected[entityName].transactiondate ||
+                (new Date(selected[entityName].transactiondate)).getFullYear() <= 1900 ||
+                (!isProcessed && new Date(selected[entityName].transactiondate)) < twoWeeksAgo)
+                selected[entityName].transactiondate = new Date();
+
+            // Need to parse number for display formatting
+            selected[entityName].freightamount = parseFloat(selected[entityName].freightamount);
+            selected[entityName].miscellaneousamount = parseFloat(selected[entityName].miscellaneousamount);
+            receiptForm.updateData(selected[entityName]);
+
+            if (selected[entityName])
+                connectionCheck(!isProcessed, fetchReceiptDetails);
+
+            setClean();
+        }
+
+        function fetchReceiptDetails() {
+            var entity = new MobileCRM.FetchXml.Entity(SCHEMA.purchaseorderreceiptdetail.name);
+            $(detailAttributes).each(function (index, attribute) {
+                entity.addAttribute(attribute);
+            });
+            entity.addFilter().where(SCHEMA.purchaseorderreceiptdetail.Properties.purchaseorderreceiptid, 'eq', selected[entityName].id);
+            entity.orderBy(SCHEMA.purchaseorderreceiptdetail.Properties.gppurchaseorderord, false);
+
+            var fetch = new MobileCRM.FetchXml.Fetch(entity);
+            fetch.execute("JSON", function (res) {
+                $(res).each(function (i, detail) {
+                    detail.isselected = detail.isselected ? JSON.parse(detail.isselected.toString().toLowerCase()) : false;
+                    detail.quantity = detail.quantity ? parseFloat(detail.quantity) : 0;
+                });
+
+                detailData = res;
+                detailAccordion.option('dataSource', res);
+            }, MobileCRM.bridge.alert);
+        }
+
+        //============== TOOLBAR FUNCTIONS ================
+        function receiveAllDetails() {
+            $(detailData).each(function (i, detail) {
+                detail.isselected = true;
+            });
+            detailAccordion.option('dataSource', detailData);
+            showToast(MobileCRM.Localization.get("Alert.AllItemsReceived"), 'success');
+            setDirty();
+        }
+
+        function btnSaveClicked(entityForm) {
+            var saveHandler = entityForm.suspendSave();
+            // Validate Form
+            receiptForm.focus();
+            receiptForm.validate();
+            checkForRequiredValues(receiptForm, requiredFormItems, function () {
+                var docNumber = receiptForm.getEditor(SCHEMA.purchaseorderreceipt.Properties.vendordocumentnumber).option('value').toUpperCase();
+                checkForUniqueVendorDocNumber(docNumber).then(function () {
+                    var hasSelectedDetails = false;
+                    for (var i in detailData) {
+                        if (detailData[i].isselected) {
+                            hasSelectedDetails = true;
+                            break;
+                        }
+                    }
+
+                    if (hasSelectedDetails) {
+                        updateDetails().then(updateReceipt, MobileCRM.bridge.alert);
+                    }
+                    else {
+                        tabAccordion.expandItem(1);
+                        detailAccordion.expandItem(0);
+                        saveHandler.resumeSave(MobileCRM.Localization.get("Alert.NoReceivedDetailForPO"));
+                    }
+                }, saveHandler.resumeSave);
+            }, function () { saveHandler.resumeSave("#NoMessage#"); });
+        }
+        function checkForUniqueVendorDocNumber(docNumber) {
+            var deferred = $.Deferred();
+
+            var entity = new MobileCRM.FetchXml.Entity(entityName);
+            entity.addAttribute(SCHEMA.purchaseorderreceipt.Properties.id);
+            entity.addFilter().where(SCHEMA.purchaseorderreceipt.Properties.vendordocumentnumber, 'eq', docNumber);
+            entity.addFilter().where(SCHEMA.purchaseorderreceipt.Properties.id, 'ne', selected[entityName].id);
+            entity.filter.type = 'and';
+
+            var fetch = new MobileCRM.FetchXml.Fetch(entity);
+            fetch.execute("JSON", function (res) {
+                if (res.length > 0)
+                    return deferred.reject(MobileCRM.Localization.get("Alert.VendorDocAlreadyUsed"));
+                else
+                    return deferred.resolve();
+            }, function (err) { return deferred.reject(err); });
+            return deferred.promise();
+        }
+
+
+        //============== FORM ITEM FUNCTIONS ================
+        function quantityChanged(e) {
+            setDirty();
+            // Update qty in accordion header
+            var updatedDetailData = detailAccordion.option('dataSource');
+            detailAccordion.option('dataSource', updatedDetailData);
+        }
+
+        //============== FORM EXECUTIONS ================
+        function updateDetails() {
+            var deferred = $.Deferred();
+            var itemsDeferred = [];
+            $(detailData).each(function (i, detail) {
+                itemsDeferred.push(updateReceiptDetail(detail));
+            });
+
+            $.when.apply($, itemsDeferred).then(
+                function () { return deferred.resolve(); },
+                function (err) { return deferred.reject(err); }
+            )
+            return deferred.promise();
+        }
+        function updateReceiptDetail(detail) {
+            var deferred = $.Deferred();
+
+            MobileCRM.DynamicEntity.loadById(SCHEMA.purchaseorderreceiptdetail.name, detail.id, function (entity) {
+                entity.properties.isselected = detail.isselected;
+                entity.properties.quantity = detail.quantity;
+                entity.save(function (err) {
+                    if (err) {
+                        return deferred.reject("Save Detail Error: " + err);
+                    }
+                    else {
+                        return deferred.resolve();
+                    }
+                });
+            }, function (err) { return deferred.reject(err); });
+            return deferred.promise();
+        }
+
+        function updateReceipt() {
+            MobileCRM.UI.EntityForm.requestObject(function (entityForm) {
+                var formData = receiptForm.option('formData');
+                var entityProps = entityForm.entity.properties;
+
+                entityProps.name = selected[entityName].name;
+                entityProps.transactiondate = new Date(formData.transactiondate);
+                entityProps.freightamount = formData.freightamount;
+                entityProps.miscellaneousamount = formData.miscellaneousamount;
+                entityProps.vendordocumentnumber = formData.vendordocumentnumber.toUpperCase();
+                entityProps.appointmentid = new MobileCRM.DynamicEntity(SCHEMA.appointment.name, selected.appointment.id);
+
+                entityForm.entity.save(function (err) {
+                    if (err)
+                        MobileCRM.bridge.alert(err);
+                    else
+                        setCleanAndClose();
+                });
+            }, MobileCRM.bridge.alert);
+        }
+    </script>
+</body>
+</html>

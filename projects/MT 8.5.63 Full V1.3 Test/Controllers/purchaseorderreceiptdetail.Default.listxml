@@ -1,0 +1,74 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<EntityList xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" UseSyncFilter="true">
+  <Attributes>
+    <EntityName>purchaseorderreceiptdetail</EntityName>
+    <CamelCase>purchaseorderreceiptdetail</CamelCase>
+    <VisualStudioProjectId>00000000-0000-0000-0000-000000000000</VisualStudioProjectId>
+    <ClassBinding />
+  </Attributes>
+  <ComponentId>00000000-0000-0000-0000-000000000000</ComponentId>
+  <Name>Default</Name>
+  <Kind>List</Kind>
+  <IsDefault>true</IsDefault>
+  <Search>
+    <attribute schema="itemdescription" method="Contains" />
+    <attribute schema="itemnumber" method="Contains" />
+  </Search>
+  <OrderBy>name</OrderBy>
+  <SerializedBindings>
+    <string>costcodealias</string>
+    <string>costtype</string>
+    <string>gpjobnumber</string>
+    <string>id</string>
+    <string>isselected</string>
+    <string>itemdescription</string>
+    <string>itemnumber</string>
+    <string>name</string>
+    <string>quantity</string>
+    <string>unitofmeasureid</string>
+  </SerializedBindings>
+  <SerializedTemplates>
+    <RowTemplate>
+      <DesignWidth>240</DesignWidth>
+      <DesignHeight>40</DesignHeight>
+      <Name>Default</Name>
+      <Width>240</Width>
+      <Height>60</Height>
+      <SerializedBackground>0</SerializedBackground>
+      <SerializedSelectedBackground>0</SerializedSelectedBackground>
+      <SerializedChildren>
+        <CellTemplate SchemaName="itemnumber">
+          <IsConstant>false</IsConstant>
+          <StyleName>primary</StyleName>
+          <Bounds>3,4,168,24</Bounds>
+          <CellKind>0</CellKind>
+          <Anchor>13</Anchor>
+        </CellTemplate>
+        <CellTemplate SchemaName="quantity">
+          <IsConstant>false</IsConstant>
+          <StyleName>r_primary</StyleName>
+          <Bounds>173,4,63,24</Bounds>
+          <CellKind>0</CellKind>
+          <Anchor>9</Anchor>
+        </CellTemplate>
+        <CellTemplate SchemaName="itemdescription">
+          <IsConstant>false</IsConstant>
+          <StyleName>primary</StyleName>
+          <Bounds>4,31,201,20</Bounds>
+          <CellKind>0</CellKind>
+          <Anchor>13</Anchor>
+        </CellTemplate>
+        <CellTemplate SchemaName="isselected">
+          <IsConstant>false</IsConstant>
+          <StyleName>r_primary</StyleName>
+          <Bounds>206,31,30,20</Bounds>
+          <CellKind>0</CellKind>
+          <Anchor>9</Anchor>
+        </CellTemplate>
+      </SerializedChildren>
+    </RowTemplate>
+  </SerializedTemplates>
+  <CustomProperties />
+  <SerializedChildren />
+  <Height>0</Height>
+</EntityList>

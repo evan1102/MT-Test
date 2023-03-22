@@ -1,0 +1,442 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <!-- Activate IE9 document mode, if available -->
+    <meta charset="utf-8" http-equiv="X-UA-Compatible" content="IE=edge" />
+    <!-- Defined iOS viewport -->
+    <meta name="viewport" content="initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=false">
+    <!-- Disable iOS Phone No Detection -->
+    <meta name="format-detection" content="telephone=no" />
+    <!-- DevExtreme dependencies -->
+    <script type="text/javascript" src="../../scripts/jquery-3.3.1.min.js"></script>
+    <!-- DevExtreme themes -->
+    <link rel="stylesheet" type="text/css" href="../../css/dx.common.css" />
+    <link rel="stylesheet" type="text/css" href="../../css/dx.light.css" />
+    <!-- A DevExtreme library -->
+    <script type="text/javascript" src="../../scripts/dx.all.js"></script>
+    <!-- Offline HTML JavaScript Bridge-->
+    <script type="text/javascript" src="../../scripts/JSBridge.js"></script>
+    <script type="text/javascript" src="../../scripts/k2aMethods.js"></script>
+    <script type="text/javascript" src="../../enum/Schema.js"></script>
+    <script type="text/javascript" src="../../enum/setupoption.js"></script>
+    <!-- Offline HTML Template Factory-->
+    <script type="text/javascript" src="../../templates/listItem-factory.js"></script>
+    <script type="text/javascript" src="../../templates/toolbar-factory.js"></script>
+    <!-- Offline HTML Styling -->
+    <link rel="stylesheet" type="text/css" href="../../css/k2a.css" />
+    <title>Entity List</title>
+</head>
+<body>
+    <div id="toast"></div>
+    <div class="fixedPosition">
+        <div id="mainToolbar"></div><br>
+        <div id="listToolbar"></div>
+        <div id="mainScrollView">
+            <div id='mainList'></div>
+        </div>
+        <div id="actionSheet"></div>
+        <div id="filterPopup"></div>
+    </div>
+
+    <script>
+        //============== INITIAL SETTINGS ================
+        var entityName = SCHEMA.annotation.name;
+        var sortDesc = false, sortSelector = SCHEMA.annotation.Properties.notetext;
+        var isLookupList, lookupID, lookupTarget, noteType;
+        //============== OFFLINE/ONLINE DATA ================
+        var entityListData;
+        //============== SELECTED DATA ================
+        var selected = { entityName: null };
+        //============== FETCH DATA ================
+        var requiredSetupOptions = [];
+        var entityAttributes = [
+            SCHEMA.annotation.Properties.id,
+            SCHEMA.annotation.Properties.objectid,
+            SCHEMA.annotation.Properties.subject,
+            SCHEMA.annotation.Properties.notetext,
+            SCHEMA.annotation.Properties.filename,
+            SCHEMA.annotation.Properties.createdon
+        ];
+        var listSortItems = [
+            SCHEMA.annotation.Properties.notetext,
+            SCHEMA.annotation.Properties.filename
+        ];
+        var listSearchItems = [
+            SCHEMA.annotation.Properties.notetext,
+            SCHEMA.annotation.Properties.filename
+        ];
+        var listFilterItems = [
+            { dataField: SCHEMA.annotation.Properties.notetext, dataType: FilterDataType.string },
+            { dataField: SCHEMA.annotation.Properties.filename, dataType: FilterDataType.string }
+        ];
+        var listItemTemplate = function (data, _, element) {
+            element.append(
+                $("<span>").append(data.notetext).css("font-size", "large"),
+                $("<br>"),
+                $("<span>").append(data.filename)
+            );
+        };
+        //============== TOOLBAR ITEMS ================
+        var mainToolbarItems = [
+            ToolbarItemType.title, ToolbarItemType.btnNew
+        ];
+        var listToolbarItems = [
+            ToolbarItemType.btnSort, ToolbarItemType.selectSort, ToolbarItemType.btnFilter
+        ];
+
+        //============== LIST ACTION ITEMS ================
+        var actionItems = [
+            { text: "More", onClick: viewEntity },
+            { text: "Delete", onClick: deleteAttachment }
+        ];
+
+        $(function () {
+            //============== LOCALIZATION ================
+            MobileCRM.Localization.initialize(function (localization) {
+
+                //============== ANDROID CHECK ================
+                MobileCRM.Platform.preventBackButton(btnBackClicked);
+
+                //============== LOADPANEL ================
+                loading = MobileCRM.UI.Form.showPleaseWait(MobileCRM.Localization.get("Msg.Loading"));
+
+                //============== SCROLLVIEW ================
+                mainScrollView = $("#mainScrollView").dxScrollView({
+                    showScrollbar: "always",
+                    height: function () { return window.innerHeight - 80; },
+                    width: '100%'
+                }).dxScrollView("instance");
+                $(window).resize(function () {
+                    checkIsMultiPanel(mainToolbar);
+                    repaintScrollView(mainScrollView);
+                });
+
+                //============== TOOLBARS ================
+                mainToolbar = $("#mainToolbar").dxToolbar({
+                    items: (new ToolbarFactory()).addItems(mainToolbarItems)
+                }).dxToolbar("instance");
+                listToolbar = $("#listToolbar").dxToolbar({
+                    items: (new ToolbarFactory()).addItems(listToolbarItems)
+                }).dxToolbar("instance");
+
+                //============== LIST ================
+                mainList = (new ListFactory()).createItem("#mainList", entityName, [
+                    { name: 'searchExpr', value: listSearchItems },
+                    { name: 'itemTemplate', value: listItemTemplate }
+                ]);
+
+                //============== ACTION SHEETS ================
+                actionSheet = (new ActionSheetFactory()).createItem(actionItems, "#actionSheet");
+
+                //============== EVENT HANDLERS ================
+                MobileCRM.bridge.onGlobalEvent("EntityFormClosed", function (closedForm) {
+                    if (closedForm.entity && closedForm.entity.entityName === entityName)
+                        fetchListEntityData();
+                }, true);
+                MobileCRM.Configuration.requestObject(function (config) {
+                    MobileCRM.bridge.onGlobalEvent("SyncFinished", fetchListEntityData, !config.settings.requireSyncLogin);
+                }, MobileCRM.bridge.alert);
+
+                loadSetupOptions(loadListOptions);
+            }, alertError);
+        });
+
+        //============== LOAD OPTIONS ================
+        function loadListOptions() {
+            MobileCRM.UI.EntityForm.requestObject(function (form) {
+                if (form) {
+                    switch (form.entity.entityName) {
+                        case SCHEMA.equipment.name:
+                            noteType = "E";
+                            break;
+                        case SCHEMA.additionalwork.name:
+                            noteType = "W";
+                            break;
+                        case SCHEMA.task.name:
+                            noteType = "T";
+                            break;
+                        case SCHEMA.servicecall.name:
+                            noteType = "S";
+                            break;
+                    }
+                    isLookupList = true;
+                    lookupTarget = form.entity.entityName;
+                    lookupID = form.entity.id;
+                    loadToolbarOptions();
+                    loadListItemOptions();
+                } else {
+                    loadToolbarOptions();
+                    loadListItemOptions();
+                }
+
+            }, function (error) {
+                if (error === 'Object not exposed' || error === 'Unhandled command') {
+                    MobileCRM.UI.IFrameForm.requestObject(function (iFrame) {
+                        if (iFrame && iFrame.options) {
+                            switch (iFrame.options.entityName) {
+                                case SCHEMA.additionalwork.name:
+                                    noteType = "W";
+                                    break;
+                            }
+
+                            isLookupList = true;
+                            lookupTarget = iFrame.options.entityName;
+                            lookupID = iFrame.options.entity.id;
+                            selected[lookupTarget] = iFrame.options.entity;
+                            loadToolbarOptions();
+                            loadListItemOptions();
+                        } else {
+                            loadToolbarOptions();
+                            loadListItemOptions();
+                        }
+                    }, MobileCRM.bridge.alert, null);
+                }
+                else {
+                    MobileCRM.bridge.alert(error);
+                }
+            }, null);
+
+        }
+
+        function loadToolbarOptions() {
+            if (typeof listFilterItems !== 'undefined' && listFilterItems.length > 0)
+                (new FilterFactory()).createFilterPopup(mainList, listToolbar);
+
+            updateToolbarItem(mainToolbar, ToolbarItemType.title, "html",
+                "<b>" + MobileCRM.Localization.get("DetailView.attachment") + "</b>");
+
+            loadSortItemsLocalization(listSortItems).then(function (sortDataSource) {
+                updateToolbarItem(listToolbar, ToolbarItemType.selectSort, "options.dataSource", sortDataSource);
+                updateToolbarItem(listToolbar, ToolbarItemType.selectSort, "options.value", sortSelector);
+            });
+            checkIsMultiPanel(mainToolbar);
+        }
+        function loadListItemOptions() {
+            fetchListEntityData();
+        }
+
+        //----- LOAD LIST DATA -----
+        function fetchListEntityData() {
+            var entity = new MobileCRM.FetchXml.Entity(entityName);
+            $(entityAttributes).each(function (index, attribute) {
+                entity.addAttribute(attribute);
+            });
+            entity.orderBy(sortSelector, sortDesc);
+
+            entity.filter = new MobileCRM.FetchXml.Filter();
+            entity.filter.type = "and";
+
+            entity.addFilter().where(SCHEMA.annotation.Properties.objectid, "eq", lookupID);
+            entity.addFilter().where(SCHEMA.annotation.Properties.isdocument, "eq", "True");
+            entity.addFilter().where(SCHEMA.annotation.Properties.gpnotetype, "eq", noteType);
+            entity.filter.type = 'and';
+
+            var fetch = new MobileCRM.FetchXml.Fetch(entity);
+            fetch.execute("JSON", function (res) {
+                loadListData(mainList, res);
+                entityListData = res;
+                loading.close();
+            }, alertError);
+        }
+
+        function btnSortClicked() {
+            loadListData(mainList, entityListData);
+        }
+        function sortSelected() {
+            loadListData(mainList, entityListData);
+        }
+
+        //============== LIST ITEM FUNCTIONS ================
+        function btnNewClicked() {
+            getTechnicianID(function (technicianId) {
+                MobileCRM.UI.EntityForm.requestObject(function (entityForm) {
+                    var promise = initializeData(technicianId);
+                    promise.then(function (data) {
+                        var target = new MobileCRM.Reference(entityForm.entity.entityName, entityForm.entity.id, entityForm.entity.primaryName);
+                        var relationship = new MobileCRM.Relationship(SCHEMA.annotation.Properties.objectid, target, null, null);
+                        MobileCRM.UI.FormManager.showNewDialog(entityName,
+                            relationship,
+                            { "@initialize": data }
+                        );
+                    });
+                }, function (error) {
+                    if (error === 'Object not exposed' || error === 'Unhandled command') {
+                        var promise = initializeData(technicianId);
+                        promise.then(function (data) {
+                            var target = new MobileCRM.Reference(lookupTarget, lookupID, selected[lookupTarget].name);
+                            var relationship = new MobileCRM.Relationship(SCHEMA.annotation.Properties.objectid, target, null, null);
+                            MobileCRM.UI.FormManager.showNewDialog(entityName,
+                                relationship,
+                                { "@initialize": data }
+                            );
+                        });
+                    }
+                    else {
+                        MobileCRM.bridge.alert(error);
+                    }
+                }, null);
+            });
+        }
+
+        function viewEntity() {
+            MobileCRM.UI.FormManager.showEditDialog(entityName, selected[entityName].id);
+        }
+
+        function deleteAttachment() {
+            var confirmPopup = new MobileCRM.UI.MessageBox(MobileCRM.Localization.get("Alert.ConfirmDeleteAttachment"));
+            confirmPopup.multiLine = true;
+            confirmPopup.items = [MobileCRM.Localization.get("enum.Yes"), MobileCRM.Localization.get("enum.No")];
+            confirmPopup.show(function (button) {
+                if (button === MobileCRM.Localization.get("enum.Yes")) {
+                    MobileCRM.DynamicEntity.deleteById(entityName, selected[entityName].id, function () {
+                        showToast(MobileCRM.Localization.get("Alert.AttachmentDeleted"), "success");
+                        fetchListEntityData();
+                    }, MobileCRM.bridge.alert);
+                }
+            });
+        }
+
+        function listItemClicked() {
+            MobileCRM.Configuration.requestObject(function (config) {
+                var lastSyncDate = new Date(config.settings.lastSyncDate);
+                var createdDate = new Date(selected[entityName].createdon);
+                if (lastSyncDate < createdDate) {
+                    actionSheet.option({
+                        title: MobileCRM.Localization.get("attachment") + ": " + selected[entityName].filename,
+                        visible: true
+                    });
+                }
+                else {
+                    viewEntity();
+                }
+            }, MobileCRM.bridge.alert, null)
+        }
+
+        function initializeData(technicianId) {
+            var deferred = $.Deferred();
+            MobileCRM.UI.EntityForm.requestObject(function (entityForm) {
+                var initialData = {}
+                var modifieddate = new Date();
+
+                switch (entityForm.entity.entityName) {
+                    case SCHEMA.appointment.name:
+                        var promise = getLocationEntity(entityForm.entity.properties.locationid);
+                        promise.then(function (entity) {
+                            initialData = {
+                                gpnotetype: 'A',
+                                gpcustomernumber: entity.properties.gpcustomernumber,
+                                gplocationnumber: entity.properties.gplocationnumber,
+                                gpservicecallid: entityForm.entity.properties.gpservicecallid,
+                                gpreferenceid: 0,
+                                subject: '',
+                                modifieddate: modifieddate,
+                                modifieduser: technicianId,
+                                gptechnicianid: technicianId,
+                                isdocument: true
+                            }
+                            return deferred.resolve(initialData);
+                        })
+                        break;
+                    case SCHEMA.equipment.name:
+                        initialData = {
+                            gpnotetype: 'E',
+                            gpcustomernumber: entityForm.entity.properties.gpcustomernumber,
+                            gplocationnumber: entityForm.entity.properties.gplocationnumber,
+                            gpequipmentid: entityForm.entity.properties.gpequipmentid,
+                            gpservicecallid: '',
+                            gpreferenceid: 0,
+                            subject: '',
+                            documenttype: 4,
+                            modifieddate: modifieddate,
+                            modifieduser: technicianId,
+                            gptechnicianid: technicianId,
+                            isdocument: true
+                        }
+                        return deferred.resolve(initialData);
+                        break;
+                    case SCHEMA.task.name:
+                        var promise = getTaskData(entityForm.entity.properties.servicecallid.id, technicianId);
+                        promise.then(function (initialData) {
+                            return deferred.resolve(initialData);
+                        })
+                        break;
+                    case SCHEMA.servicecall.name:
+                        initialData = {
+                            gpnotetype: 'S',
+                            gpcustomernumber: entityForm.entity.properties.gpcustomernumber,
+                            gplocationnumber: entityForm.entity.properties.gplocationnumber,
+                            gpservicecallid: entityForm.entity.properties.gpservicecallid,
+                            gpreferenceid: 0,
+                            documenttype: 3,
+                            subject: '',
+                            modifieddate: modifieddate,
+                            modifieduser: technicianId,
+                            gptechnicianid: technicianId,
+                            isdocument: true
+                        }
+                        return deferred.resolve(initialData);
+                        break;
+                    default:
+                        return deferred.resolve(null);
+                }
+            }, function (error) {
+                if (error === 'Object not exposed' || error === 'Unhandled command') {
+                    var initialData = {};
+                    switch (lookupTarget) {
+                        case SCHEMA.additionalwork.name:
+                            initialData = {
+                                gpnotetype: 'W',
+                                gpcustomernumber: selected[lookupTarget].call_gpcustomernumber,
+                                gplocationnumber: selected[lookupTarget].call_gplocationnumber,
+                                gpservicecallid: selected[lookupTarget].gpservicecallid,
+                                gpreferenceid: 0,
+                                documenttype: 23,
+                                subject: '',
+                                modifieddate: new Date(),
+                                modifieduser: technicianId,
+                                gptechnicianid: technicianId,
+                                isdocument: true
+                            }
+                            break;
+                    }
+
+                    return deferred.resolve(initialData);
+                }
+            }, null);
+            return deferred.promise();
+        }
+
+        function getTaskData(servicecallid, technicianId) {
+            var deferred = $.Deferred();
+            var data = {};
+            var modifieddate = new Date();
+
+            MobileCRM.DynamicEntity.loadById(SCHEMA.servicecall.name,
+                servicecallid,
+                function (entity) {
+
+                    data = {
+                        gpnotetype: 'T',
+                        gpcustomernumber: entity.properties.gpcustomernumber,
+                        gplocationnumber: entity.properties.gplocationnumber,
+                        gpequipmentid: '',
+                        gpservicecallid: entity.properties.gpservicecallid,
+                        gpreferenceid: 0,
+                        subject: '',
+                        documenttype: 22,
+                        modifieddate: modifieddate,
+                        modifieduser: technicianId,
+                        gptechnicianid: technicianId,
+                        isdocument: true
+                    }
+                    return deferred.resolve(data);
+                },
+                function (error) {
+                    MobileCRM.bridge.alert(error);
+                    return deferred.resolve(null);
+                }, null)
+            return deferred.promise();
+        }
+    </script>
+</body>
+</html>

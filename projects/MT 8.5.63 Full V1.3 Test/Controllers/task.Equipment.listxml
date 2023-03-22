@@ -1,0 +1,71 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<EntityList xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" UseSyncFilter="true">
+  <Attributes>
+    <EntityName>task</EntityName>
+    <CamelCase>task</CamelCase>
+    <VisualStudioProjectId>00000000-0000-0000-0000-000000000000</VisualStudioProjectId>
+    <ClassBinding />
+  </Attributes>
+  <ComponentId>00000000-0000-0000-0000-000000000000</ComponentId>
+  <Name>Equipment</Name>
+  <Kind>List</Kind>
+  <IsDefault>false</IsDefault>
+  <IsHidden>true</IsHidden>
+  <Fetch version="1.0">
+    <entity name="task">
+      <filter type="and">
+        <condition attribute="gptasklinenumber" operator="eq" value="2" />
+        <condition attribute="gpequipmentid" operator="not-null" />
+      </filter>
+    </entity>
+  </Fetch>
+  <OrderBy>name</OrderBy>
+  <SerializedBindings>
+    <string>gptasklevel</string>
+    <string>gptasklinenumber</string>
+    <string>id</string>
+    <string>recordlevel</string>
+    <string>taskhierarchy</string>
+  </SerializedBindings>
+  <SerializedTemplates>
+    <RowTemplate>
+      <DesignWidth>240</DesignWidth>
+      <DesignHeight>40</DesignHeight>
+      <Name>Equipment-Row</Name>
+      <Width>240</Width>
+      <Height>38</Height>
+      <SerializedBackground>0</SerializedBackground>
+      <SerializedSelectedBackground>0</SerializedSelectedBackground>
+      <SerializedChildren>
+        <CellTemplate SchemaName="gptasklevel">
+          <IsConstant>false</IsConstant>
+          <StyleName>primary</StyleName>
+          <Bounds>2,2,236,22</Bounds>
+          <CellKind>0</CellKind>
+          <Anchor>13</Anchor>
+        </CellTemplate>
+      </SerializedChildren>
+    </RowTemplate>
+    <RowTemplate>
+      <DesignWidth>240</DesignWidth>
+      <DesignHeight>40</DesignHeight>
+      <Name>TaskList-Row</Name>
+      <Width>240</Width>
+      <Height>38</Height>
+      <SerializedBackground>0</SerializedBackground>
+      <SerializedSelectedBackground>0</SerializedSelectedBackground>
+      <SerializedChildren>
+        <CellTemplate SchemaName="gptasklevel">
+          <IsConstant>false</IsConstant>
+          <StyleName>primary</StyleName>
+          <Bounds>2,2,236,22</Bounds>
+          <CellKind>0</CellKind>
+          <Anchor>13</Anchor>
+        </CellTemplate>
+      </SerializedChildren>
+    </RowTemplate>
+  </SerializedTemplates>
+  <CustomProperties />
+  <SerializedChildren />
+  <Height>0</Height>
+</EntityList>

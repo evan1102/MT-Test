@@ -1,0 +1,70 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<EntityList xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" UseSyncFilter="true">
+  <Attributes>
+    <EntityName>additionalwork</EntityName>
+    <CamelCase>additionalwork</CamelCase>
+    <VisualStudioProjectId>00000000-0000-0000-0000-000000000000</VisualStudioProjectId>
+    <ClassBinding />
+  </Attributes>
+  <ComponentId>00000000-0000-0000-0000-000000000000</ComponentId>
+  <Name>Oldest First</Name>
+  <Kind>List</Kind>
+  <IsDefault>true</IsDefault>
+  <Search>
+    <attribute schema="description" method="Contains" />
+    <attribute schema="servicecallid" method="Contains" reference="true" />
+  </Search>
+  <OrderBy>servicecallid;!gptransactiondate</OrderBy>
+  <SerializedBindings>
+    <string>description</string>
+    <string>gptransactiondate</string>
+    <string>id</string>
+	<string>name</string>
+    <string>servicecallid</string>
+    <string>servicecallid.servicecall.description</string>
+  </SerializedBindings>
+  <SerializedTemplates>
+    <RowTemplate>
+      <DesignWidth>240</DesignWidth>
+      <DesignHeight>40</DesignHeight>
+      <Name>Default</Name>
+      <Width>240</Width>
+      <Height>55</Height>
+      <SerializedBackground>0</SerializedBackground>
+      <SerializedSelectedBackground>0</SerializedSelectedBackground>
+      <SerializedChildren>
+        <CellTemplate SchemaName="description">
+          <IsConstant>false</IsConstant>
+          <StyleName>gray</StyleName>
+          <Bounds>2,40,238,13</Bounds>
+          <CellKind>0</CellKind>
+          <Anchor>13</Anchor>
+        </CellTemplate>
+        <CellTemplate SchemaName="servicecallid">
+          <IsConstant>false</IsConstant>
+          <StyleName>primary</StyleName>
+          <Bounds>2,2,88,22</Bounds>
+          <CellKind>0</CellKind>
+          <Anchor>13</Anchor>
+        </CellTemplate>
+        <CellTemplate SchemaName="servicecallid.servicecall.description">
+          <IsConstant>false</IsConstant>
+          <StyleName>primary</StyleName>
+          <Bounds>91,2,148,22</Bounds>
+          <CellKind>0</CellKind>
+          <Anchor>13</Anchor>
+        </CellTemplate>
+        <CellTemplate SchemaName="gptransactiondate">
+          <IsConstant>false</IsConstant>
+          <StyleName>gray_date_only</StyleName>
+          <Bounds>2,26,238,13</Bounds>
+          <CellKind>0</CellKind>
+          <Anchor>13</Anchor>
+        </CellTemplate>
+      </SerializedChildren>
+    </RowTemplate>
+  </SerializedTemplates>
+  <CustomProperties />
+  <SerializedChildren />
+  <Height>40</Height>
+</EntityList>

@@ -1,0 +1,87 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<EntityList xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <Attributes>
+    <EntityName>changeorder</EntityName>
+    <CamelCase>changeorder</CamelCase>
+    <VisualStudioProjectId>c0f71827-e4f6-464e-a71d-c36687d5738e</VisualStudioProjectId>
+    <WrapperClass>MobileCrm.Model.changeorder</WrapperClass>
+    <ClassBinding>
+      <SerializedClassBinding name="#Change_Order_Status" label="Change_Order_Status" type="String" />
+      <SerializedClassBinding name="#ContractType" label="ContractType" type="String" />
+      <SerializedClassBinding name="#Posting_Status" label="Posting_Status" type="String" />
+    </ClassBinding>
+  </Attributes>
+  <ComponentId>00000000-0000-0000-0000-000000000000</ComponentId>
+  <Name>Default</Name>
+  <Kind>List</Kind>
+  <IsDefault>false</IsDefault>
+  <OrderBy>name</OrderBy>
+  <SerializedBindings>
+    <string>changeorderamount</string>
+    <string>changeorderdescription</string>
+    <string>changeorderstatus</string>
+    <string>changeordertype</string>
+    <string>gpchangeordernumber</string>
+    <string>id</string>
+    <string>name</string>
+    <string>postingstatus</string>
+  </SerializedBindings>
+  <SerializedTemplates>
+    <RowTemplate>
+      <DesignWidth>240</DesignWidth>
+      <DesignHeight>40</DesignHeight>
+      <Name>Default</Name>
+      <Width>240</Width>
+      <Height>60</Height>
+      <SerializedBackground>0</SerializedBackground>
+      <SerializedSelectedBackground>0</SerializedSelectedBackground>
+      <SerializedChildren>
+        <CellTemplate SchemaName="gpchangeordernumber">
+          <IsConstant>false</IsConstant>
+          <StyleName>primary</StyleName>
+          <Bounds>2,2,142,22</Bounds>
+          <CellKind>0</CellKind>
+          <Anchor>13</Anchor>
+        </CellTemplate>
+        <CellTemplate SchemaName="changeorderdescription">
+          <IsConstant>false</IsConstant>
+          <StyleName>gray</StyleName>
+          <Bounds>2,24,142,14</Bounds>
+          <CellKind>0</CellKind>
+          <Anchor>13</Anchor>
+        </CellTemplate>
+        <CellTemplate SchemaName="#ContractType">
+          <IsConstant>false</IsConstant>
+          <StyleName>gray</StyleName>
+          <Bounds>2,44,96,14</Bounds>
+          <CellKind>0</CellKind>
+          <Anchor>13</Anchor>
+        </CellTemplate>
+        <CellTemplate SchemaName="#Change_Order_Status">
+          <IsConstant>false</IsConstant>
+          <StyleName>r_gray</StyleName>
+          <Bounds>142,2,96,22</Bounds>
+          <CellKind>0</CellKind>
+          <Anchor>9</Anchor>
+        </CellTemplate>
+        <CellTemplate SchemaName="#Posting_Status">
+          <IsConstant>false</IsConstant>
+          <StyleName>r_gray</StyleName>
+          <Bounds>142,24,96,14</Bounds>
+          <CellKind>0</CellKind>
+          <Anchor>9</Anchor>
+        </CellTemplate>
+        <CellTemplate SchemaName="changeorderamount">
+          <IsConstant>false</IsConstant>
+          <StyleName>r_currency</StyleName>
+          <Bounds>142,40,96,16</Bounds>
+          <CellKind>0</CellKind>
+          <Anchor>9</Anchor>
+        </CellTemplate>
+      </SerializedChildren>
+    </RowTemplate>
+  </SerializedTemplates>
+  <CustomProperties />
+  <SerializedChildren />
+  <Height>0</Height>
+</EntityList>

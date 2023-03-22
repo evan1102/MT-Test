@@ -1,0 +1,212 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <!-- Activate IE9 document mode, if available -->
+    <meta charset="utf-8" http-equiv="X-UA-Compatible" content="IE=edge" />
+    <!-- Defined iOS viewport -->
+    <meta name="viewport" content="initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=false">
+    <!-- Disable iOS Phone No Detection -->
+    <meta name="format-detection" content="telephone=no" />
+    <!-- DevExtreme dependencies -->
+    <script type="text/javascript" src="../../scripts/jquery-3.3.1.min.js"></script>
+    <!-- DevExtreme themes -->
+    <link rel="stylesheet" type="text/css" href="../../css/dx.common.css" />
+    <link rel="stylesheet" type="text/css" href="../../css/dx.light.css" />
+    <!-- A DevExtreme library -->
+    <script type="text/javascript" src="../../scripts/dx.all.js"></script>
+    <!-- Offline HTML JavaScript Bridge-->
+    <script type="text/javascript" src="../../scripts/JSBridge.js"></script>
+    <script type="text/javascript" src="../../scripts/k2aMethods.js"></script>
+    <script type="text/javascript" src="../../enum/Schema.js"></script>
+    <script type="text/javascript" src="../../enum/setupoption.js"></script>
+    <!-- Offline HTML Template Factory-->
+    <script type="text/javascript" src="../../templates/listItem-factory.js"></script>
+    <script type="text/javascript" src="../../templates/toolbar-factory.js"></script>
+    <!-- Offline HTML Styling -->
+    <link rel="stylesheet" type="text/css" href="../../css/k2a.css" />
+    <title>JSA Form</title>
+</head>
+<body>
+    <script>
+        //============== INITIAL SETTINGS ================
+        var entityName = SCHEMA.resco_questionnaire.name;
+        var unsafeStatusID = null;
+        //============== FETCH DATA ================
+        var requiredSetupOptions = [
+            SETUPOPTION.JobSafetyUnsafeStatus
+        ];
+
+        $(function () {
+            //============== LOCALIZATION ================
+            MobileCRM.Localization.initialize(function (localization) {
+
+                //============== ANDROID CHECK ================
+                MobileCRM.Platform.preventBackButton(MobileCRM.bridge.closeForm);
+
+                //============== EVENT LISTENERS ================
+                MobileCRM.UI.QuestionnaireForm.onSave(checkSafetyStatus, true);
+                MobileCRM.bridge.onGlobalEvent("OpeningJSA", function () {
+                    MobileCRM.bridge.raiseGlobalEvent("OtherJSAOpen", {});
+                }, true);
+
+                loadSetupOptions(loadInspectionOptions);
+            }, alertError);
+        });
+
+        //============== LOAD OPTIONS ================
+        function loadInspectionOptions() {
+            MobileCRM.UI.QuestionnaireForm.requestObject(function (form) {
+                var options = JSON.parse(form.questionnaire.properties.resco_options);
+                var regardingItem = form.findQuestionByName(SCHEMA.resco_questionnaire.Properties.resco_regardingid);
+
+                if (regardingItem.value) {  // Loaded from Entity Form
+                    if (regardingItem.value.entityName !== SCHEMA.appointment.name) {
+                        sayTextAndCloseForm("Alert.JSAInspectionOnlyServiceAppointments");
+                    }
+                    else {
+                        loadAppointmentDetails(regardingItem.value.id);
+                    }
+                }
+                else if (options.resco_regardingid) {   // Loaded via JS
+                    if (options.resco_regardingid.entityName !== SCHEMA.appointment.name) {
+                        sayTextAndCloseForm("Alert.JSAInspectionOnlyServiceAppointments");
+                    }
+
+                    // Load Service Appointment Regarding ID
+                    var entity = new MobileCRM.DynamicEntity(options.resco_regardingid.entityName, options.resco_regardingid.id);
+                    MobileCRM.UI.QuestionnaireForm.trySetAnswer(SCHEMA.resco_questionnaire.Properties.resco_regardingid, entity);
+                    loadAppointmentDetails(options.resco_regardingid.id);
+
+                    if (form.questionnaire.properties.resco_templateid) {
+                        // Clear Regarding ID from Inspection Template
+                        var template = form.questionnaire.properties.resco_templateid;
+                        MobileCRM.DynamicEntity.loadById(SCHEMA.resco_questionnaire.name, template.id, function (q) {
+                            options.resco_regardingid = null;
+                            q.properties.resco_options = JSON.stringify(options);
+
+                            q.save(function (err) {
+                                if (err) {
+                                    alertError("Save Inspection Template Error:\n" + err);
+                                }
+                            });
+                        }, alertError);
+                    }
+                }
+                else {  // Loaded from Home Page
+                    sayTextAndCloseForm("Alert.JSAInspectionOnlyAppointmentForm");
+                }
+            }, alertError);
+
+            if (setupOptions.JobSafetyUnsafeStatus) {
+                loadUnsafeStatus();
+            }
+        }
+        function sayTextAndCloseForm(text) {
+            var msg = MobileCRM.Localization.get(text);
+            MobileCRM.UI.MessageBox.sayText(msg, MobileCRM.bridge.closeForm, alertError);
+        }
+
+        function loadUnsafeStatus() {
+            var entity = new MobileCRM.FetchXml.Entity(SCHEMA.appointmentstatus.name);
+            entity.addAttribute(SCHEMA.appointmentstatus.Properties.id);
+            entity.addFilter().where(SCHEMA.appointmentstatus.Properties.name, 'eq', setupOptions.JobSafetyUnsafeStatus);
+
+            var fetch = new MobileCRM.FetchXml.Fetch(entity);
+            fetch.execute("JSON", function (res) {
+                if (res[0]) {
+                    unsafeStatusID = res[0].id;
+                }
+            }, alertError);
+        }
+
+        function loadAppointmentDetails(appointmentID) {
+            MobileCRM.DynamicEntity.loadById(SCHEMA.appointment.name, appointmentID, function (appt) {
+                // Check if is Service Appointment
+                if (parseInt(appt.properties.gpappointmenttype) !== 1) {
+                    sayTextAndCloseForm("Alert.JSAInspectionOnlyServiceAppointments");
+                }
+                else {  //Load Customer and Customer Address
+                    if (!appt.properties.locationid) {
+                        sayTextAndCloseForm("Missing Location Details");
+                    }
+
+                    MobileCRM.DynamicEntity.loadById(SCHEMA.location.name, appt.properties.locationid.id, function (location) {
+                        var customer = location.properties.customerid ? location.properties.customerid.primaryName : location.properties.gpcustomernumber
+                        MobileCRM.UI.QuestionnaireForm.trySetAnswer("customer-name", customer);
+                        MobileCRM.UI.QuestionnaireForm.trySetAnswer("customer-address", location.properties.address1);
+                    }, alertError)
+                }
+            }, alertError);
+        }
+
+        //============== INSPECTION EXECUTIONS ================
+        function checkSafetyStatus(form) {
+            var saveHandler = form.suspendSave();
+
+            if (form.questionnaire.properties.resco_completionstatus) {
+                // Inspection is Complete
+                var locationSafe = form.findQuestionByName("is-location-safe");
+                var regardingid = form.findQuestionByName(SCHEMA.resco_questionnaire.Properties.resco_regardingid);
+
+                if (regardingid.value) {
+                    MobileCRM.DynamicEntity.loadById(SCHEMA.appointment.name, regardingid.value.id, function (appt) {
+                        if (locationSafe.value === 1) { // UNSAFE
+                            if (unsafeStatusID) {
+                                appt.properties.appointmentstatusid = new MobileCRM.DynamicEntity(SCHEMA.appointmentstatus.name, unsafeStatusID);
+                            }
+                        }
+                        else {  // SAFE
+                            appt.properties.jobsafetydate = new Date();
+                            appt.properties.isjsareportrequested = true;
+                        }
+
+                        appt.save(function (err) {
+                            if (err) {
+                                alertError("Appt Save Error: " + err);
+                            }
+                            else {
+                                if (locationSafe.value === 1) { // UNSAFE
+                                    MobileCRM.bridge.raiseGlobalEvent("ApptUnsafe", this);
+                                    // Close Appointment Complete Form
+                                    MobileCRM.bridge.raiseGlobalEvent("CloseApptForm", {
+                                        entityID: this.id,
+                                        formType: "COMPLETE",
+                                        isUnsafe: true
+                                    });
+                                    saveHandler.resumeSave();
+                                }
+                                else {
+                                    // Open Appointment Complete Form
+                                    MobileCRM.bridge.raiseGlobalEvent("CloseApptForm", {
+                                        entityID: this.id,
+                                        formType: "DEFAULT"
+                                    });
+
+                                    var target = new MobileCRM.Reference(SCHEMA.appointmentcompletion.name, null);
+                                    var relationship = new MobileCRM.Relationship(SCHEMA.appointmentcompletion.Properties.regardingobjectid, target);
+                                    var options = {};
+
+                                    MobileCRM.UI.FormManager.showEditDialog(
+                                        SCHEMA.appointment.name,
+                                        this.id,
+                                        relationship,
+                                        { iFrameOptions: options }
+                                    );
+
+                                    saveHandler.resumeSave();
+                                }
+                            }
+                        });
+                    }, alertError);
+                }
+                else {
+                    alertError("Missing Appointment Details");
+                }
+            }
+            else {
+                saveHandler.resumeSave();
+            }
+        }
+    </script>
+</body>
+</html>

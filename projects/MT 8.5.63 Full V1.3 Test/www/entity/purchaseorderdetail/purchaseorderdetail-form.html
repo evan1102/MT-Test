@@ -1,0 +1,963 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <!-- Activate IE9 document mode, if available -->
+    <meta charset="utf-8" http-equiv="X-UA-Compatible" content="IE=edge" />
+    <!-- Defined iOS viewport -->
+    <meta name="viewport" content="initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=false">
+    <!-- Disable iOS Phone No Detection -->
+    <meta name="format-detection" content="telephone=no" />
+    <!-- DevExtreme dependencies -->
+    <script type="text/javascript" src="../../scripts/jquery-3.3.1.min.js"></script>
+    <!-- A DevExtreme library -->
+    <script type="text/javascript" src="../../scripts/dx.all.js"></script>
+    <!-- Offline HTML JavaScript Bridge-->
+    <script type="text/javascript" src="../../scripts/JSBridge.js"></script>
+    <script type="text/javascript" src="../../scripts/k2aMethods.js"></script>
+    <script type="text/javascript" src="../../enum/Schema.js"></script>
+    <script type="text/javascript" src="../../enum/setupoption.js"></script>
+    <title>Entity Form</title>
+</head>
+<body>
+    <script>
+        //============== INITIAL SETTINGS ================
+        var entityName = SCHEMA.purchaseorderdetail.name;
+        var isNew = false, isProcessed = true, isNewLine = false, hasSiteInventory = false;
+        var lockVendor = false, disableUnknownVendor = false, useUnknownVendorId = false;
+        var clickToSelect = "Click To Select";
+        var locAlert = { FmtFieldNotZero: " cannot be zero.", FmtFieldNotEmpty: " cannot be empty." }
+        //============== SELECTED DATA ================
+        var selected = { appointment: null, purchaseorder: null, vendor: null, siteinventory: null };
+        //============== FETCH DATA ================
+        var requiredSetupOptions = [
+            SETUPOPTION.AutoGeneratePurchaseOrderNumbers,
+            SETUPOPTION.DefaultPOItemNumberPrefix,
+            SETUPOPTION.DefaultPONumberPrefix,
+            SETUPOPTION.DefaultSite,
+            SETUPOPTION.DefaultUnitOfMeasure,
+            SETUPOPTION.UnknownVendorId,
+            SETUPOPTION.UseNonInventoryItems
+        ];
+
+        $(function () {
+            //============== ANDROID CHECK ================
+            MobileCRM.Platform.preventBackButton(btnBackClicked);
+
+            loadSetupOptions(loadFormOptions);
+
+            MobileCRM.UI.EntityForm.onChange(formValueChanged, true);
+            MobileCRM.UI.EntityForm.onSave(validateForm, true);
+            MobileCRM.UI.EntityForm.onPostSave(function (entityForm) {
+                var postSuspend = entityForm.suspendPostSave();
+                setCleanAndClose();
+            }, true);
+            MobileCRM.bridge.onGlobalEvent("AddSiteInventory", siteInventorySelected, true);
+        });
+
+        //============== LOAD OPTIONS ================
+        function loadFormOptions() {
+            MobileCRM.UI.EntityForm.requestObject(function (entityForm) {
+                selected[entityName] = entityForm.entity.properties;
+                isNew = entityForm.entity.isNew;
+                isProcessed = selected[entityName].isprocessed;
+
+                if (entityForm.relationship && entityForm.relationship.target)
+                    selected[entityForm.relationship.target.entityName] = entityForm.relationship.target;
+
+                if (entityForm.iFrameOptions && entityForm.iFrameOptions.isNewLine)
+                    isNewLine = JSON.parse(entityForm.iFrameOptions.isNewLine);
+
+                lockVendor = isNewLine || isProcessed;
+                disableUnknownVendor = !isNew;
+                useUnknownVendorId = !selected[entityName].appointmentid ||
+                    (setupOptions.UnknownVendorId && setupOptions.UnknownVendorId.trim().length > 0);
+
+                checkSiteInventory().then(function () {
+                    if (selected[entityName].purchaseorderid)   // Set Purchase Order By ID
+                        MobileCRM.DynamicEntity.loadById('purchaseorder', selected[entityName].purchaseorderid.id, function (po) {
+                            selected.purchaseorder = po.properties;
+                            MobileCRM.UI.EntityForm.requestObject(loadFormItems, MobileCRM.bridge.alert);
+                        }, MobileCRM.bridge.alert);
+
+                    else if (isNewLine && selected[entityName].gppurchaseordernumber)
+                        setPurchaseOrderByNumber(selected[entityName].gppurchaseordernumber).then(function () {
+                            MobileCRM.UI.EntityForm.requestObject(loadFormItems, MobileCRM.bridge.alert);
+                        }, MobileCRM.bridge.alert)
+
+                    else
+                        MobileCRM.UI.EntityForm.requestObject(loadFormItems, MobileCRM.bridge.alert);
+                }, MobileCRM.bridge.alert);
+            }, MobileCRM.bridge.alert);
+        }
+        function checkSiteInventory() {
+            var deferred = $.Deferred();
+            var entity = new MobileCRM.FetchXml.Entity(SCHEMA.siteinventory.name);
+            entity.addAttribute('id');
+
+            var fetch = new MobileCRM.FetchXml.Fetch(entity);
+            fetch.execute("JSON", function (res) {
+                hasSiteInventory = res.length > 0;
+                return deferred.resolve();
+            }, function (err) { return deferred.reject(err); });
+            return deferred.promise();
+        }
+        function setPurchaseOrderByNumber(number) {
+            var deferred = $.Deferred();
+            if (!number)
+                return deferred.reject("Unable to load Purchase Order Details");
+
+            var entity = new MobileCRM.FetchXml.Entity(SCHEMA.purchaseorder.name);
+            entity.addAttribute('id');
+            entity.addAttribute('vendorid');
+            entity.addAttribute('gpvendorname');
+            entity.addFilter().where('gppurchaseordernumber', 'eq', number);
+
+            var fetch = new MobileCRM.FetchXml.Fetch(entity);
+            fetch.execute("JSON", function (res) {
+                if (res[0]) {
+                    selected.purchaseorder = res[0];
+
+                    MobileCRM.UI.EntityForm.requestObject(function (entityForm) {
+                        entityForm.entity.properties.purchaseorderid =
+                            new MobileCRM.DynamicEntity('purchaseorder', res[0].id);
+
+                        return deferred.resolve();
+                    }, function (err) { return deferred.reject(err); });
+                }
+                else
+                    return deferred.reject("Unable to fetch Purchase Order");
+            }, function (err) { return deferred.reject(err); });
+            return deferred.promise();
+        }
+
+        function loadFormItems(entityForm) {
+            // Load Form Items
+            var detailView = entityForm.getDetailView(entityName);
+            var formItems = [];
+            $(detailView.items).each(function (index, item) {
+                item.errorMessage = null;
+                formItems[item.name] = item;
+            });
+
+            // Set Form Item Options
+            formItems.servicecallid.isEnabled = false;
+            formItems.gppurchaseordernumber.isEnabled = isNew && !isNewLine && !setupOptions.AutoGeneratePurchaseOrderNumbers
+            formItems.gppurchaseordernumber.maxLength = 17;
+            formItems.transactiondate.parts = 1;
+            formItems.transactiondate.isNullable = false;
+
+            formItems.unknownvendor.isVisible = !isProcessed && (setupOptions.UnknownVendorId && setupOptions.UnknownVendorId.trim().length > 0);
+            formItems.unknownvendor.isEnabled = !lockVendor && !disableUnknownVendor && useUnknownVendorId;
+            formItems.unknownvendor.value = (isNew && !isNewLine) ? false : (selected.purchaseorder && !selected.purchaseorder.vendorid);
+            formItems.unknownvendor.label = "Unknown Vendor";
+            formItems.unknownvendor.textChecked = "Yes";
+            formItems.unknownvendor.textUnchecked = "No";
+
+            formItems.gpvendorname.isVisible = formItems.unknownvendor.value;
+            formItems.gpvendorname.isEnabled = isNew && !lockVendor;
+            formItems.gpvendorname.value = selected.purchaseorder ? selected.purchaseorder.gpvendorname : "";
+            formItems.gpvendorname.label = "Vendor Name";
+
+            formItems.noninventory.isVisible = !isProcessed && setupOptions.UseNonInventoryItems;
+            formItems.noninventory.value = isNew ? false : setupOptions.UseNonInventoryItems && !selected[entityName].siteinventoryid;
+            formItems.noninventory.label = "Non Inventory";
+            formItems.noninventory.textChecked = "Yes";
+            formItems.noninventory.textUnchecked = "No";
+
+            formItems.siteinventoryid.isVisible = !formItems.noninventory.value && isProcessed;
+            formItems.itemnumber.isVisible = !isNew;
+
+            formItems.manualsite.isVisible = !isProcessed && hasSiteInventory;
+            formItems.manualsite.value = isNew ? !hasSiteInventory : !isProcessed && !selected[entityName].techniciansiteid;
+            formItems.manualsite.isEnabled = isNew || (!isProcessed && !selected[entityName].techniciansiteid);
+            formItems.manualsite.label = "Enter Site Name";
+            formItems.manualsite.textChecked = "Yes";
+            formItems.manualsite.textUnchecked = "No";
+
+            formItems.siteid.isVisible =
+                (!isProcessed && formItems.manualsite.value || !hasSiteInventory) ||
+                (isProcessed && !selected[entityName].techniciansiteid);
+            formItems.siteid.maxLength = 10;
+            formItems.techniciansiteid.isVisible = !formItems.siteid.isVisible;
+
+            formItems.unitofmeasureid.isEnabled = !isProcessed && !selected[entityName].siteinventoryid;
+
+            formItems.quantity.isEnabled = !isProcessed;
+            formItems.quantity.upDownVisible = formItems.quantity.isEnabled;
+            formItems.quantity.increment = 1;
+            formItems.quantity.minimum = 1;
+
+            formItems.unitcost.isEnabled = !isProcessed;
+            formItems.unitcost.upDownVisible = formItems.unitcost.isEnabled;
+            formItems.unitcost.increment = 0.25;
+            formItems.unitcost.minimum = 0;
+
+            formItems.extendedcost.isEnabled = false;
+            formItems.extendedcost.value = isNew ? 0 :
+                parseFloat(selected[entityName].quantity) * parseFloat(selected[entityName].unitcost);
+            formItems.extendedcost.decimalPlaces = 2;
+            formItems.extendedcost.displayFormat = "{0:C}";
+            formItems.extendedcost.label = "Extended Cost";
+
+            var vendoridValue = selected.purchaseorder && selected.purchaseorder.vendorid ?
+                selected.purchaseorder.vendorid.primaryName : clickToSelect;
+
+            createLinkItem('Vendor Id', 'vendorid', detailView.getItemIndex('unknownvendor') + 1, vendoridValue, 'Normal', vendorIDClicked)
+                .then(updateVendorLinkItem, MobileCRM.bridge.alert)
+                .then(createInventoryLinkItem, MobileCRM.bridge.alert)
+                .then(loadFormValues, MobileCRM.bridge.alert);
+        }
+
+        function createLinkItem(label, name, position, value, style, onClick) {
+            var deferred = $.Deferred();
+            MobileCRM.UI.EntityForm.requestObject(function (entityForm) {
+                var detailView = entityForm.getDetailView(entityName);
+                var linkItem = detailView.getItemByName(name);
+
+                if (linkItem) {
+                    linkItem.setTypedValue("value", "System.String", value);
+                    linkItem.isVisible = true;
+                    if (onClick)
+                        detailView.registerClickHandler(linkItem, onClick);
+                    return deferred.resolve();
+                }
+                else {
+                    linkItem = new MobileCRM.UI.DetailViewItems.LinkItem(name, label);
+                    linkItem.value = value;
+                    linkItem.style = style;
+                    if (onClick)
+                        detailView.registerClickHandler(linkItem, onClick);
+                    detailView.insertItem(linkItem, position);
+                    return deferred.resolve();
+                }
+            }, function (err) { return deferred.reject(err); });
+            return deferred.promise();
+        }
+        function updateVendorLinkItem() {
+            var deferred = $.Deferred();
+            MobileCRM.UI.EntityForm.requestObject(function (entityForm) {
+                var detailView = entityForm.getDetailView(entityName);
+                var vendorLink = detailView.getItemByName('vendorid');
+
+                vendorLink.isVisible = !detailView.getItemByName('unknownvendor').value;
+                vendorLink.isEnabled = isNew && !lockVendor;
+
+                if (vendorLink.isVisible && vendorLink.isEnabled) {
+                    vendorLink.validate = true;
+                    vendorLink.errorMessage = vendorLink.value === clickToSelect ? vendorLink.label + locAlert.FmtFieldNotEmpty : '';
+                }
+                return deferred.resolve();
+            }, function (err) { return deferred.reject(err); });
+            return deferred.promise();
+        }
+        function createInventoryLinkItem() {
+            var deferred = $.Deferred();
+            MobileCRM.UI.EntityForm.requestObject(function (entityForm) {
+                try {
+                    var detailView = entityForm.getDetailView(entityName);
+                    var inventoryLinkItem = detailView.getItemByName('siteinventoryid_link');
+
+                    if (!isProcessed) {
+                        var siteinventoryValue = selected[entityName].siteinventoryid ?
+                            selected[entityName].siteinventoryid.primaryName : clickToSelect;
+                        var isNonInventory = detailView.getItemByName('noninventory').value;
+
+                        if (inventoryLinkItem) {
+                            inventoryLinkItem.setTypedValue("value", "System.String", siteinventoryValue);
+                            inventoryLinkItem.isVisible = !isNonInventory;
+                            detailView.registerClickHandler(inventoryLinkItem, showSiteInventoryList);
+                        }
+                        else {
+                            inventoryLinkItem = new MobileCRM.UI.DetailViewItems.LinkItem('siteinventoryid_link', 'Inventory');
+                            inventoryLinkItem.value = siteinventoryValue;
+                            inventoryLinkItem.isVisible = !isNonInventory;
+                            detailView.registerClickHandler(inventoryLinkItem, showSiteInventoryList);
+                            detailView.insertItem(inventoryLinkItem, detailView.getItemIndex('itemnumber'));
+                        }
+
+                        return deferred.resolve();
+                    }
+                    else {
+                        if (inventoryLinkItem) {
+                            inventoryLinkItem.isVisible = false;
+                        }
+
+                        return deferred.resolve();
+                    }
+                }
+                catch (e) { return deferred.reject("Create Inventory Item Error: " + e); }
+            }, function (err) { return deferred.reject("Create Inventory Item Error: " + err); });
+            return deferred.promise();
+        }
+
+        //============== LOAD DATA ================
+        function loadFormValues() {
+            MobileCRM.UI.EntityForm.requestObject(function (entityForm) {
+                if (isNew) {
+                    var entityProps = entityForm.entity.properties;
+                    entityProps.transactiondate = new Date();
+                    entityProps.quantity = 1;
+                    entityProps.unitcost = 0;
+                    loadLookupValue(entityName, 'costcode', 'costcodeid', 'code', 2);
+
+                    if (!isNewLine) {
+                        if (setupOptions.AutoGeneratePurchaseOrderNumbers)
+                            getNextPONumber();
+                        else {
+                            entityProps.gppurchaseordernumber = setupOptions.DefaultPONumberPrefix ? setupOptions.DefaultPONumberPrefix.toUpperCase() : "";
+                            entityProps.name = entityProps.gppurchaseordernumber;
+                        }
+                    }
+                    else
+                        entityProps.name = entityProps.gppurchaseordernumber;
+
+                    if (setupOptions.DefaultUnitOfMeasure)
+                        loadLookupValue(entityName, 'unitofmeasure', 'unitofmeasureid', 'name', setupOptions.DefaultUnitOfMeasure);
+
+                    if (setupOptions.DefaultSite)
+                        fetchTechnicianSiteID(setupOptions.DefaultSite).then(function (techSiteID) {
+                            MobileCRM.UI.EntityForm.requestObject(function (entityForm) {
+                                if (techSiteID) {
+                                    var techsiteFormItem = entityForm.getDetailView(entityName).getItemByName('techniciansiteid');
+                                    techsiteFormItem.value = new MobileCRM.DynamicEntity('techniciansite', techSiteID);
+                                }
+                                else
+                                    // Default site could be a manually entered site in mobile admin that the tech is not assigned to.
+                                    entityForm.entity.properties.siteid = setupOptions.DefaultSite;
+                            }, MobileCRM.bridge.alert);
+                        }, MobileCRM.bridge.alert);
+
+                    if (selected.appointment)
+                        MobileCRM.DynamicEntity.loadById('appointment', selected.appointment.id, function (appt) {
+                            MobileCRM.UI.EntityForm.requestObject(function (entityForm) {
+                                entityForm.entity.properties.servicecallid = appt.properties.servicecallid;
+                                entityForm.entity.properties.gpappointmentid = appt.properties.gpappointmentid;
+                                setClean();
+                            }, MobileCRM.bridge.alert);
+                        }, MobileCRM.bridge.alert);
+                }
+
+                fetchCostCode();
+            }, MobileCRM.bridge.alert);
+        }
+
+        function fetchTechnicianSiteID(gpsiteid) {
+            var deferred = $.Deferred();
+
+            getTechnicianID(function (techID) {
+                var entity = new MobileCRM.FetchXml.Entity(SCHEMA.techniciansite.name);
+                entity.addAttribute('id');
+
+                entity.addFilter().where('gptechnicianid', 'eq', techID);
+                entity.addFilter().where('gpsiteid', 'eq', gpsiteid);
+                entity.filter.type = 'and';
+
+                var fetch = new MobileCRM.FetchXml.Fetch(entity);
+                fetch.execute("JSON", function (res) {
+                    return deferred.resolve(res[0] ? res[0].id : null);
+                }, function (err) { return deferred.reject(err); });
+            });
+            return deferred.promise();
+        }
+        function fetchCostCode() {
+            // Cost Type: Expense
+            var fetch = "<fetch version='1.0'><entity name='costcode'><filter type='and'>" +
+                "<condition attribute='code' operator='le' value='5' />" +
+                "<condition attribute='code' operator='ne' value='3' />" +
+                "</filter></entity></fetch>";
+
+            addFetchFilter("costcodeid", "costcode", fetch, entityName);
+        }
+
+        // ----- PURCHASE ORDER -----
+        function getNextPONumber() {
+            //this would have been simple but we only have 17 characters to work with, not 24
+            //change the Year, Month, Day, and Hour to a base 36 character using this string
+            //append the full minute string, then make a sequence number up to 36 per minute
+            //this routine will max at Z when exceed 36 per minute or if the year exceeds 2044
+            //TECHNICIANYYYYMMDDHHMMSS
+            //123456789019991231246060
+            //resulting string will be in this format
+            //technicianYMDHSSX
+            //12345678901234567
+
+            const s = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+            const y = "8901234567ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+            var dt = new Date();
+            var index = dt.getFullYear() - 2008;
+
+            index = index < 0 ? 0 : index;
+            index = index >= y.length ? index = y.length - 1 : index;
+
+            var year = y.charAt(index);
+            var month = s.charAt(dt.getMonth() + 1);
+            var day = s.charAt(dt.getDate());
+            var hour = s.charAt(dt.getHours());
+            var minute = parseFloat(dt.getMinutes()).toFixed(0);
+            minute = minute < 10 ? "0" + minute : minute;   // Need string in XX format
+
+            getTechnicianID(function (techID) {
+                var numWithoutSequence = techID + year + month + day + hour + minute;
+
+                getLastPOSequenceCount(numWithoutSequence, s).then(function (PO_SequenceCounter) {
+                    var sIndex = PO_SequenceCounter !== null ? PO_SequenceCounter + 1 : 0;
+                    if (sIndex >= s.length)
+                        sIndex = s.length - 1;
+
+                    var sequence = s.charAt(sIndex);
+
+                    MobileCRM.UI.EntityForm.requestObject(function (entityForm) {
+                        entityForm.entity.properties.gppurchaseordernumber = numWithoutSequence + sequence;
+                        entityForm.entity.properties.name = entityForm.entity.properties.gppurchaseordernumber;
+
+                        setClean();
+                    }, MobileCRM.bridge.alert)
+
+                }, MobileCRM.bridge.alert);
+            });
+        }
+        function getLastPOSequenceCount(numWithoutSequence, s) {
+            var deferred = $.Deferred();
+            if (!numWithoutSequence)
+                return deferred.reject("Unable to load PO Sequence Number");
+
+            var entity = new MobileCRM.FetchXml.Entity(SCHEMA.purchaseorder.name);
+            entity.addAttribute('gppurchaseordernumber');
+            entity.addFilter().startsWith('gppurchaseordernumber', numWithoutSequence);
+
+            var fetch = new MobileCRM.FetchXml.Fetch(entity);
+            fetch.execute("JSON", function (res) {
+                if (res.length > 0) {
+                    var maxSequence = -1;
+                    $(res).each(function (i, po) {
+                        var poNum = po.gppurchaseordernumber;
+                        var poSequence = s.indexOf(poNum.charAt(poNum.length - 1));
+                        if (poSequence > maxSequence)
+                            maxSequence = poSequence;
+                    });
+
+                    return deferred.resolve(maxSequence);
+                }
+                else
+                    return deferred.resolve(null);
+            }, function (err) { return deferred.reject(err); });
+            return deferred.promise();
+        }
+        function getNextPOLineNumber(servicecallid, gppurchaseordernumber) {
+            var deferred = $.Deferred();
+            if (!servicecallid || !gppurchaseordernumber)
+                return deferred.reject("Unable to get next PO line number");
+
+            var entity = new MobileCRM.FetchXml.Entity(entityName);
+            entity.addAttribute('gplinenumber');
+            entity.orderBy('gplinenumber', true);
+
+            entity.addFilter().where('servicecallid', 'eq', servicecallid.id);
+            entity.addFilter().where('gppurchaseordernumber', 'eq', gppurchaseordernumber);
+            entity.filter.type = 'and';
+
+            var fetch = new MobileCRM.FetchXml.Fetch(entity);
+            fetch.execute("JSON", function (res) {
+                var count = res[0] ? parseInt(res[0].gplinenumber) + 16384 : 16384;
+                return deferred.resolve(count);
+            }, function (err) { return deferred.reject(err); });
+            return deferred.promise();
+        }
+        function getPurchaseOrderByNumber(number) {
+            var deferred = $.Deferred();
+            if (!number)
+                return deferred.reject("Unable to fetch Purchase Order: Missing Number");
+
+            var entity = new MobileCRM.FetchXml.Entity(SCHEMA.purchaseorder.name);
+            entity.addAttribute('id');
+            entity.addFilter().where('gppurchaseordernumber', 'eq', number);
+
+            var fetch = new MobileCRM.FetchXml.Fetch(entity);
+            fetch.execute("JSON", function (res) {
+                return deferred.resolve(res[0] ? res[0] : null);
+            }, function (err) { return deferred.reject(err); });
+            return deferred.promise();
+        }
+        function hasProcessedPurchaseOrderLines(poID) {
+            var deferred = $.Deferred();
+            if (!poID)
+                return deferred.reject("Unable to check processed PO lines");
+
+            var entity = new MobileCRM.FetchXml.Entity(entityName);
+            entity.addAttribute('id');
+
+            entity.addFilter().where('purchaseorderid', 'eq', poID);
+            entity.addFilter().where('isprocessed', 'eq', true);
+            entity.filter.type = 'and';
+
+            var fetch = new MobileCRM.FetchXml.Fetch(entity);
+            fetch.execute("JSON", function (res) {
+                return deferred.resolve(res.length > 0);
+            }, function (err) { return deferred.reject(err); });
+            return deferred.promise();
+        }
+
+        //============== TOOLBAR FUNCTIONS ================
+        function validateForm(entityForm) {
+            saveHandler = entityForm.suspendSave();
+            var entityProps = entityForm.entity.properties;
+            var detailView = entityForm.getDetailView(entityName);
+            var isUnknownVendor = detailView.getItemByName('unknownvendor').value;
+            var gpvendorname = detailView.getItemByName('gpvendorname').value;
+            var isNonInventory = detailView.getItemByName('noninventory').value;
+            var isManualSite = detailView.getItemByName('manualsite').value;
+
+            if (!entityProps.gppurchaseordernumber.trim())
+                saveHandler.resumeSave(detailView.getItemByName('gppurchaseordernumber').label + locAlert.FmtFieldNotEmpty);
+
+            else if (isUnknownVendor && (!gpvendorname || (gpvendorname && !gpvendorname.trim())))
+                saveHandler.resumeSave(detailView.getItemByName('gpvendorname').label + locAlert.FmtFieldNotEmpty);
+
+            else if (!isNonInventory && !entityProps.siteinventoryid)
+                saveHandler.resumeSave(detailView.getItemByName('siteinventoryid').label + locAlert.FmtFieldNotEmpty);
+            else if (isNonInventory && (!entityProps.itemnumber || (entityProps.itemnumber && !entityProps.itemnumber.trim())))
+                saveHandler.resumeSave(detailView.getItemByName('itemnumber').label + locAlert.FmtFieldNotEmpty);
+
+            else if (!isManualSite && !entityProps.techniciansiteid)
+                saveHandler.resumeSave(detailView.getItemByName('techniciansiteid').label + locAlert.FmtFieldNotEmpty);
+            else if (isManualSite && (!entityProps.siteid || (entityProps.siteid && !entityProps.siteid.trim())))
+                saveHandler.resumeSave(detailView.getItemByName('siteid').label + locAlert.FmtFieldNotEmpty);
+
+            else if (!entityProps.unitofmeasureid)
+                saveHandler.resumeSave(detailView.getItemByName('unitofmeasureid').label + locAlert.FmtFieldNotEmpty);
+            else if (parseFloat(entityProps.unitcost) === 0) {
+                saveHandler.resumeSave(detailView.getItemByName('unitcost').label + locAlert.FmtFieldNotZero);
+            }
+
+            else if (isNew)
+                createEntity(entityForm);
+            else {
+                if (!entityProps.siteid && entityProps.techniciansiteid) {
+                    entityProps.siteid = entityProps.techniciansiteid.primaryName;
+                }
+                saveHandler.resumeSave();
+            }
+        }
+
+        //============== FORM ITEM FUNCTIONS ================
+        function formValueChanged(entityForm) {
+            entityForm.isDirty = true;
+            var detailView = entityForm.getDetailView(entityName);
+            var entityProps = entityForm.entity.properties;
+
+            switch (entityForm.context.changedItem) {
+                case SCHEMA.purchaseorderdetail.Properties.gppurchaseordernumber:
+                case SCHEMA.purchaseorderdetail.Properties.itemnumber:
+                    // Set to all uppercase
+                    var itemValue = entityProps[entityForm.context.changedItem];
+                    if (itemValue && itemValue !== itemValue.toUpperCase())
+                        entityProps[entityForm.context.changedItem] = itemValue.toUpperCase();
+                    break;
+
+                case SCHEMA.purchaseorderdetail.Properties.quantity:
+                case SCHEMA.purchaseorderdetail.Properties.unitcost:
+                    calculateExtendedCost(entityProps, detailView);
+                    break;
+
+                case SCHEMA.purchaseorderdetail.Properties.siteinventoryid:
+                    if (entityProps.siteinventoryid)
+                        loadSiteInventory(entityProps.siteinventoryid.id);
+                    else
+                        detailView.getItemByName('unitofmeasureid').isEnabled = true;
+                    break;
+
+                case SCHEMA.purchaseorderdetail.Properties.techniciansiteid:
+                    if (hasSiteInventory && entityProps.techniciansiteid)
+                        MobileCRM.DynamicEntity.loadById('techniciansite', entityProps.techniciansiteid.id, function (res) {
+                            entityProps.siteid = res.properties.gpsiteid;
+                        }, MobileCRM.bridge.alert);
+                    break;
+
+                // Switches
+                case 'unknownvendor':
+                    var isUnknown = detailView.getItemByName('unknownvendor').value;
+
+                    var gpvendornameItem = detailView.getItemByName('gpvendorname');
+                    if (gpvendornameItem) {
+                        gpvendornameItem.isVisible = isUnknown;
+                        gpvendornameItem.value = null;
+                        gpvendornameItem.validate = isUnknown;
+                        gpvendornameItem.errorMessage = isUnknown ? gpvendornameItem.label + locAlert.FmtFieldNotEmpty : "";
+                    }
+
+                    var vendoridItem = detailView.getItemByName('vendorid');
+                    if (vendoridItem) {
+                        vendoridItem.isVisible = !isUnknown;
+                        vendoridItem.value = clickToSelect;
+                        vendoridItem.validate = !isUnknown;
+                        vendoridItem.errorMessage = !isUnknown && vendoridItem.value === clickToSelect ? vendoridItem.label + locAlert.FmtFieldNotEmpty : "";
+                    }
+                    break;
+
+                case 'noninventory':
+                    var isNonInventory = detailView.getItemByName('noninventory').value;
+
+                    var itemNumberItem = detailView.getItemByName('itemnumber');
+                    var siteinventoryidItem = detailView.getItemByName('siteinventoryid');
+                    var siteinventoryidLinkItem = detailView.getItemByName('siteinventoryid_link');
+                    var manualsiteItem = detailView.getItemByName('manualsite');
+                    var techSiteItem = detailView.getItemByName('techniciansiteid');
+                    var unitofmeasureidItem = detailView.getItemByName('unitofmeasureid');
+
+                    itemNumberItem.isVisible = isNonInventory;
+                    siteinventoryidLinkItem.isVisible = !isNonInventory;
+                    if (isNonInventory)
+                        siteinventoryidLinkItem.setTypedValue("value", "System.String", clickToSelect);
+                    itemNumberItem.errorMessage = null;
+                    siteinventoryidItem.isVisible = false;
+                    siteinventoryidItem.errorMessage = null;
+                    manualsiteItem.isEnabled = true;
+                    techSiteItem.isEnabled = true;
+                    unitofmeasureidItem.isEnabled = true;
+
+                    // Reset Values
+                    entityProps.itemdescription = null;
+                    entityProps.quantity = 1;
+                    entityProps.unitcost = 0;
+                    calculateExtendedCost(entityProps, detailView);
+
+                    if (isNonInventory) {
+                        entityProps.itemnumber = setupOptions.DefaultPOItemNumberPrefix ? setupOptions.DefaultPOItemNumberPrefix.toUpperCase() : null;
+
+                        if (setupOptions.DefaultSite) {
+                            fetchTechnicianSiteID(setupOptions.DefaultSite).then(function (techSiteID) {
+                                if (techSiteID) {
+                                    var techsiteFormItem = detailView.getItemByName('techniciansiteid');
+                                    techsiteFormItem.value = new MobileCRM.DynamicEntity('techniciansite', techSiteID);
+                                }
+                                else {
+                                    MobileCRM.UI.EntityForm.requestObject(function (entityForm) {
+                                        entityForm.entity.properties.siteid = null;
+                                    }, MobileCRM.bridge.alert);
+                                }
+                            }, MobileCRM.bridge.alert);
+                        }
+                        else {
+                            entityProps.techniciansiteid = null;
+                            entityProps.siteid = null;
+                        }
+                    }
+                    else {
+                        entityProps.itemnumber = null;
+                        entityProps.siteinventoryid = null;
+
+                        if (setupOptions.DefaultUnitOfMeasure)
+                            loadLookupValue(entityName, 'unitofmeasure', 'unitofmeasureid', 'name', setupOptions.DefaultUnitOfMeasure);
+
+                        if (setupOptions.DefaultSite)
+                            fetchTechnicianSiteID(setupOptions.DefaultSite).then(function (techSiteID) {
+                                if (techSiteID) {
+                                    var techsiteFormItem = detailView.getItemByName('techniciansiteid');
+                                    techsiteFormItem.value = new MobileCRM.DynamicEntity('techniciansite', techSiteID);
+                                }
+                            }, MobileCRM.bridge.alert);
+                    }
+                    break;
+
+                case 'manualsite':
+                    var isManual = detailView.getItemByName('manualsite').value;
+                    var siteidItem = detailView.getItemByName('siteid');
+                    var techniciansiteidItem = detailView.getItemByName('techniciansiteid');
+
+                    siteidItem.isVisible = isManual;
+                    techniciansiteidItem.isVisible = !isManual;
+                    siteidItem.errorMessage = null;
+                    techniciansiteidItem.errorMessage = null;
+
+                    if (isManual)
+                        techniciansiteidItem.value = null;
+                    else
+                        siteidItem.value = null;
+
+                    break;
+                default:
+                    detailView.getItemByName(entityForm.context.changedItem).errorMessage = null;
+            }
+        }
+
+        function showSiteInventoryList() {
+            MobileCRM.UI.IFrameForm.showModal("Site Inventory",
+                "file://entity/siteinventory/siteinventory-list.html",
+                options = { lookupTarget: { "entityName": entityName, "id": selected[entityName].id } });
+        }
+        function siteInventorySelected(args) {
+            if (!args.lookupTarget ||
+                (args.lookupTarget && args.lookupTarget.id !== selected[entityName].id))
+                return;
+
+            if (args.siteinventory && args.siteinventory.id)
+                loadSiteInventory(args.siteinventory.id);
+            else
+                MobileCRM.bridge.alert("Unable to load Site Inventory");
+        }
+
+        function loadSiteInventory(id) {
+            MobileCRM.DynamicEntity.loadById('siteinventory', id, function (res) {
+                selected.siteinventory = res.properties;
+
+                fetchTechnicianSiteID(selected.siteinventory.gpsiteid).then(function (techSiteID) {
+                    MobileCRM.UI.EntityForm.requestObject(function (entityForm) {
+                        var entityProps = entityForm.entity.properties;
+                        var detailView = entityForm.getDetailView(entityName);
+
+                        entityProps.siteid - selected.siteinventory.gpsiteid;
+                        entityProps.itemnumber = selected.siteinventory.itemnumber ? selected.siteinventory.itemnumber.toUpperCase() : "";
+                        entityProps.itemdescription = selected.siteinventory.description
+                        entityProps.unitcost = selected.siteinventory.unitcost;
+                        calculateExtendedCost(entityProps, detailView);
+
+                        var siteInventoryLinkItem = detailView.getItemByName('siteinventoryid_link');
+                        siteInventoryLinkItem.setTypedValue("value", "System.String", selected.siteinventory ? selected.siteinventory.name : clickToSelect);
+                        loadLookupValue(entityName, 'siteinventory', 'siteinventoryid', 'id', selected.siteinventory.id);
+
+                        var manualsiteItem = detailView.getItemByName('manualsite');
+                        var techsiteFormItem = detailView.getItemByName('techniciansiteid');
+                        var siteFormItem = detailView.getItemByName('siteid');
+
+                        if (techSiteID) {
+                            manualsiteItem.value = false;
+                            manualsiteItem.isEnabled = false;
+
+                            techsiteFormItem.value = new MobileCRM.DynamicEntity('techniciansite', techSiteID);
+                            techsiteFormItem.isVisible = true;
+                            techsiteFormItem.isEnabled = false;
+
+                            siteFormItem.value = null;
+                            siteFormItem.isVisible = false;
+                        }
+                        else {
+                            entityProps.techniciansiteid = null;
+                            techsiteFormItem.isEnabled = true;
+                            manualsiteItem.isEnabled = true;
+                        }
+
+                        var uofmFormItem = detailView.getItemByName('unitofmeasureid');
+                        if (selected.siteinventory.unitofmeasureid) {
+                            uofmFormItem.value = new MobileCRM.DynamicEntity('unitofmeasure', selected.siteinventory.unitofmeasureid.id);
+                            uofmFormItem.isEnabled = false;
+                        }
+                        else
+                            uofmFormItem.isEnabled = true;
+                    }, MobileCRM.bridge.alert);
+                }, MobileCRM.bridge.alert);
+            }, MobileCRM.bridge.alert);
+        }
+        function calculateExtendedCost(entityProps, detailView) {
+            var extendedcostFormItem = detailView.getItemByName('extendedcost');
+            if (extendedcostFormItem)
+                extendedcostFormItem.value = parseFloat(entityProps.quantity) * parseFloat(entityProps.unitcost);
+        }
+
+        function vendorIDClicked() {
+            MobileCRM.UI.EntityForm.requestObject(function (entityForm) {
+                if (entityForm.getDetailView(entityName).getItemByName('vendorid').isEnabled) {
+                    var lookupForm = new MobileCRM.UI.LookupForm();
+                    var fetch = "<fetch><entity name='vendor'/></fetch>";
+                    lookupForm.addEntityFilter("vendor", fetch);
+                    lookupForm.allowNull = false;
+                    lookupForm.addView("vendor", "Default");
+                    lookupForm.show(vendorIDSelected, MobileCRM.bridge.alert, null);
+                }
+            }, MobileCRM.bridge.alert);
+        }
+        function vendorIDSelected(vendor) {
+            MobileCRM.UI.EntityForm.requestObject(function (entityForm) {
+                selected.vendor = vendor.properties;
+
+                var vendorLinkItem = entityForm.getDetailView(entityName).getItemByName('vendorid');
+                vendorLinkItem.setTypedValue('value', "System.String", vendor.properties.name);
+                vendorLinkItem.errorMessage = null;
+                entityForm.isDirty = true;
+            }, MobileCRM.bridge.alert);
+        }
+
+        //============== FORM EXECUTIONS ================
+        function createEntity(entityForm) {
+            var detailView = entityForm.getDetailView(entityName);
+            var entityProps = entityForm.entity.properties;
+
+            entityProps.name = entityProps.gppurchaseordernumber;
+            entityProps.productindicator = 3 // Service
+            entityProps.createdon = new Date();
+            if (!entityProps.siteid && entityProps.techniciansiteid)
+                entityProps.siteid = entityProps.techniciansiteid.primaryName;
+
+            checkProcessedPurchaseOrderLines(detailView, entityProps).then(function (processedPOLinesOK) {
+                if (!processedPOLinesOK)
+                    return;
+
+                checkForNewPurchaseOrder().then(function () {
+                    checkPOLineNumber().then(function () {
+                        saveHandler.resumeSave();
+                    });
+                }, MobileCRM.bridge.alert);
+            }, MobileCRM.bridge.alert);
+        }
+
+        function checkProcessedPurchaseOrderLines(detailView, entityProps) {
+            var deferred = $.Deferred();
+            if (!detailView.getItemByName('gppurchaseordernumber').isEnabled || entityProps.purchaseorderid)
+                return deferred.resolve(true);
+
+            getPurchaseOrderByNumber(entityProps.gppurchaseordernumber).then(function (po) {
+                if (po)
+                    hasProcessedPurchaseOrderLines(po.id).then(function (anyPurchaseOrderLineProcessed) {
+                        if (anyPurchaseOrderLineProcessed) {
+                            sayLocalization("Alert.PONumberExist1");
+                            return deferred.resolve(false);
+                        }
+                        else {
+                            MobileCRM.Localization.initialize(function (localization) {
+                                var popup = new MobileCRM.UI.MessageBox(MobileCRM.Localization.get("Alert.PONumberExist"));
+                                popup.items = ["Yes", "No"];
+                                popup.multiLine = true;
+                                popup.show(function (btn) {
+                                    if (btn === "Yes")
+                                        createPOLine(po.id).then(function () {
+                                            return deferred.resolve(true);
+                                        });
+                                    else
+                                        return deferred.resolve(false);
+                                    return;
+                                });
+                            }, MobileCRM.bridge.alert);
+                        }
+                    }, function (err) { return deferred.reject(err); });
+                else
+                    return deferred.resolve(true);
+
+            }, function (err) { return deferred.reject(err); });
+            return deferred.promise();
+        }
+        function checkForNewPurchaseOrder() {
+            var deferred = $.Deferred();
+            MobileCRM.UI.EntityForm.requestObject(function (entityForm) {
+                if (entityForm.entity.properties.purchaseorderid)
+                    return deferred.resolve();
+                else
+                    createPurchaseOrder(entityForm).then(function (poID) {
+                        if (poID)
+                            MobileCRM.UI.EntityForm.requestObject(function (entityForm) {
+                                entityForm.entity.properties.purchaseorderid = new MobileCRM.DynamicEntity('purchaseorder', poID);
+                                return deferred.resolve();
+                            }, function (err) { return deferred.reject(err); });
+
+                        else
+                            return deferred.reject("Unable to create Purchase Order");
+
+                    }, function (err) { return deferred.reject(err); });
+            }, function (err) { return deferred.reject(err); });
+            return deferred.promise();
+        }
+        function checkPOLineNumber() {
+            var deferred = $.Deferred();
+
+            MobileCRM.UI.EntityForm.requestObject(function (entityForm) {
+                var entityProps = entityForm.entity.properties;
+
+                if (!entityProps.gplinenumber || parseInt(entityProps.gplinenumber) === 0)
+                    getNextPOLineNumber(entityProps.servicecallid, entityProps.gppurchaseordernumber).then(function (lineNumber) {
+                        if (lineNumber)
+                            MobileCRM.UI.EntityForm.requestObject(function (entityForm) {
+                                entityForm.entity.properties.gplinenumber = lineNumber;
+                                return deferred.resolve();
+                            }, function (err) { return deferred.reject(err); });
+                        else
+                            return deferred.reject("Unable to get the next PO line number");
+                    }, function (err) { return deferred.reject(err); });
+                else
+                    return deferred.resolve();
+
+            }, function (err) { return deferred.reject(err); });
+
+            return deferred.promise();
+        }
+
+        function createPOLine(poID) {
+            var deferred = $.Deferred();
+            MobileCRM.DynamicEntity.loadById('purchaseorder', poID, function (res) {
+                selected.purchaseorder = res.properties;
+
+                MobileCRM.UI.EntityForm.requestObject(function (entityForm) {
+                    var entityProps = entityForm.entity.properties;
+                    var detailView = entityForm.getDetailView(entityName);
+
+                    entityProps.purchaseorderid = new MobileCRM.DynamicEntity('purchaseorder', selected.purchaseorder.id);
+                    detailView.getItemByName('gppurchaseordernumber').isEnabled = false;
+
+                    var vendoridItem = detailView.getItemByName('vendorid');
+                    vendoridItem.value = selected.purchaseorder.vendorid ? selected.purchaseorder.vendorid.primaryName : clickToSelect;
+                    vendoridItem.isEnabled = false;
+
+                    var gpvendornameItem = detailView.getItemByName('gpvendorname');
+                    gpvendornameItem.value = selected.purchaseorder.gpvendorname;
+                    gpvendornameItem.isEnabled = false;
+
+                    detailView.getItemByName('unknownvendor').value = !selected.purchaseorder.vendorid;
+                    return deferred.resolve();
+                }, function (err) { return deferred.reject(err); });
+            }, function (err) { return deferred.reject(err); });
+            return deferred.promise();
+        }
+        function createPurchaseOrder(entityForm) {
+            var deferred = $.Deferred();
+            var entityProps = entityForm.entity.properties;
+            var detailView = entityForm.getDetailView(entityName);
+            var isUnknownVendor = detailView.getItemByName('unknownvendor').value;
+            var gpvendorname = detailView.getItemByName('gpvendorname').value;
+
+            if ((!isUnknownVendor && detailView.getItemByName('vendorid').value === clickToSelect) ||
+                (isUnknownVendor && (!gpvendorname || (gpvendorname && !gpvendorname.trim()))))
+                return deferred.reject("Unable to Create PO: Missing Vendor");
+
+            var poEntity = new MobileCRM.DynamicEntity('purchaseorder');
+            poEntity.properties.name = entityProps.gppurchaseordernumber;
+            poEntity.properties.gppurchaseordernumber = entityProps.gppurchaseordernumber;
+            poEntity.properties.isprocessed = false;
+            poEntity.properties.transactiondate = new Date(entityProps.transactiondate);
+
+            var itemsDeferred = [loadEntityData('appointment')];
+            if (!isUnknownVendor)
+                itemsDeferred.push(loadEntityData('vendor'));
+
+            $.when.apply($, itemsDeferred).then(function () {
+                poEntity.properties.gpjobnumber = selected.appointment ? selected.appointment.gpservicecallid : null;
+
+                if (isUnknownVendor) {
+                    poEntity.properties.gpvendorid = setupOptions.UnknownVendorId;
+                    poEntity.properties.gpvendorname = gpvendorname;
+                }
+                else {
+                    poEntity.properties.vendorid = selected.vendor ? new MobileCRM.DynamicEntity('vendor', selected.vendor.id) : null;
+                    poEntity.properties.gpvendorid = selected.vendor ? selected.vendor.gpvendorid : null;
+                    poEntity.properties.gpvendorname = selected.vendor ? selected.vendor.name : null;
+                }
+
+                poEntity.save(function (err) {
+                    if (err)
+                        return deferred.reject(err);
+                    else
+                        return deferred.resolve(this.id);
+                });
+            }, function (err) { return deferred.reject(err); });
+            return deferred.promise();
+        }
+        function loadEntityData(name) {
+            var deferred = $.Deferred();
+            if (!selected[name])
+                return deferred.reject("Unable to load " + name + " details");
+
+            MobileCRM.DynamicEntity.loadById(name, selected[name].id, function (res) {
+                selected[name] = res.properties;
+                return deferred.resolve();
+            }, function (err) { return deferred.reject(err); });
+            return deferred.promise();
+        }
+    </script>
+</body>
+</html>

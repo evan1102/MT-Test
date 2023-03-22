@@ -1,0 +1,131 @@
+﻿<EntityList UseSyncFilter="true">
+  <Attributes>
+    <EntityName>appointment</EntityName>
+    <CamelCase>appointment</CamelCase>
+    <VisualStudioProjectId>00000000-0000-0000-0000-000000000000</VisualStudioProjectId>
+    <ClassBinding/>
+  </Attributes>
+  <Name>Job Appointments</Name>
+  <Kind>List</Kind>
+  <AutoWideWidth>0</AutoWideWidth>
+  <OrderBy>startdate</OrderBy>
+  <SerializedBindings>
+    <string>appointmentstatusid</string>
+    <string>description</string>
+    <string>estimatehours</string>
+    <string>gpappointmentid</string>
+    <string>gpjobnumber</string>
+    <string>gpservicecallid</string>
+    <string>id</string>
+    <string>location</string>
+    <string>name</string>
+    <string>scheduledend</string>
+    <string>scheduledstart</string>
+    <string>startdate</string>
+    <string>technicianactivityid</string>
+    <string>jobid.job.locationid.location.name</string>
+    <string>servicecallid.servicecall.locationid</string>
+    <string>servicecallid.servicecall.locationid.location.name</string>
+  </SerializedBindings>
+  <IsHidden>true</IsHidden>
+  <MaxColumns>0</MaxColumns>
+  <Fetch version="1.0">
+    <entity name="appointment">
+      <filter type="and">
+        <condition attribute="gpappointmenttype" operator="eq" value="3"/>
+        <condition attribute="ownerid" operator="eq-userid"/>
+      </filter>
+      <link-entity name="appointmentstatus" alias="L0" from="id" to="appointmentstatusid" link-type="inner">
+        <filter type="and">
+          <filter type="and">
+            <condition attribute="name" operator="ne" value="COMPLETE"/>
+            <condition attribute="name" operator="ne" value="RE-ASSIGN"/>
+          </filter>
+        </filter>
+      </link-entity>
+    </entity>
+  </Fetch>
+  <Search>
+    <attribute schema="appointmentstatusid" method="Contains" reference="true"/>
+    <attribute schema="description" method="Contains"/>
+    <attribute schema="location" method="Contains"/>
+    <attribute schema="name" method="Contains"/>
+    <attribute schema="technicianactivityid" method="Contains" reference="true"/>
+  </Search>
+  <SerializedTemplates>
+    <RowTemplate>
+      <DesignWidth>240</DesignWidth>
+      <DesignHeight>40</DesignHeight>
+      <Name>Default</Name>
+      <Width>300</Width>
+      <Height>110</Height>
+      <SerializedChildren>
+        <CellTemplate SchemaName="name">
+          <StyleName>primary</StyleName>
+          <Bounds>2,2,206,22</Bounds>
+          <CellKind>0</CellKind>
+          <Anchor>5</Anchor>
+        </CellTemplate>
+        <CellTemplate SchemaName="startdate">
+          <StyleName>black_date</StyleName>
+          <Bounds>209,7,89,12</Bounds>
+          <CellKind>0</CellKind>
+          <Anchor>9</Anchor>
+        </CellTemplate>
+        <CellTemplate SchemaName="estimatehours">
+          <StyleName>gray_num</StyleName>
+          <Bounds>208,66,90,14</Bounds>
+          <CellKind>0</CellKind>
+          <Anchor>9</Anchor>
+        </CellTemplate>
+        <CellTemplate SchemaName="description">
+          <StyleName>gray</StyleName>
+          <Bounds>2,94,296,14</Bounds>
+          <CellKind>0</CellKind>
+          <Anchor>5</Anchor>
+        </CellTemplate>
+        <CellTemplate SchemaName="appointmentstatusid">
+          <StyleName>gray</StyleName>
+          <Bounds>2,66,205,14</Bounds>
+          <CellKind>0</CellKind>
+          <Anchor>5</Anchor>
+        </CellTemplate>
+        <CellTemplate SchemaName="jobid.job.locationid.location.name">
+          <StyleName>gray</StyleName>
+          <Bounds>2,38,296,14</Bounds>
+          <CellKind>0</CellKind>
+          <Anchor>5</Anchor>
+        </CellTemplate>
+        <CellTemplate SchemaName="LOCATION">
+          <IsConstant>true</IsConstant>
+          <StyleName>blue_bold</StyleName>
+          <Bounds>2,25,78,12</Bounds>
+          <CellKind>0</CellKind>
+          <Anchor>5</Anchor>
+        </CellTemplate>
+        <CellTemplate SchemaName="EST. HOURS">
+          <IsConstant>true</IsConstant>
+          <StyleName>blue_bold</StyleName>
+          <Bounds>208,53,90,12</Bounds>
+          <CellKind>0</CellKind>
+          <Anchor>9</Anchor>
+        </CellTemplate>
+        <CellTemplate SchemaName="DESCRIPTION">
+          <IsConstant>true</IsConstant>
+          <StyleName>blue_bold</StyleName>
+          <Bounds>2,81,78,12</Bounds>
+          <CellKind>0</CellKind>
+          <Anchor>5</Anchor>
+        </CellTemplate>
+        <CellTemplate SchemaName="STATUS">
+          <IsConstant>true</IsConstant>
+          <StyleName>blue_bold</StyleName>
+          <Bounds>2,53,78,12</Bounds>
+          <CellKind>0</CellKind>
+          <Anchor>5</Anchor>
+        </CellTemplate>
+      </SerializedChildren>
+    </RowTemplate>
+  </SerializedTemplates>
+  <CustomProperties/>
+</EntityList>

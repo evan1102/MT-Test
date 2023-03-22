@@ -1,0 +1,97 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <!-- Activate IE9 document mode, if available -->
+    <meta charset="utf-8" http-equiv="X-UA-Compatible" content="IE=edge" />
+    <!-- Defined iOS viewport -->
+    <meta name="viewport" content="initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=false">
+    <!-- Disable iOS Phone No Detection -->
+    <meta name="format-detection" content="telephone=no" />
+    <!-- DevExtreme dependencies -->
+    <script type="text/javascript" src="../../scripts/jquery-3.3.1.min.js"></script>
+    <!-- DevExtreme themes -->
+    <link rel="stylesheet" type="text/css" href="../../css/dx.common.css" />
+    <link rel="stylesheet" type="text/css" href="../../css/dx.light.css" />
+    <!-- A DevExtreme library -->
+    <script type="text/javascript" src="../../scripts/dx.all.js"></script>
+    <!-- Offline HTML JavaScript Bridge-->
+    <script type="text/javascript" src="../../scripts/JSBridge.js"></script>
+    <script type="text/javascript" src="../../scripts/k2aMethods.js"></script>
+    <script type="text/javascript" src="../../enum/Schema.js"></script>
+    <script type="text/javascript" src="../../enum/setupoption.js"></script>
+    <!-- Offline HTML Styling -->
+    <link rel="stylesheet" type="text/css" href="../../css/k2a.css" />
+    <style>
+        .dx-popup-title {
+            background-color: #3f4044;
+            color: white;
+            font-size: large;
+            height: 60px;
+        }
+
+        .dx-icon-back:before {
+            color: white
+        }
+
+        .dx-popup-content {
+            padding: 0px;
+        }
+    </style>
+    <title>Confirm Prompt</title>
+</head>
+<body>
+    <div id="popup">
+        <div id="list"></div>
+    </div>
+
+    <script>
+        //============== INITIAL SETTINGS ================
+        var sharedUrl, appointmentid;
+
+        $(function () {
+            //============== ANDROID CHECK ================
+            MobileCRM.Platform.preventBackButton(btnBackClicked);
+
+            MobileCRM.UI.IFrameForm.requestObject(function (iFrameForm) {
+                sharedUrl = iFrameForm.options.sharedUrl;
+                appointmentid = iFrameForm.options.appointmentid;
+
+
+                //============== LIST ================
+                var list = $("#list").dxList({
+                    height: '200px',
+                    items: ["Yes", "No"],
+                    itemTemplate: function (data, _, element) {
+                        element.append(
+                            $("<div>").append(data).css({ 'padding': '12px' })
+                        ).css({ 'font-size': 'large', 'text-align': 'center' })
+                    },
+                    onItemClick: function (e) {
+                        if (e.itemData === "Yes") {
+                            MobileCRM.bridge.raiseGlobalEvent("WorkflowCompleted", { sharedUrl: sharedUrl, appointmentid: appointmentid });
+                        }
+                        MobileCRM.bridge.closeForm();
+                    },
+                    showScrollbar: 'never'
+                }).dxList('instance');
+
+                //============== POPUP ================
+                var popup = $("#popup").dxPopup({
+                    toolbarItems: [{
+                        template: function (data, _, element) {
+                            element.append(
+                                "Did you complete and submit the workflow?"
+                            ).css("white-space", "normal");
+                        },
+                        location: "center"
+                    }],
+                    showCloseButton: false,
+                    height: '200px',
+                    width: '300px',
+                    visible: true
+                }).dxPopup("instance");
+            }, MobileCRM.bridge.alert);
+        });
+    </script>
+</body>
+</html>

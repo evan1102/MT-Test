@@ -1,0 +1,16 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Dashboard xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <Columns>1</Columns>
+  <Rows>3</Rows>
+  <Items>
+    <DashboardComponent xsi:type="DashboardEntityComponent" Kind="List" Binding="appointment;appointment.Service Appointments" Options="0">
+      <Bounds>0,0,1,1</Bounds>
+    </DashboardComponent>
+    <DashboardComponent xsi:type="DashboardEntityComponent" Kind="List" Binding="appointment;appointment.Job Appointments" Options="0">
+      <Bounds>0,1,1,1</Bounds>
+    </DashboardComponent>
+    <DashboardComponent xsi:type="DashboardEntityComponent" Kind="List" Binding="appointment;appointment.Technician Activities" Options="0">
+      <Bounds>0,2,1,1</Bounds>
+    </DashboardComponent>
+  </Items>
+</Dashboard>

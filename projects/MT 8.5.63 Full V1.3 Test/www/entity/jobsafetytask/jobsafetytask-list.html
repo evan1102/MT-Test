@@ -1,0 +1,639 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <!-- Activate IE9 document mode, if available -->
+    <meta charset="utf-8" http-equiv="X-UA-Compatible" content="IE=edge" />
+    <!-- Defined iOS viewport -->
+    <meta name="viewport" content="initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=false">
+    <!-- Disable iOS Phone No Detection -->
+    <meta name="format-detection" content="telephone=no" />
+    <!-- DevExtreme dependencies -->
+    <script type="text/javascript" src="../../scripts/jquery-3.3.1.min.js"></script>
+    <!-- DevExtreme themes -->
+    <link rel="stylesheet" type="text/css" href="../../css/dx.common.css" />
+    <link rel="stylesheet" type="text/css" href="../../css/dx.light.css" />
+    <!-- A DevExtreme library -->
+    <script type="text/javascript" src="../../scripts/dx.all.js"></script>
+    <!-- Offline HTML JavaScript Bridge-->
+    <script type="text/javascript" src="../../scripts/JSBridge.js"></script>
+    <script type="text/javascript" src="../../scripts/k2aMethods.js"></script>
+    <script type="text/javascript" src="../../enum/Schema.js"></script>
+    <script type="text/javascript" src="../../enum/setupoption.js"></script>
+    <!-- Offline HTML Template Factory-->
+    <script type="text/javascript" src="../../templates/listItem-factory.js"></script>
+    <script type="text/javascript" src="../../templates/toolbar-factory.js"></script>
+    <!-- Offline HTML Styling -->
+    <link rel="stylesheet" type="text/css" href="../../css/k2a.css" />
+    <title>Entity List</title>
+</head>
+<body>
+    <div id="toast"></div>
+    <div class="fixedPosition">
+        <div id="mainToolbar"></div><br>
+        <div id="listToolbar"></div>
+        <div id="mainScrollView">
+            <div id='mainList'></div>
+        </div>
+        <div id="actionSheet"></div>
+        <div id="filterPopup"></div>
+    </div>
+
+    <script>
+        //============== INITIAL SETTINGS ================
+        var entityName = SCHEMA.jobsafetytask.name, isCollapsed = false;
+        var sortDesc = false, sortSelector = SCHEMA.jobsafetytask.Properties.tasklistid;
+        //============== OFFLINE DATA ================
+        // Headers data does have tasks where gptasklinenumber = 0
+        var entityListData = [], listHeadersData = {};
+        //============== SELECTED DATA ================
+        var selected = { entityName: null, appointment: null };
+        //============== FETCH DATA ================
+        var requiredSetupOptions = [
+            SETUPOPTION.UseJobSafetyTasks
+        ];
+        var entityAttributes = [
+            SCHEMA.jobsafetytask.Properties.id,
+            SCHEMA.jobsafetytask.Properties.tasklistid,
+            SCHEMA.jobsafetytask.Properties.gptaskcode,
+            SCHEMA.jobsafetytask.Properties.taskdescription,
+            SCHEMA.jobsafetytask.Properties.gptasklinenumber
+        ];
+        var listSortItems = [
+            SCHEMA.jobsafetytask.Properties.tasklistid
+        ];
+        var listSearchItems = [
+            SCHEMA.jobsafetytask.Properties.tasklistid,
+            SCHEMA.jobsafetytask.Properties.gptaskcode,
+            SCHEMA.jobsafetytask.Properties.taskdescription
+        ];
+        var listFilterItems = [
+            { dataField: SCHEMA.jobsafetytask.Properties.tasklistid, dataType: FilterDataType.string },
+            { dataField: SCHEMA.jobsafetytask.Properties.gptaskcode, dataType: FilterDataType.string },
+            { dataField: SCHEMA.jobsafetytask.Properties.taskdescription, dataType: FilterDataType.string }
+        ];
+        var listItemTemplate = function (data, _, element) {
+            element.append(
+                $("<div>").append(data.gptaskcode).css("text-indent", "15px")
+            );
+            if (data.taskdescription)
+                element.append(
+                    $("<div>").append(
+                        $("<i>").append(formatString(data.taskdescription))
+                    ).css("text-indent", "15px")
+                );
+            else
+                element.append($("<br>"));
+        };
+        //============== TOOLBAR ITEMS ================
+        var mainToolbarItems = [
+            ToolbarItemType.btnExpandCollapse, ToolbarItemType.title, ToolbarItemType.btnReport
+        ];
+        var listToolbarItems = [
+            ToolbarItemType.btnSort, ToolbarItemType.selectSort, ToolbarItemType.btnFilter
+        ];
+
+        $(function () {
+            //============== LOCALIZATION ================
+            MobileCRM.Localization.initialize(function (localization) {
+
+                //============== ANDROID CHECK ================
+                MobileCRM.Platform.preventBackButton(btnBackClicked);
+
+                //============== LOADPANEL ================
+                loading = MobileCRM.UI.Form.showPleaseWait(MobileCRM.Localization.get("Msg.Loading"));
+
+                //============== SCROLLVIEW ================
+                mainScrollView = $("#mainScrollView").dxScrollView({
+                    showScrollbar: "always",
+                    height: function () { return window.innerHeight - 80; },
+                    width: '100%'
+                }).dxScrollView("instance");
+                $(window).resize(function () {
+                    checkIsMultiPanel(mainToolbar); // Update toolbar if needed
+                    repaintScrollView(mainScrollView);
+                    MobileCRM.bridge.getWindowSize(function (obj) {
+                        updateToolbarItem(mainToolbar, ToolbarItemType.title, "location",
+                            obj.width > 400 ? 'center' : 'before');
+                    }, MobileCRM.bridge.alert);
+                });
+
+                //============== TOOLBARS ================
+                mainToolbar = $("#mainToolbar").dxToolbar({
+                    items: (new ToolbarFactory()).addItems(mainToolbarItems)
+                }).dxToolbar("instance");
+                listToolbar = $("#listToolbar").dxToolbar({
+                    items: (new ToolbarFactory()).addItems(listToolbarItems)
+                }).dxToolbar("instance");
+
+                //============== LIST ================
+                mainList = (new ListFactory()).createItem("#mainList", entityName, [
+                    { name: 'searchExpr', value: listSearchItems },
+                    { name: 'itemTemplate', value: listItemTemplate }
+                ]);
+
+                loadSetupOptions(loadListOptions);
+            }, alertError);
+        });
+
+        //============== LOAD OPTIONS ================
+        function loadListOptions() {
+            if (!setupOptions.UseJobSafetyTasks) {
+                loading.close();
+                return; // Tab is not visible so do not need to load
+            }
+
+            MobileCRM.UI.EntityForm.requestObject(function (entityForm) {
+                selected.appointment = entityForm.entity.properties;
+
+                loadToolbarOptions();
+                loadListItemOptions();
+            }, alertError);
+        }
+        function loadToolbarOptions() {
+            var title = MobileCRM.Localization.get("DetailView." + entityName);
+            updateToolbarItem(mainToolbar, ToolbarItemType.title, "html", "<b>" + title + "</b>");
+
+            MobileCRM.bridge.getWindowSize(function (obj) {
+                if (obj.width <= 400) {
+                    updateToolbarItem(mainToolbar, ToolbarItemType.title, "location", 'before');
+                }
+            }, MobileCRM.bridge.alert);
+
+            if (typeof listFilterItems !== 'undefined' && listFilterItems.length > 0)
+                (new FilterFactory()).createFilterPopup(mainList, listToolbar);
+
+            loadSortItemsLocalization(listSortItems).then(function (sortDataSource) {
+                updateToolbarItem(listToolbar, ToolbarItemType.selectSort, "options.dataSource", sortDataSource);
+                updateToolbarItem(listToolbar, ToolbarItemType.selectSort, "options.value", sortSelector);
+            });
+        }
+        function loadListItemOptions() {
+            mainList.option({
+                'collapsibleGroups': true,
+                'grouped': true,
+                'groupTemplate': function (data, _, element) {
+                    return element.append(
+                        $("<div>").append(listHeadersData[data.items[0].tasklistid])
+                    );
+                }
+            });
+
+            loadJobSafetyTasks();
+        }
+
+        //============== LOAD DATA ================
+        function loadJobSafetyTasks() {
+            loadTaskListTemplate().then(function (template) {
+                var taskMaintenance = [];
+
+                $(template).each(function (i, taskTemplate) {
+                    taskMaintenance.push(performTaskMaintenance(taskTemplate));
+                });
+
+                $.when.apply($, taskMaintenance).then(function () {
+                    var responseMaintenance = [];
+
+                    $(template).each(function (i, taskTemplate) {
+                        responseMaintenance.push(performResponseMaintenance(taskTemplate));
+                    });
+
+                    $.when.apply($, responseMaintenance)
+                        .then(fetchTaskList, alertError);
+                }, alertError);
+            }, alertError);
+        }
+
+        function fetchTaskList() {
+            var entity = new MobileCRM.FetchXml.Entity(SCHEMA.jobsafetytask.name);
+            entity.addAttributes();
+            entity.orderBy(SCHEMA.jobsafetytask.Properties.gptasklinenumber);
+
+            entity.filter = new MobileCRM.FetchXml.Filter();
+            entity.filter.where(SCHEMA.jobsafetytask.Properties.appointmentid, 'eq', selected.appointment.id);
+
+            var fetch = new MobileCRM.FetchXml.Fetch(entity);
+            fetch.execute("JSON", loadTaskList, alertError, null);
+        }
+
+        function loadTaskList(listItems) {
+            $(listItems).each(function (i, task) {
+                // So sorting is by number
+                task.tasklistid = parseInt(task.tasklistid);
+                if (parseInt(task.gptasklinenumber) === 0)
+                    listHeadersData[task.tasklistid] =
+                        task.gptaskcode + " - " + formatString(task.taskdescription);
+                else
+                    entityListData.push(task);
+            });
+
+            mainList.option("dataSource", new DevExpress.data.DataSource({
+                store: {
+                    type: 'array',
+                    key: 'id',
+                    data: listItems
+                },
+                group: SCHEMA.jobsafetytask.Properties.tasklistid,
+                sort: [{ selector: sortSelector, desc: sortDesc }, SCHEMA.jobsafetytask.Properties.gptaskcode],
+                filter: ["!", [SCHEMA.jobsafetytask.Properties.gptasklinenumber, "=", "0"]],
+                paginate: false
+            }));
+            loading.close();
+        }
+
+        //============== TOOLBAR FUNCTIONS ================
+        function btnSortClicked() {
+            loadGroupedListData(mainList, entityListData);
+        }
+        function sortSelected() {
+            btnSortClicked();
+        }
+        function btnExpandCollapseClicked(currentlyCollapsed) {
+            mainList.option("onGroupRendered", function (e) {
+                if (currentlyCollapsed)
+                    e.component.expandGroup(e.groupIndex);
+                else
+                    e.component.collapseGroup(e.groupIndex);
+            });
+            mainList.reload();
+        }
+        function btnReportClicked() {
+            MobileCRM.DynamicEntity.loadById(SCHEMA.appointment.name, selected.appointment.id, function (appt) {
+                appt.properties.jobsafetydate = new Date();
+                appt.properties.isjsareportrequested = true;
+                appt.save(function (err) {
+                    if (err)
+                        MobileCRM.bridge.alert(err);
+                    else
+                        sayLocalization("Alert.ReportGenerated");
+                });
+            }, MobileCRM.bridge.alert, null);
+        }
+
+        //============== LIST ITEM FUNCTIONS ================
+        function listItemClicked() {
+            // Show Task Form
+            if (parseInt(selected[entityName].gptasklinenumber) > 0)
+                MobileCRM.UI.FormManager.showDetailDialog(entityName, selected[entityName].id, null);
+        }
+
+        //============== LIST EXECUTIONS ================
+        // --- TASK MAINTENANCE ---
+        function loadTaskListTemplate() {
+            var deferred = $.Deferred();
+            var entity = new MobileCRM.FetchXml.Entity(SCHEMA.jobsafetytasklisttemplate.name);
+            entity.addAttributes();
+            entity.orderBy(SCHEMA.jobsafetytasklisttemplate.Properties.gptaskcode);
+
+            entity.addFilter().where(SCHEMA.jobsafetytasklisttemplate.Properties.responsetype, 'eq', 0);
+
+            var fetch = new MobileCRM.FetchXml.Fetch(entity);
+            fetch.execute("JSON", function (templateRes) {
+                return deferred.resolve(templateRes);
+            }, function (err) { return deferred.reject("Load Template Error: " + err); });
+            return deferred.promise();
+        }
+
+        function performTaskMaintenance(taskTemplate) {
+            var deferred = $.Deferred();
+
+            fetchTasks(taskTemplate).then(function (tasks) {
+                if (tasks.length === 0)
+                    createTask(taskTemplate).then(
+                        function () { return deferred.resolve(); },
+                        function (err) { return deferred.reject(err); }
+                    );
+                else if (tasks.length === 1)
+                    return deferred.resolve();
+                else
+                    removeDuplicateTasks(tasks).then(
+                        function () { return deferred.resolve(); },
+                        function (err) { return deferred.reject(err); }
+                    );
+            }, function (err) { return deferred.reject(err); });
+
+            return deferred.promise();
+        }
+
+        function fetchTasks(taskTemplate) {
+            var deferred = $.Deferred();
+            if (!taskTemplate)
+                return deferred.reject("Unable to fetch task: Missing task template");
+
+            var entity = new MobileCRM.FetchXml.Entity(entityName);
+            entity.addAttributes();
+
+            entity.addFilter().where(SCHEMA.jobsafetytask.Properties.gpservicecallid, 'eq', selected.appointment.gpservicecallid);
+            entity.addFilter().where(SCHEMA.jobsafetytask.Properties.gpappointmentid, 'eq', selected.appointment.gpappointmentid);
+            entity.addFilter().where(SCHEMA.jobsafetytask.Properties.tasklistid, 'eq', taskTemplate.tasklistid);
+            entity.addFilter().where(SCHEMA.jobsafetytask.Properties.gptaskcode, 'eq', taskTemplate.gptaskcode);
+            entity.addFilter().where(SCHEMA.jobsafetytask.Properties.gptasklinenumber, 'eq', taskTemplate.gptasklinenumber);
+            entity.filter.type = 'and';
+
+            var fetch = new MobileCRM.FetchXml.Fetch(entity);
+            fetch.execute("JSON",
+                function (res) { return deferred.resolve(res); },
+                function (err) { return deferred.reject(err); }
+            );
+            return deferred.promise();
+        }
+
+        function createTask(taskTemplate) {
+            var deferred = $.Deferred();
+
+            var newTask = new MobileCRM.DynamicEntity.createNew(SCHEMA.jobsafetytask.name);
+            newTask.properties.gpservicecallid = selected.appointment.gpservicecallid;
+            newTask.properties.gpappointmentid = selected.appointment.gpappointmentid;
+            newTask.properties.appointmentid = new MobileCRM.DynamicEntity(SCHEMA.appointment.name, selected.appointment.id);
+            newTask.properties.gptaskcode = taskTemplate.gptaskcode;
+            newTask.properties.tasklistid = taskTemplate.tasklistid;
+            newTask.properties.gptasklinenumber = taskTemplate.gptasklinenumber;
+            newTask.properties.taskstatusid = taskTemplate.taskstatusid;
+            newTask.properties.booleanresponse = taskTemplate.booleanresponse.toUpperCase() === 'TRUE';
+            newTask.properties.estimatehours = taskTemplate.estimatedhours;
+            newTask.properties.taskdescription = taskTemplate.taskdescription;
+            newTask.properties.completiondate = new Date(taskTemplate.completiondate);
+            newTask.properties.numericresponse1 = taskTemplate.numericresponse1;
+            newTask.properties.numericresponse2 = taskTemplate.numericresponse2;
+            newTask.properties.numericresponse3 = taskTemplate.numericresponse3;
+
+            newTask.save(function (err) {
+                if (err)
+                    return deferred.reject(err);
+                else
+                    return deferred.resolve();
+            });
+
+            return deferred.promise();
+        }
+
+        function removeDuplicateTasks(duplicateTasks) {
+            var deferred = $.Deferred();
+
+            var lastModifiedDate = new Date(0);
+            var taskIDtoKeep = null;
+
+            $(duplicateTasks).each(function (i, task) {
+                if (new Date(task.modifiedon) > lastModifiedDate) {
+                    lastModifiedDate = new Date(task.modifiedon);
+                    taskIDtoKeep = task.id;
+                }
+            });
+
+            var itemsToDelete = [];
+            $(duplicateTasks).each(function (i, task) {
+                if (task.id !== taskIDtoKeep)
+                    itemsToDelete.push(deleteTask(task.id));
+            });
+
+            $.when.apply($, itemsToDelete).then(
+                function () { return deferred.resolve(); },
+                function (err) { return deferred.reject(err); }
+            );
+            return deferred.promise();
+        }
+
+        function deleteTask(taskID) {
+            var deferred = $.Deferred();
+            if (!taskID)
+                return deferred.reject("Unable to remove duplicate task: Missing task ID");
+
+            MobileCRM.DynamicEntity.deleteById(entityName, taskID,
+                function () { return deferred.resolve(); },
+                function (err) { return deferred.reject(err); }
+            );
+            return deferred.promise();
+        }
+
+        // --- RESPONSE MAINTENANCE ---
+        function performResponseMaintenance(taskTemplate) {
+            var deferred = $.Deferred();
+
+            fetchResponseTemplate(taskTemplate).then(function (responseTemplate) {
+                fetchTasks(taskTemplate).then(function (tasks) {
+                    if (tasks.length !== 1)
+                        return deferred.reject("Duplicate Tasks, Please reload page.");
+
+                    var task = tasks[0];
+                    if (!task)
+                        return deferred.reject("Response Maintenance Error: Unable to fetch task");
+                    var responsesNeeded = [];
+
+                    $(responseTemplate).each(function (i, response) {
+                        responsesNeeded.push(validateResponse(task, response));
+                    });
+
+                    $.when.apply($, responsesNeeded).then(
+                        function () { return deferred.resolve(); },
+                        function (err) { return deferred.reject(err); }
+                    );
+                }, function (err) { return deferred.reject(err); });
+            }, function (err) { return deferred.reject(err); });
+
+            return deferred.promise();
+        }
+        function fetchResponseTemplate(task) {
+            var deferred = $.Deferred();
+
+            var entity = new MobileCRM.FetchXml.Entity(SCHEMA.jobsafetytasklisttemplate.name);
+            entity.addAttributes();
+
+            entity.addFilter().where(SCHEMA.jobsafetytasklisttemplate.Properties.recordtype, 'eq', 2);    // Responses only
+            entity.addFilter().where(SCHEMA.jobsafetytasklisttemplate.Properties.tasklistid, 'eq', task.tasklistid);
+            entity.addFilter().where(SCHEMA.jobsafetytasklisttemplate.Properties.gptaskcode, 'eq', task.gptaskcode);
+            entity.filter.type = 'and';
+
+            var fetch = new MobileCRM.FetchXml.Fetch(entity);
+            fetch.execute("JSON", function (res) {
+                return deferred.resolve(res);
+            }, function (err) { return deferred.reject("Fetch Response Template Error: " + err); });
+            return deferred.promise();
+        }
+        function validateResponse(task, template) {
+            var deferred = $.Deferred();
+
+            fetchResponses(task, template).then(function (responses) {
+                if (responses.length === 0)
+                    createResponse(task, template).then(
+                        function () { return deferred.resolve(); },
+                        function (err) { return deferred.reject(err); }
+                    );
+                else if (responses.length === 1) {
+                    if (responses[0].jobsafetytaskid.id === task.id &&
+                        responses[0].responsetype === template.responsetype &&
+                        responses[0].responselabel === template.responselabel)
+                        return deferred.resolve();
+                    else
+                        updateResponse(task, template, responses[0].id).then(
+                            function () { return deferred.resolve(); },
+                            function (err) { return deferred.reject(err); }
+                        );
+                }
+                else
+                    removeDuplicateResponses(task, template, responses).then(
+                        function () { return deferred.resolve(); },
+                        function (err) { return deferred.reject(err); }
+                    );
+
+            }, function (err) { return deferred.reject(err); });
+            return deferred.promise();
+        }
+        function fetchResponses(task, template) {
+            var deferred = $.Deferred();
+            if (!template)
+                return deferred.reject("Unable to fetch responses: Missing template");
+
+            var entity = new MobileCRM.FetchXml.Entity(SCHEMA.jobsafetytaskresponse.name);
+            entity.addAttributes();
+
+            entity.addFilter().where(SCHEMA.jobsafetytaskresponse.Properties.gpservicecallid, 'eq', task.gpservicecallid);
+            entity.addFilter().where(SCHEMA.jobsafetytaskresponse.Properties.gpappointmentid, 'eq', task.gpappointmentid);
+            entity.addFilter().where(SCHEMA.jobsafetytaskresponse.Properties.tasklistid, 'eq', template.tasklistid);
+            entity.addFilter().where(SCHEMA.jobsafetytaskresponse.Properties.gptaskcode, 'eq', template.gptaskcode);
+            entity.addFilter().where(SCHEMA.jobsafetytaskresponse.Properties.gptasklinenumber, 'eq', template.gptasklinenumber);
+            entity.filter.type = 'and';
+
+            var fetch = new MobileCRM.FetchXml.Fetch(entity);
+            fetch.execute("JSON", function (res) {
+                return deferred.resolve(res);
+            }, function (err) { return deferred.reject("Fetch Responses Error: " + err); });
+            return deferred.promise();
+        }
+
+        function createResponse(task, template) {
+            var deferred = $.Deferred();
+            if (!template)
+                return deferred.reject("Unable to create response: Missing template details");
+
+            var entity = new MobileCRM.DynamicEntity.createNew(SCHEMA.jobsafetytaskresponse.name);
+
+            entity.properties.jobsafetytaskid = new MobileCRM.DynamicEntity(entityName, task.id);
+            entity.properties.gpappointmentid = task.gpappointmentid;
+            entity.properties.gpservicecallid = task.gpservicecallid;
+            entity.properties.gptaskcode = template.gptaskcode;
+            entity.properties.gptasklinenumber = template.gptasklinenumber;
+            entity.properties.textresponse = template.textresponse;
+            entity.properties.responsevalue = template.dropdownresponse;
+            entity.properties.tasklistid = template.tasklistid;
+            entity.properties.responselistid = template.responselistid;
+            entity.properties.responsetype = template.responsetype;
+            entity.properties.responselabel = template.responselabel;
+
+            entity.save(function (err) {
+                if (err)
+                    return deferred.reject("Create Response Error: " + err);
+                else
+                    return deferred.resolve();
+            });
+            return deferred.promise();
+        }
+
+        function updateResponse(task, template, responseID) {
+            var deferred = $.Deferred();
+            if (!responseID)
+                return deferred.reject("Update Response Error: Missing response id");
+
+            MobileCRM.DynamicEntity.loadById(SCHEMA.jobsafetytaskresponse.name, responseID, function (response) {
+                response.properties.jobsafetytaskid = new MobileCRM.DynamicEntity(entityName, task.id);
+                response.properties.responsetype = template.responsetype;
+                response.properties.responselabel = template.responselabel;
+                response.properties.responselistid = template.responselistid;
+
+                if (parseInt(template.responsevalue) === 5) // List
+                    response.properties.textresponse = null;
+                if (parseInt(template.responsevalue) === 6) // Text
+                    response.properties.textresponse = null;
+
+                response.save(function (err) {
+                    if (err)
+                        return deferred.reject("Update Response Error: " + err);
+                    else
+                        return deferred.resolve();
+                });
+            }, function (err) { return deferred.reject("Load Response Error: " + err); });
+            return deferred.promise();
+        }
+
+        function removeDuplicateResponses(task, template, responses) {
+            var deferred = $.Deferred();
+            if (!template)
+                return deferred.reject("Remove Duplicate Responses Error: Missing Template");
+            if (!responses)
+                return deferred.reject("Remove Duplicate Responses Error: Missing Response Details");
+
+            // Get Latest Value (responsevalue = list, textresponse = text)
+            var responseType = parseInt(template.responsetype);
+            var valueAttribute = responseType === 5 ? "responsevalue" : (responseType === 6 ? "textresponse" : null);
+            if (!valueAttribute)
+                return deferred.reject("Remove Duplicate Responses Error: Invalid responsetype");
+
+            var lastModifiedDate = new Date(0);
+            var lastModifiedValue = null;
+            var responsesToDelete = [];
+            var responseToKeep = null;
+
+            $(responses).each(function (i, response) {
+                if (response[valueAttribute] && new Date(response.modifiedon) > lastModifiedDate) {
+                    lastModifiedDate = new Date(response.modifiedon);
+                    lastModifiedValue = response[valueAttribute];
+                }
+                if (i > 0)
+                    responsesToDelete.push(response.id);
+                else
+                    responseToKeep = response.id;  // Keep only the first response in the array
+            });
+
+            var itemsDeferred = [
+                updateDuplicateResponse(task, valueAttribute, lastModifiedValue, responseToKeep, template)
+            ];
+            $(responsesToDelete).each(function (i, responseID) {
+                itemsDeferred.push(deleteResponse(responseID));
+            });
+
+            $.when.apply($, itemsDeferred).then(
+                function () { return deferred.resolve(); },
+                function (err) { return deferred.reject(err); }
+            );
+            return deferred.promise();
+        }
+        function updateDuplicateResponse(task, valueAttribute, value, responseID, template) {
+            var deferred = $.Deferred();
+            if (!responseID)
+                return deferred.reject("Update Duplicate Response Error: Missing ID");
+            if (!template)
+                return deferred.reject("Update Duplicate Response Error: Missing template details");
+
+            MobileCRM.DynamicEntity.loadById(SCHEMA.jobsafetytaskresponse.name, responseID, function (response) {
+                if (parseInt(template.responsevalue) === 5) // List
+                    response.properties.textresponse = null;
+                if (parseInt(template.responsevalue) === 6) // Text
+                    response.properties.textresponse = null;
+
+                response.properties.jobsafetytaskid = new MobileCRM.DynamicEntity(entityName, task.id);
+                response.properties.responsetype = template.responsetype;
+                response.properties.responselabel = template.responselabel;
+                response.properties.responselistid = template.responselistid;
+                response.properties[valueAttribute] = value;
+
+                response.save(function (err) {
+                    if (err)
+                        return deferred.reject("Save updated dupicate response error: " + err);
+                    else
+                        return deferred.resolve();
+                })
+            }, function (err) { return deferred.reject("Update Duplicate Response Error: " + err); });
+            return deferred.promise();
+        }
+        function deleteResponse(responseID) {
+            var deferred = $.Deferred();
+            if (!responseID)
+                return deferred.reject("Unable to delete response: Missing ID");
+
+            MobileCRM.DynamicEntity.deleteById(SCHEMA.jobsafetytaskresponse.name, responseID,
+                function () { return deferred.resolve(); },
+                function (err) { return deferred.reject("Delete Response Error: " + err); }
+            );
+            return deferred.promise();
+        }
+    </script>
+</body>
+</html>

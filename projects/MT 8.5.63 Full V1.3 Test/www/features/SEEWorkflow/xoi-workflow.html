@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>XOi Vision Workflow</title>
+    <!-- Activate IE9 document mode, if available -->
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <!-- Defined iOS viewport -->
+    <meta name="viewport" content="initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=false">
+    <script type="text/javascript" src="../../scripts/JSBridge.js"></script>
+    <script type="text/javascript" src="../../scripts/jquery-3.3.1.min.js"></script>
+</head>
+<body onload="onBodyLoaded()">
+    <script>
+        var appointmentid = '';
+        var gpservicecallid = '';
+        var gpequipmentid = '';
+        var gpcustomernumber = '';
+        var gplocationnumber = '';
+        var gpcustomername = '';
+        var gplocationname = '';
+        var useXOiWorkflow = '';
+        var partnerId = '';
+        var clientId = '';
+        var clientSecret = '';
+        var redirectUri = '';
+        var visionUrl = '';
+        var loginUrl = '';
+        var partnerUrl = '';
+        var sharedUrl = '';
+
+        function onBodyLoaded() {
+            MobileCRM.bridge.onGlobalEvent("FormItemsUpdated", function (args) {
+                MobileCRM.UI.EntityForm.requestObject(function (entityForm) {
+                    if (entityForm && args && entityForm.entity.id === args.entityID)
+                        loadXOiSetupOptions();
+                }, MobileCRM.bridge.alert);
+            }, true);
+
+            MobileCRM.bridge.onGlobalEvent("WorkflowCompleted", function (args) {
+                if (args.appointmentid && args.appointmentid === appointmentid) {
+                    setResolutionNote(args.sharedUrl);
+                }
+            }, true);
+        }
+
+        function loadXOiSetupOptions() {
+            var setupOptionEntity = new MobileCRM.FetchXml.Entity("setupoption");
+            setupOptionEntity.addAttribute("id");
+            setupOptionEntity.addAttribute("name");
+            setupOptionEntity.addAttribute("optionvalue");
+
+            var filter = new MobileCRM.FetchXml.Filter();
+            filter.where("name", "like", "%XOi%");
+            setupOptionEntity.filter = filter;
+
+            var fetch = new MobileCRM.FetchXml.Fetch(setupOptionEntity);
+            fetch.execute(
+                'DynamicEntities',
+                function (result) {
+                    for (var i in result) {
+                        var entity = result[i];
+                        switch (entity.properties["name"]) {
+                            case 'UseXOiWorkflow':
+                                useXOiWorkflow = entity.properties["optionvalue"];
+                                break;
+                            case 'XOiPartnerId':
+                                partnerId = entity.properties["optionvalue"];
+                                break;
+                            case 'XOiClientId':
+                                clientId = entity.properties["optionvalue"];
+                                break;
+                            case 'XOiClientSecret':
+                                clientSecret = entity.properties["optionvalue"];
+                                break;
+                            case 'XOiVisionUrl':
+                                visionUrl = entity.properties["optionvalue"];
+                                break;
+                            case 'XOiLoginUrl':
+                                loginUrl = entity.properties["optionvalue"];
+                                break;
+                            case 'XOiRedirectUri':
+                                redirectUri = entity.properties["optionvalue"];
+                                break;
+                        }
+                    }
+
+                    if (useXOiWorkflow != 'True') {
+                        return;
+                    }
+                    if (!partnerId || !visionUrl || !loginUrl) {
+                        alert('Please configure the SEE setup options');
+                        return;
+                    }
+
+                    createSEELinkItem();
+                },
+                function (err) {
+                    alert('Error fetching setupoption: ' + err);
+                },
+                null
+            );
+        }
+
+        function createSEELinkItem() {
+            // Create the SEE linkItem on the Resolution tab
+            MobileCRM.UI.EntityForm.requestObject(
+                function (entityForm) {
+                    var detailView = entityForm.getDetailView("Resolution");
+
+                    appointmentid = entityForm.entity.id.toUpperCase();
+                    gpservicecallid = entityForm.entity.properties["gpservicecallid"];
+
+                    // Fetch the customername and locationname
+                    var scEntity = new MobileCRM.FetchXml.Entity("servicecall");
+                    scEntity.addAttribute("id");
+                    scEntity.addAttribute("name");
+                    scEntity.addAttribute("gpequipmentid");
+
+                    var linkLocation = scEntity.addLink("location", "id", "locationid", "inner");
+                    linkLocation.alias = "location";
+                    linkLocation.addAttribute("locationname");
+                    linkLocation.addAttribute("gpcustomernumber");
+                    linkLocation.addAttribute("gplocationnumber");
+
+                    var linkCustomer = linkLocation.addLink("customer", "id", "customerid", "inner");
+                    linkCustomer.alias = "customer";
+                    linkCustomer.addAttribute("customername");
+
+                    var filter = new MobileCRM.FetchXml.Filter();
+                    filter.where("gpservicecallid", "eq", gpservicecallid);
+                    scEntity.filter = filter;
+
+                    var fetch = new MobileCRM.FetchXml.Fetch(scEntity);
+                    fetch.execute(
+                        'DynamicEntities',
+                        function (result) {
+                            for (var i in result) {
+                                var entity = result[i];
+
+                                gpequipmentid = encodeURIComponent(entity.properties["gpequipmentid"]);
+                                gpcustomername = encodeURIComponent(entity.properties["customer.customername"]);
+                                gplocationname = encodeURIComponent(entity.properties["location.locationname"]);
+                                gpcustomernumber = encodeURIComponent(entity.properties["location.gpcustomernumber"]);
+                                gplocationnumber = encodeURIComponent(entity.properties["location.gplocationnumber"]);
+                            }
+                        },
+                        function (err) {
+                            alert('Error fetching servicecall: ' + err);
+                        },
+                        null
+                    );
+
+                    var linkItem = detailView.getItemByName("SEELink");
+                    if (linkItem) {
+                        // The item was already inserted on the form.
+                        // Just set the value property and bind the handler.
+                        linkItem.isVisible = true;
+                        linkItem.isEnabled = false;
+                        linkItem.label = "SEE Workflow";
+                        detailView.registerClickHandler(linkItem, onLinkItemClick);
+                        loadLinkItemValue();
+                    }
+                    else {
+                        // create MobileCRM.UI.DetailViewItems.LinkItem
+                        linkItem = new MobileCRM.UI.DetailViewItems.LinkItem("SEELink", "SEE Workflow");
+                        linkItem.value = "Open XOi Vision";
+                        detailView.registerClickHandler(linkItem, onLinkItemClick);
+                        detailView.insertItem(linkItem, detailView.getItemIndex('isinternal')); // Above Internal Note Switch
+                    }
+                },
+                MobileCRM.bridge.alert,
+                null
+            );
+        }
+
+        function loadLinkItemValue() {
+            MobileCRM.UI.EntityForm.requestObject(function (entityForm) {
+                var dv = entityForm.getDetailView("Resolution");
+                var linkItem = dv.getItemByName("SEELink");
+                linkItem.setTypedValue("value", "System.String", "Open XOi Vision"); // The type must be set explicitly for LinkItem
+            }, MobileCRM.bridge.alert);
+        }
+
+        function onLinkItemClick(itemName, detailViewName) {
+            var action = '{0}/partners/{1}/share';
+            action = action.format(visionUrl, partnerId);
+
+            var directUrl = visionUrl + '/partners/{0}/share?shareId={1}&serviceTicket={2}&customer={3}&location={4}&tags={5}&tags={6}';
+            var tag1 = 'CustomerId:' + gpcustomernumber;
+            var tag2 = 'LocationId:' + gplocationnumber;
+            sharedUrl = visionUrl + '/partners/' + partnerId + '/activity/' + appointmentid;
+            MobileCRM.Platform.openUrl(directUrl.format(partnerId, appointmentid, gpservicecallid, gpcustomername, gplocationname, tag1, tag2));
+
+            MobileCRM.Configuration.requestObject(function (config) {
+                if (!JSON.parse(config.settings.savePassword) && config.settings.deviceInfo.indexOf('iOS') > -1) {
+                    MobileCRM.UI.IFrameForm.showModal("SEE Workflow", "file://features/SEEWorkflow/confirm-prompt.html",
+                        options = { sharedUrl: sharedUrl, appointmentid: appointmentid });
+                }
+                else {  // Resco Message Box
+                    var popup = new MobileCRM.UI.MessageBox("Did you complete and submit the workflow?");
+                    // Add the buttons for message box
+                    popup.items = ["Yes", "No"];
+                    // If title is too long set the 'multi-line' to true
+                    popup.multiLine = true;
+                    popup.show(
+                        function (button) {
+                            if (button == "Yes") {
+                                setResolutionNote(sharedUrl);
+                            }
+                            return;
+                        }
+                    );
+                }
+            }, MobileCRM.bridge.alert);
+        }
+
+        function setResolutionNote(sharedUrl) {
+            var prefix = 'Please use the following URL to view related photos/videos:\n';
+
+            // Set the Resolution Note
+            MobileCRM.UI.EntityForm.requestObject(
+                function (entityForm) {
+                    var detailView = entityForm.getDetailView("Resolution");
+
+                    var linkItem = detailView.getItemByName("SEELink");
+                    var item = detailView.getItemByName("resolutionnote");
+                    if (item) {
+                        if (item.value) {
+                            if (item.value.length > 0) {
+                                if (item.value.indexOf(sharedUrl) > -1) {
+                                    alert('Please clear the existing Url before adding another one.');
+                                }
+                                else {
+                                    item.value = item.value + '\n\n' + prefix + sharedUrl + '\n';
+                                }
+                            }
+                            else {
+                                item.value = prefix + '\n' + sharedUrl + '\n';
+                            }
+                        }
+                        else {
+                            item.value = prefix + '\n' + sharedUrl + '\n';
+                        }
+                    }
+                }, MobileCRM.bridge.alert,
+                null
+            );
+        }
+
+        String.prototype.format = function () {
+            var content = this;
+            for (var i = 0; i < arguments.length; i++) {
+                var replacement = '{' + i + '}';
+                content = content.replace(replacement, arguments[i]);
+            }
+            return content;
+        }
+    </script>
+</body>
+</html>

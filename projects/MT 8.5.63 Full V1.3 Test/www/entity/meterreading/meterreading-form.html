@@ -1,0 +1,262 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <!-- Activate IE9 document mode, if available -->
+    <meta charset="utf-8" http-equiv="X-UA-Compatible" content="IE=edge" />
+    <!-- Defined iOS viewport -->
+    <meta name="viewport" content="initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=false">
+    <!-- Disable iOS Phone No Detection -->
+    <meta name="format-detection" content="telephone=no" />
+    <!-- DevExtreme dependencies -->
+    <script type="text/javascript" src="../../scripts/jquery-3.3.1.min.js"></script>
+    <!-- A DevExtreme library -->
+    <script type="text/javascript" src="../../scripts/dx.all.js"></script>
+    <!-- Offline HTML JavaScript Bridge-->
+    <script type="text/javascript" src="../../scripts/JSBridge.js"></script>
+    <script type="text/javascript" src="../../scripts/k2aMethods.js"></script>
+    <script type="text/javascript" src="../../enum/Schema.js"></script>
+    <script type="text/javascript" src="../../enum/setupoption.js"></script>
+    <title>Entity Form</title>
+</head>
+<body>
+    <script>
+        //============== INITIAL SETTINGS ================
+        var entityName = SCHEMA.meterreading.name;
+        var enableEditing = false, fieldLabels = null;
+
+        $(function () {
+            //============== ANDROID CHECK ================
+            MobileCRM.Platform.preventBackButton(btnBackClicked);
+
+            //============== LOADPANEL ================
+            loading = MobileCRM.UI.Form.showPleaseWait("Loading");
+
+            //============== EVENT HANDLERS ================
+            MobileCRM.UI.EntityForm.onPostSave(onPostSave, true, null);
+
+            // Load meterreading for today or create a new meterreading with default values
+            loadFormOptions()
+                .then(loadFormItems, alertError)
+                .then(loadFormValues, alertError)
+                .then(function () {
+                    setClean();
+                    loading.close();
+                }, alertError);
+        });
+
+        //============== LOAD OPTIONS ================
+        function loadFormOptions() {
+            var deferred = $.Deferred();
+            getFieldLabels().then(function (result) {
+                fieldLabels = result;
+                MobileCRM.UI.EntityForm.requestObject(function (entityForm) {
+                    var properties = entityForm.entity.properties;
+                    enableEditing = properties.gpmeterreadingdate != null && new Date(properties.gpmeterreadingdate).setHours(0, 0, 0, 0) == new Date().setHours(0, 0, 0, 0);
+
+                    return deferred.resolve();
+                }, function (err) { return deferred.reject(err); }, null);
+            }, function (err) { return deferred.reject(err); });
+            return deferred.promise();
+        }
+
+        function getFieldLabels() {
+            var deferred = $.Deferred();
+
+            var entity = new MobileCRM.FetchXml.Entity(SCHEMA.meterreadingudflabel.name);
+            entity.addAttributes();
+
+            var fetch = new MobileCRM.FetchXml.Fetch(entity);
+            fetch.execute("JSON", function (res) {
+                if (res.length === 1) {
+                    return deferred.resolve(res[0]);
+                }
+                else {
+                    return deferred.reject("Unable to fetch Reading Labels");
+                }
+            }, function (error) { return deferred.reject("Get Field Labels Error:" + error); }, null);
+            return deferred.promise();
+        }
+
+        function loadFormItems() {
+            var deferred = $.Deferred();
+            MobileCRM.UI.EntityForm.requestObject(function (entityForm) {
+                var detailView = entityForm.getDetailView(entityName);
+                var formItems = [];
+                $(detailView.items).each(function (index, item) {
+                    formItems[item.name] = item;
+
+                    switch (item.name) {
+                        case SCHEMA.meterreading.Properties.gpmeterreadingdate:
+                        case SCHEMA.meterreading.Properties.equipmentid:
+                            item.isEnabled = false;
+                            break;
+                        case SCHEMA.meterreading.Properties.equipmentmeter1:
+                        case SCHEMA.meterreading.Properties.equipmentmeter2:
+                        case SCHEMA.meterreading.Properties.equipmentmeter3:
+                        case SCHEMA.meterreading.Properties.equipmentmeter4:
+                        case SCHEMA.meterreading.Properties.equipmentmeter5:
+                            item.decimalPlaces = 0;
+                            item.upDownVisible = enableEditing;
+                            item.isEnabled = enableEditing;
+                            break;
+                        case SCHEMA.meterreading.Properties.equipmentmeter6:
+                        case SCHEMA.meterreading.Properties.equipmentmeter7:
+                        case SCHEMA.meterreading.Properties.equipmentmeter8:
+                        case SCHEMA.meterreading.Properties.equipmentmeter9:
+                        case SCHEMA.meterreading.Properties.equipmentmeter10:
+                        case SCHEMA.meterreading.Properties.equipmentmeter11:
+                        case SCHEMA.meterreading.Properties.equipmentmeter12:
+                        case SCHEMA.meterreading.Properties.equipmentmeter13:
+                        case SCHEMA.meterreading.Properties.equipmentmeter14:
+                        case SCHEMA.meterreading.Properties.equipmentmeter15:
+                            item.decimalPlaces = 2;
+                            item.upDownVisible = enableEditing;
+                            item.isEnabled = enableEditing;
+                            break;
+                        case SCHEMA.meterreading.Properties.equipmentmeter21:
+                        case SCHEMA.meterreading.Properties.equipmentmeter22:
+                        case SCHEMA.meterreading.Properties.equipmentmeter23:
+                            item.parts = 1;
+                            item.isEnabled = enableEditing;
+                            break;
+                        case SCHEMA.meterreading.Properties.equipmentmeter24:
+                        case SCHEMA.meterreading.Properties.equipmentmeter25:
+                            item.decimalPlaces = 2;
+                            item.isEnabled = enableEditing;
+                            item.upDownVisible = false; // enableEditing
+                            item.increment = 0.25;
+                            item.displayFormat = "{0:c2}";
+                            break;
+                        case SCHEMA.meterreading.Properties.equipmentmeter16:
+                        case SCHEMA.meterreading.Properties.equipmentmeter17:
+                        case SCHEMA.meterreading.Properties.equipmentmeter18:
+                        case SCHEMA.meterreading.Properties.equipmentmeter19:
+                        case SCHEMA.meterreading.Properties.equipmentmeter20:
+                            item.maxLength = 30;
+                            item.isEnabled = enableEditing;
+                            break;
+                    }
+                });
+
+                // Update Field Labels
+                for (var i = 1; i <= 25; i++) {
+                    formItems["equipmentmeter" + i].label = fieldLabels["userdefine" + i]
+                }
+
+                return deferred.resolve();
+            }, function (err) { return deferred.reject("Request Entity Form Error: " + err); });
+            return deferred.promise();
+        }
+
+        //============== LOAD DATA ================
+        function loadFormValues() {
+            var deferred = $.Deferred();
+            MobileCRM.UI.EntityForm.requestObject(function (entityForm) {
+                if (entityForm.entity.isNew) {
+                    return deferred.resolve();
+                }
+
+                // Set numeric values of 0 or date values of 1/1/1900 to null
+                var properties = entityForm.entity.properties;
+
+                for (var i = 1; i <= 25; i++) {
+                    var attrName = "equipmentmeter" + i;
+
+                    if (i >= 21 && i <= 23) {   // Date
+                        if (properties[attrName] && properties[attrName].getFullYear() <= 1900) {
+                            properties[attrName] = null;
+                        }
+                    }
+                    else {  // Numeric
+                        properties[attrName] = properties[attrName] === 0 ? null : properties[attrName];
+                    }
+                }
+                return deferred.resolve();
+            }, function (err) { return deferred.reject("Request Entity Form Error: " + err); });
+            return deferred.promise();
+        }
+
+        //============== FORM EXECUTIONS ================
+        function onPostSave(entityForm) {
+            var saveHandler = entityForm.suspendPostSave();
+
+            // Set the values to their default values if they are null;
+            MobileCRM.DynamicEntity.loadById(SCHEMA.meterreading.name,
+                entityForm.entity.id,
+                function (entity) {
+                    var properties = entity.properties;
+                    $.each(properties, function (key, value) {
+                        switch (key) {
+                            case SCHEMA.meterreading.Properties.equipmentmeter1:
+                            case SCHEMA.meterreading.Properties.equipmentmeter2:
+                            case SCHEMA.meterreading.Properties.equipmentmeter3:
+                            case SCHEMA.meterreading.Properties.equipmentmeter4:
+                            case SCHEMA.meterreading.Properties.equipmentmeter5:
+                            case SCHEMA.meterreading.Properties.equipmentmeter6:
+                            case SCHEMA.meterreading.Properties.equipmentmeter7:
+                            case SCHEMA.meterreading.Properties.equipmentmeter8:
+                            case SCHEMA.meterreading.Properties.equipmentmeter9:
+                            case SCHEMA.meterreading.Properties.equipmentmeter10:
+                            case SCHEMA.meterreading.Properties.equipmentmeter11:
+                            case SCHEMA.meterreading.Properties.equipmentmeter12:
+                            case SCHEMA.meterreading.Properties.equipmentmeter13:
+                            case SCHEMA.meterreading.Properties.equipmentmeter14:
+                            case SCHEMA.meterreading.Properties.equipmentmeter15:
+                            case SCHEMA.meterreading.Properties.equipmentmeter24:
+                            case SCHEMA.meterreading.Properties.equipmentmeter25:
+                                if (value === undefined) {
+                                    properties[key] = 0;
+                                }
+                                break;
+                            case SCHEMA.meterreading.Properties.equipmentmeter16:
+                            case SCHEMA.meterreading.Properties.equipmentmeter17:
+                            case SCHEMA.meterreading.Properties.equipmentmeter18:
+                            case SCHEMA.meterreading.Properties.equipmentmeter19:
+                            case SCHEMA.meterreading.Properties.equipmentmeter20:
+                                if (value === undefined) {
+                                    properties[key] = '';
+                                }
+                                break;
+                            case SCHEMA.meterreading.Properties.equipmentmeter21:
+                            case SCHEMA.meterreading.Properties.equipmentmeter22:
+                            case SCHEMA.meterreading.Properties.equipmentmeter23:
+                                if (value === undefined) {
+                                    properties[key] = new Date(1900, 0, 1);
+                                }
+                                break;
+                            case SCHEMA.meterreading.Properties.name:
+                                if (value === undefined) {
+                                    var gpequipmentid = properties[SCHEMA.meterreading.Properties.gpequipmentid];
+                                    var meterreadingdate = properties[SCHEMA.meterreading.Properties.gpmeterreadingdate];
+                                    if (meterreadingdate !== undefined) {
+                                        var dt = new Date(meterreadingdate);
+                                        var meterreadingdate = (dt.getMonth() + 1) + "-" + dt.getDate() + "-" + dt.getFullYear();
+                                    }
+                                    if (gpequipmentid !== undefined && meterreadingdate !== undefined) {
+                                        properties[key] = gpequipmentid + " - " + meterreadingdate.toLocaleString();
+                                    }
+                                }
+                                break;
+                            default:
+                                break;
+                        }
+                    })
+                    entity.properties = properties;
+                    entity.save(function (error) {
+                        if (error) {
+                            saveHandler.resumePostSave(error);
+                        }
+                        else {
+                            setCleanAndClose();
+                        }
+                    });
+                },
+                function (error) {
+                    saveHandler.resumePostSave(error);
+                },
+                null);
+
+        }
+    </script>
+</body>
+</html>

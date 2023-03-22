@@ -1,0 +1,279 @@
+﻿<!DOCTYPE html>
+
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <!-- Activate IE9 document mode, if available -->
+    <meta charset="utf-8" http-equiv="X-UA-Compatible" content="IE=edge" />
+    <!-- Defined iOS viewport -->
+    <meta name="viewport" content="initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=false">
+    <!-- Disable iOS Phone No Detection -->
+    <meta name="format-detection" content="telephone=no" />
+    <!-- DevExtreme dependencies -->
+    <script type="text/javascript" src="../../scripts/jquery-3.3.1.min.js"></script>
+    <!-- DevExtreme themes -->
+    <link rel="stylesheet" type="text/css" href="../../css/dx.common.css" />
+    <link rel="stylesheet" type="text/css" href="../../css/dx.light.css" />
+    <!-- A DevExtreme library -->
+    <script type="text/javascript" src="../../scripts/dx.all.js"></script>
+    <!-- Offline HTML JavaScript Bridge-->
+    <script type="text/javascript" src="../../scripts/JSBridge.js"></script>
+    <script type="text/javascript" src="../../scripts/k2aMethods.js"></script>
+    <script type="text/javascript" src="../../enum/Schema.js"></script>
+    <script type="text/javascript" src="../../enum/setupoption.js"></script>
+    <script type="text/javascript" src="task-materials.js"></script>
+    <!-- Offline HTML Template Factory-->
+    <script type="text/javascript" src="../../templates/listItem-factory.js"></script>
+    <script type="text/javascript" src="../../templates/toolbar-factory.js"></script>
+    <!-- Offline HTML Styling -->
+    <link rel="stylesheet" type="text/css" href="../../css/k2a.css" />
+    <title>Entity List</title>
+</head>
+<body>
+    <div id="toast"></div>
+    <div class="fixedPosition">
+        <div id="mainToolbar"></div><br>
+        <div id="listToolbar"></div>
+        <div id="mainScrollView">
+            <div id='mainList'></div>
+        </div>
+        <div id="actionSheet"></div>
+        <div id="filterPopup"></div>
+    </div>
+
+    <script>
+        //============== INITIAL SETTINGS ================
+        var callingObjectName = null, callingObject = null;
+        var entityName = SCHEMA.taskmaterial.name;
+        var dataStore;
+        var sortDesc = false, sortSelector = SCHEMA.taskmaterial.Properties.name;
+        //============== OFFLINE DATA ================
+        var entityListData;
+        //============== SELECTED DATA ================
+        var selected = { entityName: null, servicecall: null };
+        //============== FETCH DATA ================
+        var requiredSetupOptions = [
+            SETUPOPTION.UseBarcoding,
+            SETUPOPTION.UseNonInventoryItems
+        ];
+        var listSortItems = [
+            SCHEMA.taskmaterial.Properties.name,
+            SCHEMA.taskmaterial.Properties.gpsublocationid,
+            SCHEMA.taskmaterial.Properties.gpequipmentid,
+            SCHEMA.taskmaterial.Properties.gptaskcode,
+            SCHEMA.taskmaterial.Properties.itemnumber,
+            SCHEMA.taskmaterial.Properties.itemdescription
+        ];
+        var listSearchItems = [
+            SCHEMA.taskmaterial.Properties.name,
+            SCHEMA.taskmaterial.Properties.gpsublocationid,
+            SCHEMA.taskmaterial.Properties.gpequipmentid,
+            SCHEMA.taskmaterial.Properties.gptaskcode,
+            SCHEMA.taskmaterial.Properties.itemnumber,
+            SCHEMA.taskmaterial.Properties.itemdescription
+        ];
+        var listFilterItems = [
+            { dataField: SCHEMA.taskmaterial.Properties.name, dataType: FilterDataType.string },
+            { dataField: SCHEMA.taskmaterial.Properties.gpsublocationid, dataType: FilterDataType.string },
+            { dataField: SCHEMA.taskmaterial.Properties.gpequipmentid, dataType: FilterDataType.string },
+            { dataField: SCHEMA.taskmaterial.Properties.gptaskcode, dataType: FilterDataType.string },
+            { dataField: SCHEMA.taskmaterial.Properties.itemnumber, dataType: FilterDataType.string },
+            { dataField: SCHEMA.taskmaterial.Properties.itemdescription, dataType: FilterDataType.string }
+        ];
+        var listItemTemplate = function (data, _, element) {
+            createTaskMaterialTemplate(data, _, element, getLeftPadding(data.taskhierarchy), true);
+        };
+
+        function createGroupTemplate(data, index, element) {
+            var lblEquipment = MobileCRM.Localization.get(SCHEMA.equipment.name);
+            return $("<div>").append(lblEquipment + ": " + (data.key ? data.key : ""));
+        }
+
+        //============== TOOLBAR ITEMS ================
+        var mainToolbarItems = [
+            ToolbarItemType.title
+        ];
+        var listToolbarItems = [
+            ToolbarItemType.btnSort, ToolbarItemType.selectSort, ToolbarItemType.btnFilter
+        ];
+        //============== LIST ACTION ITEMS ================
+        var actionItems = [
+            { text: "Add", onClick: onClick }
+        ];
+
+        $(function () {
+            //============== LOCALIZATION ================
+            MobileCRM.Localization.initialize(function (localization) {
+
+                //============== ANDROID CHECK ================
+                MobileCRM.Platform.preventBackButton(btnBackClicked);
+
+                //============== LOADPANEL ================
+                loading = MobileCRM.UI.Form.showPleaseWait(MobileCRM.Localization.get("Msg.Loading"));
+
+                //============== SCROLLVIEW ================
+                mainScrollView = $("#mainScrollView").dxScrollView({
+                    showScrollbar: "always",
+                    height: function () { return window.innerHeight - 80; },
+                    width: '100%'
+                }).dxScrollView("instance");
+                $(window).resize(function () {
+                    checkIsMultiPanel(mainToolbar); // Update toolbar if needed
+                    repaintScrollView(mainScrollView);
+                });
+
+                //============== TOOLBARS ================
+                mainToolbar = $("#mainToolbar").dxToolbar({
+                    items: (new ToolbarFactory()).addItems(mainToolbarItems)
+                }).dxToolbar("instance");
+                listToolbar = $("#listToolbar").dxToolbar({
+                    items: (new ToolbarFactory()).addItems(listToolbarItems)
+                }).dxToolbar("instance");
+
+                //============== LIST ================
+                mainList = (new ListFactory()).createItem("#mainList", entityName, [
+                    { name: 'searchExpr', value: listSearchItems },
+                    { name: 'itemTemplate', value: listItemTemplate },
+                    { name: 'grouped', value: true },
+                    { name: 'collapsibleGroups', value: true },
+                    { name: 'groupTemplate', value: createGroupTemplate }
+                ]);
+
+                //============== ACTION SHEETS ================
+                actionSheet = (new ActionSheetFactory()).createItem(actionItems, "#actionSheet");
+
+                //============== EVENT HANDLERS ================
+                MobileCRM.bridge.onGlobalEvent("IFrameFormClosed", function (closedForm) {
+                    if (closedForm.options && closedForm.options.entityName === entityName)
+                        fetchListEntityData();
+                }, true);
+                MobileCRM.bridge.onGlobalEvent("EntityFormClosed", function (closedForm) {
+                    if (closedForm.entity && closedForm.entity.entityName === entityName)
+                        fetchListEntityData();
+                }, true);
+                MobileCRM.Configuration.requestObject(function (config) {
+                    MobileCRM.bridge.onGlobalEvent("SyncStarted", MobileCRM.bridge.closeForm, config.settings.requireSyncLogin);
+                    MobileCRM.bridge.onGlobalEvent("SyncFinished", fetchListEntityData, !config.settings.requireSyncLogin);
+                }, MobileCRM.bridge.alert);
+
+                loadSetupOptions(loadListOptions);
+            }, alertError);
+        });
+
+        //============== LOAD OPTIONS ================
+        function loadListOptions() {
+            MobileCRM.UI.EntityForm.requestObject(function (entityForm) {
+                callingObject = entityForm.entity;
+                callingObjectName = entityForm.entity.entityName;
+                if (entityForm.entity.entityName === SCHEMA.appointment.name) {
+                    selected.servicecall = entityForm.entity.properties.servicecallid;
+                }
+                else if (entityForm.entity.entityName === SCHEMA.servicecall.name) {
+                    selected.servicecall = entityForm.entity.properties;
+                }
+                loadToolbarOptions();
+                loadListItemOptions();
+            },
+                function (error) {
+                    if (error === 'Object not exposed' || error === 'Unhandled command') {
+                        MobileCRM.UI.IFrameForm.requestObject(function (iFrameForm) {
+                            callingObject = iFrameForm.options.callingObject;
+                            callingObjectName = iFrameForm.options.callingObjectName;
+                            selected.servicecall = iFrameForm.options.servicecall;
+
+                            loadToolbarOptions();
+                            loadListItemOptions();
+                        }, function (error) { alertError('no iframe') }, null)
+                    }
+                    else {
+                        alertError(error);
+                    }
+                },
+                null)
+        }
+        function loadToolbarOptions() {
+            if (typeof listFilterItems !== 'undefined' && listFilterItems.length > 0)
+                (new FilterFactory()).createFilterPopup(mainList, listToolbar);
+
+            $("#toolbarTitle").text(MobileCRM.Localization.get("DetailView." + entityName));
+
+            loadSortItemsLocalization(listSortItems).then(function (sortDataSource) {
+                updateToolbarItem(listToolbar, ToolbarItemType.selectSort, "options.dataSource", sortDataSource);
+                updateToolbarItem(listToolbar, ToolbarItemType.selectSort, "options.value", sortSelector);
+            });
+            checkIsMultiPanel(mainToolbar);
+        }
+        function loadListItemOptions() {
+            if (setupOptions.UseBarcoding)
+                addBarcodeSearch();
+
+            fetchListEntityData();
+        }
+
+        //============== LOAD DATA ================
+        function fetchListEntityData() {
+            var entity = new MobileCRM.FetchXml.Entity(entityName);
+            $(taskMaterialAttributes).each(function (index, attribute) {
+                entity.addAttribute(attribute);
+            });
+            entity.orderBy(sortSelector, sortDesc);
+
+            entity.filter = new MobileCRM.FetchXml.Filter();
+            entity.filter.where(SCHEMA.taskmaterial.Properties.servicecallid, 'eq', selected.servicecall.id);
+
+            var fetch = new MobileCRM.FetchXml.Fetch(entity);
+            fetch.execute("JSON", function (res) {
+                loadList(res);
+                entityListData = res;
+                mainList.option('dataSource', dataStore);
+                loading.close();
+            }, alertError);
+        }
+
+        //============== TOOLBAR FUNCTIONS ================
+        function btnSortClicked() {
+            loadList(entityListData);
+        }
+        function sortSelected() {
+            loadList(entityListData);
+        }
+
+        function loadList(listData) {
+            if (typeof sortDesc === 'undefined')
+                sortDesc = false;
+            var sortArray = typeof sortSelector !== 'undefined' ?
+                [{ selector: sortSelector, desc: sortDesc }] : "";
+
+            dataStore = new DevExpress.data.DataSource({
+                store: {
+                    type: "array",
+                    key: "id",
+                    data: listData
+                },
+                group: [SCHEMA.taskmaterial.Properties.gpequipmentid],
+                sort: sortArray,
+                filter: typeof filterArray !== 'undefined' ? filterArray : null,
+                paginate: false
+            })
+
+            mainList.option('dataSource', dataStore);
+        }
+        //============== LIST ITEM FUNCTIONS ================
+        function listItemClicked() {
+            if (callingObjectName === SCHEMA.appointment.name) {
+                var label = MobileCRM.Localization.get(entityName);
+                actionSheet.option({
+                    title: label + ": " + selected[entityName].name,
+                    visible: true
+                });
+            }
+        }
+
+        //============== LIST EXECUTIONS ================
+        function onClick(e) {
+            var taskMaterialId = selected[entityName].id;
+            addMaterialToInventory(taskMaterialId);
+        }
+
+    </script>
+</body>
+</html>

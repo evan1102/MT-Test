@@ -1,0 +1,1049 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <!-- Activate IE9 document mode, if available -->
+    <meta charset="utf-8" http-equiv="X-UA-Compatible" content="IE=edge" />
+    <!-- Defined iOS viewport -->
+    <meta name="viewport" content="initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=false">
+    <!-- Disable iOS Phone No Detection -->
+    <meta name="format-detection" content="telephone=no" />
+    <!-- DevExtreme dependencies -->
+    <script type="text/javascript" src="../../scripts/jquery-3.3.1.min.js"></script>
+    <!-- A DevExtreme library -->
+    <script type="text/javascript" src="../../scripts/dx.all.js"></script>
+    <!-- Offline HTML JavaScript Bridge-->
+    <script type="text/javascript" src="../../scripts/JSBridge.js"></script>
+    <script type="text/javascript" src="../../scripts/k2aMethods.js"></script>
+    <script type="text/javascript" src="../../enum/Schema.js"></script>
+    <script type="text/javascript" src="../../enum/setupoption.js"></script>
+    <script type="text/javascript" src="appointment-form_complete.js"></script>
+    <title>Entity Form</title>
+</head>
+<body>
+    <script>
+        //============== INITIAL SETTINGS ================
+        var entityName = SCHEMA.appointment.name;
+        var detailViewName = "Resolution";
+        //============== SELECTED DATA ================
+        var selected = { 'servicecall': null };
+        //============== FETCH DATA ================
+        var requiredSetupOptions = [
+            SETUPOPTION.AssignedEquipmentValidationLevel,
+            SETUPOPTION.CompanyDatabaseVersion,
+            SETUPOPTION.CustomerSignatureValidationLevel,
+            SETUPOPTION.DefaultTaskStatus,
+            SETUPOPTION.ExpenseValidationLevel,
+            SETUPOPTION.InventoryValidationLevel,
+            SETUPOPTION.IsVisualInspectionRegistered,
+            SETUPOPTION.LaborValidationLevel,
+            SETUPOPTION.PurchaseOrderValidationLevel,
+            SETUPOPTION.ReportEmailMode,
+            SETUPOPTION.ResolutionNoteValidationLevel,
+            SETUPOPTION.ResolutionValidationLevel,
+            SETUPOPTION.ShowTasksForAppointments,
+            SETUPOPTION.TaskValidationLevel,
+            SETUPOPTION.TechnicianSignatureValidationLevel,
+            SETUPOPTION.TravelValidationLevel,
+            SETUPOPTION.UseAppointmentResolutionNote,
+            SETUPOPTION.UseContactManagement,
+            SETUPOPTION.UseCustomerSignature,
+            SETUPOPTION.UseEventBasedSync,
+            SETUPOPTION.UseExpense,
+            SETUPOPTION.UseFieldInvoicePreview,
+            SETUPOPTION.UseFieldInvoiceSignature,
+            SETUPOPTION.UseFieldInvoicing,
+            SETUPOPTION.UseInventory,
+            SETUPOPTION.UseLabor,
+            SETUPOPTION.UsePurchaseOrder,
+            SETUPOPTION.UsePurchaseOrderReceipt,
+            SETUPOPTION.UseTaskMaterials,
+            SETUPOPTION.UseTechnicianSignature,
+            SETUPOPTION.UseTimeLog,
+            SETUPOPTION.UseTravel
+        ];
+
+        $(function () {
+            //============== LOCALIZATION ================
+            MobileCRM.Localization.initialize(function (localization) {
+
+                //============== ANDROID CHECK ================
+                MobileCRM.Platform.preventBackButton(btnBackClicked);
+
+                loadSetupOptions(loadFormOptions);
+
+                MobileCRM.UI.EntityForm.onChange(formValueChanged, true);
+                MobileCRM.UI.EntityForm.onCommand("Complete", validateAppointmentInformation, true);
+                MobileCRM.bridge.onGlobalEvent("AddResolutionSnippet", resolutionSnippetSelected, true);
+                MobileCRM.bridge.onGlobalEvent("ConfirmCompletion", function (args) {
+                    if (args.appointmentID === selected[entityName].id)
+                        confirmCompletion();
+                }, true);
+                MobileCRM.bridge.onGlobalEvent("CloseApptForm", function (args) {
+                    // Close complete form to open default form
+                    if (args.formType === "COMPLETE" && args.entityID === selected[entityName].id) {
+                        MobileCRM.UI.EntityForm.requestObject(function (entityForm) {
+                            if (entityForm.canClose && !args.isUnsafe)
+                                MobileCRM.bridge.raiseGlobalEvent("OpenApptForm",
+                                    { entityID: args.entityID, formType: "DEFAULT" });
+                            MobileCRM.bridge.closeForm();
+                        }, MobileCRM.bridge.alert);
+                    }
+                }, true);
+                MobileCRM.bridge.onGlobalEvent("StartValidation_Report", validateReportInformation, true);
+            }, MobileCRM.bridge.alert);
+        });
+
+        //============== LOAD OPTIONS ================
+        function loadFormOptions() {
+            MobileCRM.UI.EntityForm.requestObject(function (entityForm) {
+                selected[entityName] = entityForm.entity.properties;
+                selected.servicecall = entityForm.entity.properties.servicecallid;
+                if (entityForm.iFrameOptions) {
+                    if (entityForm.iFrameOptions.selectTab) {
+                        entityForm.selectTab(entityForm.iFrameOptions.selectTab);
+                    }
+                }
+
+                loadFormItems(entityForm);
+                setInspectionTabVisibility();
+            }, MobileCRM.bridge.alert, null);
+        }
+        function setInspectionTabVisibility() {
+            MobileCRM.Application.checkUserRoles(["Inspector"], function (roleCount) {
+                MobileCRM.UI.EntityForm.requestObject(function (entityForm) {
+                    entityForm.setTabVisibility("Inspections", roleCount === 1);
+                }, alertError);
+            }, function (err) { alertError("Check User Roles Error: " + err); });
+        }
+
+        function loadFormItems(entityForm) {
+            // Load Form Items
+            var detailView = entityForm.getDetailView(detailViewName);
+            var formItems = [];
+            $(detailView.items).each(function (index, item) {
+                if (item) {
+                    item.errorMessage = null;
+                    formItems[item.name] = item;
+                }
+            });
+
+            // Set Form Item Visibility
+            formItems.servicecallid.isVisible = false;
+            formItems.QuadraLink.isVisible = false;
+            formItems.SEELink.isVisible = false;
+
+            // Set Form Item Options
+            formItems.name.isEnabled = false;
+            formItems.servicecallid.isEnabled = false;
+
+            // Call Link
+            formItems.callLink.label = MobileCRM.Localization.get(SCHEMA.servicecall.name);
+            formItems.callLink.isEnabled = false;
+            detailView.registerClickHandler(formItems.callLink, callLinkClicked);
+
+            // Call Resolution
+            formItems.callresolution.label = MobileCRM.Localization.get(SCHEMA.callresolution.name);
+            var viewSetup = new MobileCRM.UI.DetailViewItems.LookupSetup();
+            viewSetup.addView(SCHEMA.callresolution.name, "CallResolution");
+            var resolutionIndex = detailView.getItemIndex(SCHEMA.callresolution.name);
+            detailView.updateLinkItemViews(resolutionIndex, viewSetup, viewSetup, false);
+
+            loadFormValues();
+        }
+
+        //============== LOAD DATA ================
+        function loadFormValues() {
+            if (selected.servicecall) {
+                loadCallResolution();
+            }
+            MobileCRM.UI.EntityForm.requestObject(function (entityForm) {
+                var detailView = entityForm.getDetailView(detailViewName);
+                var callLinkItem = detailView.getItemByName("callLink");
+                callLinkItem.setTypedValue("value", "System.String", selected.appointment.gpservicecallid);
+
+                if (!entityForm.entity.properties.completiondate ||
+                    entityForm.entity.properties.completiondate.getFullYear() <= 1900) {
+                    entityForm.entity.properties.completiondate = new Date();
+                    MobileCRM.DynamicEntity.loadById(entityName, selected[entityName].id, function (apptEntity) {
+                        apptEntity.properties.completiondate = new Date();
+                        apptEntity.save(function (err) {
+                            if (err)
+                                MobileCRM.bridge.alert(err);
+                            else
+                                setClean();
+                        });
+                    }, MobileCRM.bridge.alert);
+                }
+
+                if (!setupOptions.UseAppointmentResolutionNote)
+                    loadResolutionHistory();
+                if (setupOptions.UseCustomerSignature || setupOptions.UseTechnicianSignature)
+                    initializeSummaryReport();
+                if (setupOptions.UseFieldInvoicing && selected.servicecall) {
+                    var itemsDeferred = [
+                        fetchServiceCall(selected.servicecall.id),
+                        fetchOpenAppointmentOnServiceCall(selected.servicecall.id)
+                    ];
+
+                    $.when.apply($, itemsDeferred).then(function () {
+                        var entityCallType = arguments[0].calltypeid ? arguments[0].calltypeid.primaryName : null;
+                        var customerid = arguments[0].customerid;
+                        var openApptCount = arguments[1].length;
+
+                        if (openApptCount > 1) {
+                            MobileCRM.UI.EntityForm.requestObject(function (entityForm) {
+                                entityForm.setTabVisibility(SCHEMA.report.name, false);
+                            }, MobileCRM.bridge.alert);
+                        }
+
+                        if (setupOptions.UseFieldInvoicePreview || setupOptions.UseFieldInvoiceSignature) {
+                            initializeFieldInvoiceReport(entityCallType, customerid, openApptCount).then(function () {
+                                MobileCRM.bridge.raiseGlobalEvent("RefreshReportList", null);
+                            }, alertError);
+                        }
+                    }, alertError);
+                }
+
+                MobileCRM.bridge.raiseGlobalEvent("FormItemsUpdated", { "entityID": selected[entityName].id });
+            }, MobileCRM.bridge.alert);
+        }
+        function loadCallResolution() {
+            MobileCRM.DynamicEntity.loadById(SCHEMA.servicecall.name, selected.servicecall.id, function (call) {
+                MobileCRM.UI.EntityForm.requestObject(function (entityForm) {
+                    entityForm.entity.properties.callresolution = call.properties.callresolutionid;
+                }, alertError)
+            }, alertError);
+        }
+        function loadResolutionHistory() {
+            if (selected.servicecall)
+                fetchServiceResolutionNote().then(function (resolutionNote) {
+                    if (resolutionNote)
+                        MobileCRM.UI.EntityForm.requestObject(function (entityForm) {
+                            entityForm.getDetailView(detailViewName)
+                                .getItemByName("resolutionhistory").value = resolutionNote;
+                        }, MobileCRM.bridge.alert);
+                }, MobileCRM.bridge.alert);
+        }
+        function fetchServiceResolutionNote(apptList) {
+            var deferred = $.Deferred();
+
+            var entity = new MobileCRM.FetchXml.Entity(SCHEMA.annotation.name);
+            entity.addAttribute('notehistory');
+
+            entity.addFilter().where('objectid', 'eq', selected.servicecall.id);
+            entity.addFilter().where('subject', 'eq', "Resolution");
+            entity.addFilter().where('gpnotetype', 'eq', 'S');
+            entity.filter.type = 'and';
+
+            var fetch = new MobileCRM.FetchXml.Fetch(entity);
+            fetch.execute("JSON",
+                function (res) { return deferred.resolve(res[0] ? res[0].notehistory : null); },
+                function (err) { return deferred.reject(err); }
+            );
+            return deferred.promise();
+        }
+
+        function fetchOpenAppointmentOnServiceCall(callID) {
+            var deferred = $.Deferred();
+
+            var entity = new MobileCRM.FetchXml.Entity(SCHEMA.appointment.name);
+            entity.addAttribute('id');
+            entity.addFilter().where('servicecallid', 'eq', callID);
+
+            var linkEntity = entity.addLink("appointmentstatus", "id", "appointmentstatusid", "inner");
+            linkEntity.addFilter().where('name', 'ne', 'COMPLETE');
+
+            var fetch = new MobileCRM.FetchXml.Fetch(entity);
+            fetch.execute("JSON", function (res) {
+                return deferred.resolve(res);
+            }, function (err) { return deferred.reject(err); });
+
+            return deferred.promise();
+        }
+        function fetchCountOfOpenAppointmentOnServiceCall(callID) {
+            var deferred = $.Deferred();
+
+            fetchOpenAppointmentOnServiceCall(callID).then(function (openAppts) {
+                return deferred.resolve(openAppts.length);
+            }, function (err) { return deferred.reject(err); });
+
+            return deferred.promise();
+        }
+        function fetchServiceCall(callID) {
+            var deferred = $.Deferred();
+            if (!callID)
+                return deferred.reject("Missing Service Call ID");
+
+            MobileCRM.DynamicEntity.loadById('servicecall', callID,
+                function (call) { return deferred.resolve(call.properties); },
+                function (err) { return deferred.reject(err); }
+            );
+            return deferred.promise();
+        }
+
+        // ----- Report Util -----
+        function initializeFinalReports() {
+            var deferred = $.Deferred();
+            if (!selected.servicecall)
+                return deferred.reject("Missing Service Call ID");
+
+            var itemsDeferred = [
+                fetchServiceCall(selected.servicecall.id),
+                fetchOpenAppointmentOnServiceCall(selected.servicecall.id)
+            ];
+
+            $.when.apply($, itemsDeferred).then(function () {
+                var entityCallType = arguments[0].calltypeid ? arguments[0].calltypeid.primaryName : null;
+                var customerid = arguments[0].customerid;
+                var openApptCount = arguments[1].length;
+
+                initializeAppointmentReports(entityCallType, customerid, openApptCount).then(
+                    function () { return deferred.resolve(); },
+                    function (err) { return deferred.reject(err); }
+                );
+            }, function (err) { return deferred.reject(err); });
+
+            return deferred.promise();
+        }
+        function initializeAppointmentReports(entityCallType, customerid, openApptCount) {
+            var deferred = $.Deferred();
+            // Create Reports when finalize completion, except if they use signatures then need summary report
+            var itemsDeferred = [
+                initializeSummaryReport(),
+                // MT 8.0 Does not support Inspection
+                // initializeInspectionReport(entityCallType),
+                initializeFieldInvoiceReport(entityCallType, customerid, openApptCount)
+            ];
+
+            $.when.apply($, itemsDeferred).then(
+                function () { return deferred.resolve(); },
+                function (err) { return deferred.reject(err); }
+            );
+
+            return deferred.promise();
+        }
+        function initializeInspectionReport(entityCallType) {
+            var deferred = $.Deferred();
+            // Inspection Report
+            if (setupOptions.IsVisualInspectionRegistered && (entityCallType === "OUB" || entityCallType === "INB"))
+                ifNotExistsCreateReport(ReportType.INSPECTION_REPORT).then(
+                    function () { return deferred.resolve(); },
+                    function (err) { return deferred.reject(err); }
+                );
+            else
+                return deferred.resolve();
+
+            return deferred.promise();
+        }
+        function initializeFieldInvoiceReport(entityCallType, customerid, openApptCount) {
+            var deferred = $.Deferred();
+            // Field Invoice Report
+            if (customerid) {
+                MobileCRM.DynamicEntity.loadById("customer", customerid.id, function (customer) {
+                    var disablefieldinvoicing = JSON.parse(customer.properties.disablefieldinvoicing);
+                    if (setupOptions.UseFieldInvoicing && !disablefieldinvoicing && entityCallType !== "MC" && entityCallType !== "MCC") {
+                        if (openApptCount <= 1)
+                            ifNotExistsCreateReport(ReportType.FIELD_INVOICE_REPORT).then(
+                                function () { return deferred.resolve(); },
+                                function (err) { return deferred.reject(err); }
+                            );
+                        else {
+                            deleteAllOpenApptFieldInvoiceReports();
+                            MobileCRM.UI.EntityForm.requestObject(function (entityForm) {
+                                entityForm.setTabVisibility(SCHEMA.report.name, false);
+                            }, MobileCRM.bridge.alert);
+                            return deferred.resolve();
+                        }
+                    }
+                    else
+                        return deferred.resolve();
+                }, function (err) { return deferred.reject("Load Customer Error: " + err); });
+            }
+            return deferred.promise();
+        }
+        function deleteAllOpenApptFieldInvoiceReports() {
+            if (!selected.servicecall) return;
+
+            fetchOpenAppointmentOnServiceCall(selected.servicecall.id).then(function (openAppts) {
+                $(openAppts).each(function (i, appt) {
+                    deleteFieldInvoiceReport(appt.id);
+                });
+            }, MobileCRM.bridge.alert);
+        }
+        function deleteFieldInvoiceReport(appointmentID) {
+            fetchFieldInvoiceReportID(appointmentID).then(function (reportID) {
+                if (reportID) {
+                    // Delete Related Field Invoice Annotation Record
+                    fetchAnnotationIdByObjectId(reportID).then(function (anotationID) {
+                        if (anotationID)
+                            deleteEntity("annotation", anotationID);
+                    }, MobileCRM.bridge.alert);
+                    // Delete Field Invoice Report
+                    deleteEntity("report", reportID);
+                }
+            }, MobileCRM.bridge.alert);
+        }
+        function fetchFieldInvoiceReportID(appointmentID) {
+            var deferred = $.Deferred();
+            if (!appointmentID) return deferred.reject("Missing Appointment ID");
+
+            var entity = new MobileCRM.FetchXml.Entity(SCHEMA.report.name);
+            entity.addAttribute('id');
+            entity.addFilter().where('appointmentid', 'eq', appointmentID);
+            entity.addFilter().where('name', 'eq', ReportType.FIELD_INVOICE_REPORT);
+            entity.filter.type = 'and';
+
+            var fetch = new MobileCRM.FetchXml.Fetch(entity);
+            fetch.execute("JSON", function (res) {
+                return deferred.resolve(res[0] ? res[0].id : null);
+            }, function (err) { return deferred.reject(err); });
+
+            return deferred.promise();
+        }
+        function fetchAnnotationIdByObjectId(objectID) {
+            var deferred = $.Deferred();
+            if (!objectID) return deferred.reject("Missing Object ID");
+
+            var entity = new MobileCRM.FetchXml.Entity(SCHEMA.annotation.name);
+            entity.addAttribute('id');
+            entity.addFilter().where('objectid', 'eq', objectID);
+
+            var fetch = new MobileCRM.FetchXml.Fetch(entity);
+            fetch.execute("JSON", function (res) {
+                return deferred.resolve(res[0] ? res[0].id : null);
+            }, function (err) { return deferred.reject(err); });
+
+            return deferred.promise();
+        }
+        function deleteEntity(entityName, entityID) {
+            MobileCRM.DynamicEntity.deleteById(entityName, entityID, function () { }, MobileCRM.bridge.alert);
+        }
+
+        //============== TOOLBAR FUNCTIONS ================
+        function showResolutionSnippets() {
+            MobileCRM.UI.IFrameForm.showModal("Lookup Snippets",
+                "file://entity/resolutionsnippet/resolutionsnippet-list.html",
+                options = { appointmentID: selected[entityName].id });
+            MobileCRM.UI.EntityForm.requestObject(function (entityForm) {
+                entityForm.getDetailView(detailViewName)
+                    .getItemByName("^BtnSnippet").clickText = "Add Snippet";
+            }, MobileCRM.bridge.alert);
+        }
+        function resolutionSnippetSelected(args) {
+            if (args.appointmentID !== selected[entityName].id || !args.resolutionSnippet)
+                return;
+
+            MobileCRM.UI.EntityForm.requestObject(function (entityForm) {
+                var resNoteItem = entityForm.getDetailView(detailViewName).getItemByName('resolutionnote');
+                if (resNoteItem.value) {
+                    var trimmedValue = resNoteItem.value.trim();
+                    var connection = trimmedValue.length < 1 ? "" :
+                        trimmedValue.substring(trimmedValue.length - 1) === args.snippetSeparator ? " " : args.snippetSeparator + " ";
+                    resNoteItem.value = trimmedValue + connection + args.resolutionSnippet;
+                    updateEntity('resolutionnote', resNoteItem.value);
+                }
+                else {
+                    resNoteItem.value = args.resolutionSnippet;
+                    updateEntity('resolutionnote', resNoteItem.value);
+                }
+            }, MobileCRM.bridge.alert);
+        }
+
+        // ----- Form Validation -----
+        function validateAppointmentInformation() {
+            var itemsDeferred = [
+                checkServiceCallItems(),    // Task Completion, Task Responses, Assigned Equipment, Purchase Order Detail
+                checkRequiredFormItems(),   // Call Resolution, Resolution Note
+                checkTimeLog(),
+                checkTimeEntries(),
+                checkInventory(),
+                checkSignatures(),
+                checkFieldInvoiceSignatures()
+            ];
+
+            $.when.apply($, itemsDeferred).then(combineValidationItems, MobileCRM.bridge.alert)
+                .then(function (trackedValidationFields) {
+
+                    if (trackedValidationFields[ValidationLevel.Required].length > 0) {
+                        showValidationPrompt(ValidationLevel.Required, trackedValidationFields[ValidationLevel.Required]);
+                    }
+                    else if (trackedValidationFields[ValidationLevel.Warning].length > 0) {
+                        trackedValidationFields[ValidationLevel.Warning].push(Validation.CompleteAppointment, "Cancel");
+                        showValidationPrompt(ValidationLevel.Warning, trackedValidationFields[ValidationLevel.Warning]);
+                    }
+                    else {
+                        initializeFinalReports().then(function () {
+                            if (parseInt(setupOptions.ReportEmailMode) === 3)
+                                promptEmailForCompletion();
+                            else
+                                confirmCompletion();
+                        }, MobileCRM.bridge.alert);
+                    }
+                }, MobileCRM.bridge.alert);
+        }
+        function validateReportInformation(appointment) {
+            // Validate Appointment Completion Items before Invoice Preview
+            if (!appointment || appointment.id !== selected[entityName].id) {
+                return;
+            }
+
+            var itemsDeferred = [
+                checkServiceCallItems(),    // Task Completion, Task Responses, Assigned Equipment, Purchase Order Detail
+                checkRequiredFormItems(),   // Call Resolution, Resolution Note
+                checkTimeLog(),
+                checkTimeEntries(),
+                checkInventory(),
+                checkFieldInvoiceSignatures()
+            ];
+
+            $.when.apply($, itemsDeferred).then(combineValidationItems, MobileCRM.bridge.alert)
+                .then(function (trackedValidationFields) {
+
+                    if (trackedValidationFields[ValidationLevel.Required].length > 0) {
+                        showValidationPrompt(ValidationLevel.Required, trackedValidationFields[ValidationLevel.Required]);
+                    }
+                    else if (trackedValidationFields[ValidationLevel.Warning].length > 0) {
+                        trackedValidationFields[ValidationLevel.Warning].push(Validation.PreviewInvoice, "Cancel");
+                        showValidationPrompt(ValidationLevel.Warning, trackedValidationFields[ValidationLevel.Warning]);
+                    }
+                    else {
+                        MobileCRM.bridge.raiseGlobalEvent("CompleteValidation_Report", selected[entityName]);
+                    }
+                }, MobileCRM.bridge.alert);
+        }
+
+        // ----- Form Validation: Service Call Items -----
+        function checkServiceCallItems() {
+            var deferred = $.Deferred();
+            if (!selected.servicecall)
+                return deferred.reject("Missing Service Call ID");
+
+            var itemsDeferred = [
+                checkAssignedEquipment(),
+                checkPurchaseOrderDetail()
+            ];
+
+            fetchCountOfOpenAppointmentOnServiceCall(selected[entityName].servicecallid.id).then(function (openApptCount) {
+                if (openApptCount === 1) {
+                    itemsDeferred.push(checkTaskCompletion(), checkTaskResponses());
+                }
+
+                $.when.apply($, itemsDeferred)
+                    .then(combineValidationItems, function (err) { return deferred.reject(err); })
+                    .then(function (combinedItems) {
+                        return deferred.resolve(combinedItems);
+                    }, function (err) { return deferred.reject(err); });
+            }, function (err) { return deferred.reject(err); });
+
+            return deferred.promise();
+        }
+
+        // --- Service Call Items: Task Completion ---
+        function checkTaskCompletion() {
+            var deferred = $.Deferred();
+            if (setupOptions.TaskValidationLevel === ValidationLevel.Optional)
+                return deferred.resolve({});
+
+            fetchDefaultOpenStatusId()
+                .then(fetchOpenTasks, function (err) { return deferred.reject(err); })
+                .then(function (openTasks) {
+                    var validationItems = {};
+                    if (openTasks.length > 0)
+                        validationItems[setupOptions.TaskValidationLevel] = [Validation.TaskCompletion];
+
+                    return deferred.resolve(validationItems);
+                }, function (err) { return deferred.reject(err); });
+
+            return deferred.promise();
+        }
+        function fetchDefaultOpenStatusId() {
+            var deferred = $.Deferred();
+
+            var entity = new MobileCRM.FetchXml.Entity(SCHEMA.taskstatus.name);
+            entity.addAttribute('id');
+            entity.addFilter().where('name', 'eq', setupOptions.DefaultTaskStatus ? setupOptions.DefaultTaskStatus : "OPEN");
+
+            var fetch = new MobileCRM.FetchXml.Fetch(entity);
+            fetch.execute("JSON", function (res) {
+                if (res[0])
+                    return deferred.resolve(res[0].id);
+                else
+                    return deferred.reject("Default Open Task Status Not Found");
+
+            }, function (err) { return deferred.reject(err); });
+            return deferred.promise();
+        }
+        function fetchOpenTasks(openStatusID) {
+            var deferred = $.Deferred();
+
+            var entity = new MobileCRM.FetchXml.Entity(SCHEMA.task.name);
+            entity.addAttribute('id');
+            entity.addFilter().where('recordlevel', 'eq', 4);
+            entity.addFilter().where('servicecallid', 'eq', selected.servicecall.id);
+            entity.addFilter().where('taskstatusid', 'eq', openStatusID);
+            entity.filter.type = 'and';
+
+            var fetch = new MobileCRM.FetchXml.Fetch(entity);
+            fetch.execute("JSON",
+                function (res) { return deferred.resolve(res); },
+                function (err) { return deferred.reject(err); }
+            );
+            return deferred.promise();
+        }
+
+        // --- Service Call Items: Task Responses ---
+        function checkTaskResponses() {
+            var deferred = $.Deferred();
+
+            // Check if there are any open task responses
+            fetchAllTasks().then(function (tasks) {
+                var currentHierarchy = null;
+                var isChildTask = false;
+                var skipChildren = false;
+                var hasOpenResponses = false;
+
+
+                checkSkippedTaskResponses(tasks).then(function (responsesSkipped) {
+                    var itemsDeferred = [];
+                    $(tasks).each(function (i, task) {
+                        try {
+                            // Check if this task is a Child Task
+                            isChildTask = (currentHierarchy !== null && task.taskhierarchy !== undefined && task.taskhierarchy !== currentHierarchy) ?
+                                task.taskhierarchy.indexOf(currentHierarchy) === 0 : isChildTask;
+                            currentHierarchy = task.taskhierarchy;
+
+                            if (!skipChildren || !isChildTask) {
+                                // Check if this task is skipped, then also skip children
+                                skipChildren = responsesSkipped[task.id];
+
+                                if (!skipChildren)
+                                    itemsDeferred.push(
+                                        isMissingRequiredTaskResponse(task.id).then(function (openResponses) {
+                                            if (openResponses)
+                                                hasOpenResponses = true;
+                                        })
+                                    );
+                            }
+                        }
+                        catch (e) { return deferred.reject(e); }
+                    });
+
+                    $.when.apply($, itemsDeferred).then(function () {
+                        var validationItems = {};
+                        if (hasOpenResponses)
+                            validationItems[ValidationLevel.Required] = [Validation.TaskResponse];
+
+                        return deferred.resolve(validationItems);
+                    }, MobileCRM.bridge.alert);
+                });
+            }, function (err) { return deferred.reject(err); });
+
+            return deferred.promise();
+        }
+        function checkSkippedTaskResponses(tasks) {
+            var deferred = $.Deferred();
+
+            var skipped = {};
+            var itemsDeferred = [];
+            $(tasks).each(function (i, task) {
+                itemsDeferred.push(
+                    hasSkippableTaskResponses(task.id)
+                        .then(function (hasSkippable) {
+                            skipped[task.id] = hasSkippable;
+                        }, MobileCRM.bridge.alert)
+                );
+            });
+
+            $.when.apply($, itemsDeferred).then(
+                function () { return deferred.resolve(skipped); },
+                function (err) { return deferred.reject(err); });
+            return deferred.promise();
+        }
+
+        function fetchAllTasks() {
+            var deferred = $.Deferred();
+
+            var entity = new MobileCRM.FetchXml.Entity(SCHEMA.task.name);
+            entity.addAttribute('id');
+            entity.addAttribute('taskhierarchy');
+            entity.orderBy('gptasklinenumber', false);
+            entity.addFilter().where('servicecallid', 'eq', selected.servicecall.id);
+
+            var fetch = new MobileCRM.FetchXml.Fetch(entity);
+            fetch.execute("JSON",
+                function (res) { return deferred.resolve(res); },
+                function (err) { return deferred.reject(err); }
+            );
+            return deferred.promise();
+        }
+        function fetchRequiredTaskResponses(taskID) {
+            var deferred = $.Deferred();
+            if (!taskID) return deferred.reject("Missing Task ID");
+
+            var entity = new MobileCRM.FetchXml.Entity(SCHEMA.taskresponse.name);
+            entity.addAttribute('responsetype');
+            entity.addAttribute('stringresponse');
+            entity.addAttribute('numericresponse');
+            entity.addAttribute('integerresponse');
+            entity.addAttribute('textresponse');
+            entity.addAttribute('dateresponse');
+            entity.orderBy('linenumber', false);
+
+            entity.addFilter().where('taskid', 'eq', taskID);
+            entity.addFilter().where('isrequired', 'eq', 1);
+            entity.filter.type = 'and';
+
+            var fetch = new MobileCRM.FetchXml.Fetch(entity);
+            fetch.execute("JSON",
+                function (res) { return deferred.resolve(res); },
+                function (err) { return deferred.reject(err); }
+            );
+            return deferred.promise();
+        }
+
+        function hasSkippableTaskResponses(taskID) {
+            var deferred = $.Deferred();
+            if (!taskID) return deferred.reject("Missing Task ID");
+
+            var entity = new MobileCRM.FetchXml.Entity(SCHEMA.taskresponse.name);
+            entity.addAttribute('integerresponse');
+            entity.addFilter().where('canskip', 'eq', 1);
+            entity.addFilter().where('integerresponse', 'eq', 1);    // 1: No - Skip child Task
+            entity.addFilter().where('taskid', 'eq', taskID);
+            entity.filter.type = 'and';
+
+            var fetch = new MobileCRM.FetchXml.Fetch(entity);
+            fetch.execute("JSON",
+                function (res) { return deferred.resolve(res.length > 0); },
+                function (err) { return deferred.reject(err); }
+            );
+            return deferred.promise();
+        }
+        function isMissingRequiredTaskResponse(taskID) {
+            var deferred = $.Deferred();
+            if (!taskID) return deferred.reject("Missing Task ID");
+            var missingResponses = false;
+
+            fetchRequiredTaskResponses(taskID).then(function (requiredResponses) {
+                var itemsDeferred = [];
+                $(requiredResponses).each(function (i, response) {
+                    itemsDeferred.push(
+                        isTaskResponseNeeded(response).then(function (isNeeded) {
+                            if (isNeeded)
+                                missingResponses = true;
+                        }, MobileCRM.bridge.alert)
+                    );
+                });
+
+                $.when.apply($, itemsDeferred).then(function () {
+                    return deferred.resolve(missingResponses);
+                });
+            }, function (err) { return deferred.reject(err); });
+
+            return deferred.promise();
+        }
+        function isTaskResponseNeeded(response) {
+            var deferred = $.Deferred();
+
+            switch (parseInt(response.responsetype)) {
+                case 1: case 5:     // String, List String
+                    return deferred.resolve(!response.stringresponse || $.trim(response.stringresponse) === "");
+                case 2:     // Numeric Decimal
+                    return deferred.resolve(!response.numericresponse || parseFloat(response.numericresponse) === 0);
+                case 3: case 4: case 7:     //Integer, Yes No DDL, Repair DDL
+                    return deferred.resolve(!response.integerresponse || parseInt(response.integerresponse) === 0);
+                case 6:     // Text
+                    return deferred.resolve(!response.textresponse || $.trim(response.textresponse) === "");
+                case 8:     // Date
+                    return deferred.resolve(!response.dateresponse || (new Date(response.dateresponse)).getFullYear() <= 1901);
+                default:
+                    return deferred.resolve(false);
+            }
+
+            deferred.promise();
+        }
+
+        // --- Service Call Items: Assigned Equipment ---
+        function checkAssignedEquipment() {
+            var deferred = $.Deferred();
+            if (setupOptions.AssignedEquipmentValidationLevel === ValidationLevel.Optional)
+                return deferred.resolve({});
+
+            fetchAssignedEquipment().then(function (assignedEquipment) {
+                var validationItems = {};
+                if (!assignedEquipment)
+                    validationItems[setupOptions.AssignedEquipmentValidationLevel] = [Validation.AssignEquipment];
+
+                return deferred.resolve(validationItems);
+            }, function (err) { return deferred.reject(err); });
+
+            return deferred.promise();
+        }
+        function fetchAssignedEquipment() {
+            var deferred = $.Deferred();
+            if (!selected.servicecall) return deferred.reject("Missing Service Call");
+
+            var entity = new MobileCRM.FetchXml.Entity(SCHEMA.task.name);
+            entity.addAttribute('id');
+
+            entity.addFilter().where('recordlevel', 'eq', 4);
+            entity.addFilter().where('equipmentid', 'not-null');
+            entity.addFilter().where('servicecallid', 'eq', selected.servicecall.id);
+            entity.filter.type = 'and';
+
+            var fetch = new MobileCRM.FetchXml.Fetch(entity);
+            fetch.execute("JSON",
+                function (res) { return deferred.resolve(res.length > 0 ? res : null); },
+                function (err) { return deferred.reject(err); }
+            );
+            return deferred.promise();
+        }
+
+        // --- Service Call Items: Purchase Order Detail ---
+        function checkPurchaseOrderDetail() {
+            var deferred = $.Deferred();
+            if (!setupOptions.UsePurchaseOrder)
+                return deferred.resolve({});
+
+            fetchPurchaseOrderDetail().then(function (poDetail) {
+                var validationItems = {};
+                if (!poDetail)
+                    validationItems[setupOptions.PurchaseOrderValidationLevel] = [Validation.PurchaseOrderDetail];
+
+                return deferred.resolve(validationItems);
+            }, function (err) { return deferred.reject(err); });
+
+            return deferred.promise();
+        }
+        function fetchPurchaseOrderDetail() {
+            var deferred = $.Deferred();
+
+            var entity = new MobileCRM.FetchXml.Entity(SCHEMA.purchaseorderdetail.name);
+            entity.addAttribute('id');
+            entity.addFilter().where('servicecallid', 'eq', selected.servicecall.id);
+
+            var fetch = new MobileCRM.FetchXml.Fetch(entity);
+            fetch.execute("JSON", function (res) {
+                return deferred.resolve(res.length > 0 ? res : null);
+            }, function (err) { return deferred.reject(err); });
+            return deferred.promise();
+        }
+
+        // --- Service Call Items: Field Invoice Signatures ---
+        function checkFieldInvoiceSignatures() {
+            var deferred = $.Deferred();
+            if (!setupOptions.UseFieldInvoicing || !setupOptions.UseFieldInvoiceSignature || !setupOptions.UseFieldInvoicePreview)
+                return deferred.resolve({});
+
+            if (!selected.appointment)
+                return deferred.reject("Check Field Invoice Signature Error: Missing Appointment Details.");
+
+            fetchFieldInvoiceReportID(selected.appointment.id).then(function (reportID) {
+                var validationItems = {};
+
+                if (reportID) {
+                    MobileCRM.DynamicEntity.loadById('report', reportID, function (report) {
+                        if (!report.properties.customername || !report.properties.customersignature) {
+                            validationItems[setupOptions.CustomerSignatureValidationLevel] = [Validation.Signature_Invoice];
+                        }
+
+                        return deferred.resolve(validationItems);
+                    }, function (err) { return deferred.reject("Load Report Error: " + err); });
+                }
+                else {
+                    return deferred.resolve(validationItems);
+                }
+            }, function (err) { return deferred.reject(err); });
+            return deferred.promise();
+        }
+
+        // ----- Form Validation: Required Form Items -----
+        function checkRequiredFormItems() {
+            var deferred = $.Deferred();
+
+            MobileCRM.UI.EntityForm.requestObject(function (entityForm) {
+                var validationItems = {};
+                var requiredFormFields = [];
+                validationItems[ValidationLevel.Required] = requiredFormFields;
+                var warningFormFields = [];
+                validationItems[ValidationLevel.Warning] = warningFormFields;
+                var dv = entityForm.getDetailView(detailViewName);
+
+                if (!dv.getItemByName(SCHEMA.callresolution.name).value) {
+                    if (setupOptions.ResolutionValidationLevel === ValidationLevel.Required) {
+                        requiredFormFields.push(Validation.ResolutionCode);
+                    }
+                    else if (setupOptions.ResolutionValidationLevel === ValidationLevel.Warning) {
+                        warningFormFields.push(Validation.ResolutionCode);
+                    }
+                }
+
+                if (!dv.getItemByName("resolutionnote").value || dv.getItemByName("resolutionnote").value.trim() === "") {
+                    if (setupOptions.ResolutionNoteValidationLevel === ValidationLevel.Required) {
+                        requiredFormFields.push(Validation.ResolutionNote);
+                    }
+                    else if (setupOptions.ResolutionNoteValidationLevel === ValidationLevel.Warning) {
+                        warningFormFields.push(Validation.ResolutionNote);
+                    }
+                }
+
+                return deferred.resolve(validationItems);
+
+            }, function (err) { return deferred.reject(err); });
+
+            return deferred.promise();
+        }
+
+        function navigateToTab(formEntity, formEntityID, tabName) {
+            MobileCRM.bridge.raiseGlobalEvent("SelectTab",
+                { entity: formEntity, entityID: formEntityID, tabName: tabName });
+            MobileCRM.UI.FormManager
+                .showEditDialog(formEntity, formEntityID, null, { iFrameOptions: { selectTab: tabName } });
+        }
+
+        //============== FORM ITEM FUNCTIONS ================
+        function callLinkClicked() {
+            if (selected[entityName].servicecallid) {
+                MobileCRM.UI.FormManager.showEditDialog("servicecall",
+                    selected[entityName].servicecallid.id, null,
+                    { iFrameOptions: { hideAppointmentList: true } });
+                MobileCRM.bridge.raiseGlobalEvent("HideAppointmentList");
+            }
+        }
+        function callResolutionSelected(resolution) {
+            loading = MobileCRM.UI.EntityForm.showPleaseWait(MobileCRM.Localization.get("Msg.Loading"));
+            // Update Service Call
+            MobileCRM.DynamicEntity.loadById(SCHEMA.servicecall.name, selected.servicecall.id, function (call) {
+                if (resolution) {
+                    call.properties.callresolutionid = new MobileCRM.DynamicEntity(SCHEMA.callresolution.name, resolution.id);
+                }
+                else {
+                    call.properties.callresolutionid = null;
+                }
+                call.save(function (err) {
+                    if (err)
+                        MobileCRM.bridge.alert(err);
+                    else {
+                        loading.close();
+                    }
+                });
+            }, MobileCRM.bridge.alert);
+        }
+
+        //============== FORM EXECUTIONS ================
+        function completeAppointment(createNew) {
+            setAppointmentComplete().then(function (appointment) {
+                var itemsDeferred = [
+                    updateAppointmentStatusTimeStamp(appointment),
+                    createResolutionAnnotation(appointment),
+                    requestReportPreviews(appointment),
+                    updateLocationContacts()
+                ];
+
+                $.when.apply($, itemsDeferred).then(function () {
+                    if (createNew) {    // do not sync after complete, but open new appointment form
+                        if (selected.servicecall) {
+                            var target = new MobileCRM.Reference('servicecall', selected.servicecall.id);
+                            var relationship = new MobileCRM.Relationship("servicecallid", target);
+                            MobileCRM.UI.FormManager.showNewDialog('appointment', relationship, {
+                                iFrameOptions: { completedAppointmentID: appointment.id }
+                            });
+                            MobileCRM.bridge.closeForm();
+                        }
+                    }
+                    else {
+                        MobileCRM.Configuration.requestObject(function (config) {
+                            if (!setupOptions.UseEventBasedSync || !config.settings.requireSyncLogin) {
+                                // Close corresponding Service Call Form if no other appointments
+                                MobileCRM.bridge.raiseGlobalEvent("CloseCallForm", { servicecallID: selected.servicecall.id });
+                            }
+
+                            if (setupOptions.UseEventBasedSync) {
+                                MobileCRM.Application.synchronize(false);
+                                if (!config.settings.requireSyncLogin)
+                                    MobileCRM.bridge.closeForm();
+                            }
+                            else
+                                MobileCRM.bridge.closeForm();
+                        }, MobileCRM.bridge.alert);
+                    }
+                }, MobileCRM.bridge.alert);
+            }, MobileCRM.bridge.alert);
+        }
+
+        // ----- AFTER SAVE APPOINTMENT -----
+        function createResolutionAnnotation(appointment) {
+            var deferred = $.Deferred();
+            if (!appointment.resolutionnote)
+                return deferred.resolve("No Resolution Note");
+
+            var itemsDeferred = [
+                fetchResolutionAnnotationID(appointment),
+                fetchSystemUser(),
+                checkIsInternal(),
+                fetchServiceCall(appointment.servicecallid.id)
+            ];
+
+            $.when.apply($, itemsDeferred).then(function () {
+                var annotationID = arguments[0];
+                var systemuser = arguments[1];
+                var isinternal = arguments[2];
+                var servicecall = arguments[3];
+                var entity = new MobileCRM.DynamicEntity("annotation", annotationID);
+
+                entity.properties.gpnotetype = setupOptions.UseAppointmentResolutionNote ? "A" : "S";
+                entity.properties.gpreferenceid = setupOptions.UseAppointmentResolutionNote ?
+                    appointment.gpappointmentid : servicecall.gpservicecallid;
+                entity.properties.objectid = setupOptions.UseAppointmentResolutionNote ?
+                    new MobileCRM.DynamicEntity("appointment", appointment.id) :
+                    new MobileCRM.DynamicEntity("servicecall", servicecall.id);
+
+                entity.properties.isinternal = isinternal;
+                entity.properties.notetext = appointment.resolutionnote;
+                entity.properties.modifiedby = new MobileCRM.DynamicEntity("systemuser", systemuser.id);
+                entity.properties.modifieduser = systemuser.gptechnicianid;
+                entity.properties.modifieddate = new Date();
+                entity.properties.ownerid = new MobileCRM.DynamicEntity("systemuser", systemuser.id);
+
+                entity.properties.gpcustomernumber = servicecall.gpcustomernumber;
+                entity.properties.gplocationnumber = servicecall.gplocationnumber;
+                entity.properties.gpservicecallid = servicecall.gpservicecallid;
+
+                entity.properties.subject = "Resolution";
+                entity.properties.filesize = 0;
+                entity.properties.priority = 0;
+
+                entity.save(function (err) {
+                    if (err)
+                        return deferred.reject(err);
+                    else
+                        return deferred.resolve("Annotation Complete");
+                });
+            }, function (err) { return deferred.reject(err); });
+
+            return deferred.promise();
+        }
+        function fetchResolutionAnnotationID(appointment) {
+            var deferred = $.Deferred();
+            if (!appointment.servicecallid)
+                return deferred.reject("Missing Service Call ID");
+
+            var entity = new MobileCRM.FetchXml.Entity(SCHEMA.annotation.name);
+            entity.addAttribute('id');
+
+            entity.addFilter().where('subject', 'eq', "Resolution");
+            entity.addFilter().where('objectid', 'eq',
+                setupOptions.UseAppointmentResolutionNote ? appointment.id : appointment.servicecallid.id);
+            entity.addFilter().where('gpnotetype', 'eq',
+                setupOptions.UseAppointmentResolutionNote ? "A" : "S");
+            entity.filter.type = 'and';
+
+            var fetch = new MobileCRM.FetchXml.Fetch(entity);
+            fetch.execute("JSON", function (res) {
+                return deferred.resolve(res[0] ? res[0].id : null);
+            }, function (err) { return deferred.reject(err); });
+            return deferred.promise();
+        }
+    </script>
+</body>
+</html>

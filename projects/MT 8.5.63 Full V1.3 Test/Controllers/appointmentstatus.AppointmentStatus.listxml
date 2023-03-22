@@ -1,0 +1,45 @@
+﻿<EntityList>
+  <Attributes>
+    <EntityName>appointmentstatus</EntityName>
+    <CamelCase>appointmentstatus</CamelCase>
+    <VisualStudioProjectId>00000000-0000-0000-0000-000000000000</VisualStudioProjectId>
+    <ClassBinding/>
+  </Attributes>
+  <Name>AppointmentStatus</Name>
+  <Kind>List</Kind>
+  <IsDefault>true</IsDefault>
+  <AutoWideWidth>0</AutoWideWidth>
+  <OrderBy>name</OrderBy>
+  <SerializedBindings>
+    <string>createdby</string>
+    <string>createdon</string>
+    <string>id</string>
+    <string>modifiedby</string>
+    <string>modifiedon</string>
+    <string>name</string>
+  </SerializedBindings>
+  <MaxColumns>0</MaxColumns>
+  <IFrame>file://entity/appointmentstatus/appointmentstatus-list.html</IFrame>
+  <IFrameProvidesDS>true</IFrameProvidesDS>
+  <Fetch version="1.0">
+    <entity name="appointmentstatus"/>
+  </Fetch>
+  <SerializedTemplates>
+    <RowTemplate>
+      <DesignWidth>240</DesignWidth>
+      <DesignHeight>40</DesignHeight>
+      <Name>Default</Name>
+      <Width>240</Width>
+      <Height>40</Height>
+      <SerializedChildren>
+        <CellTemplate SchemaName="name">
+          <StyleName>primary</StyleName>
+          <Bounds>8,2,227,35</Bounds>
+          <CellKind>0</CellKind>
+          <Anchor>13</Anchor>
+        </CellTemplate>
+      </SerializedChildren>
+    </RowTemplate>
+  </SerializedTemplates>
+  <CustomProperties/>
+</EntityList>

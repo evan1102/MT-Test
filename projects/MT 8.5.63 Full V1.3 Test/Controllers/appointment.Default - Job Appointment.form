@@ -1,0 +1,42 @@
+﻿<EntityForm xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:dummy="0" flexi="0" fleximode="1" fullscreen="0" resize="0" version="2">
+  <IsContactForm>false</IsContactForm>
+  <EntityName>appointment</EntityName>
+  <CamelCase>appointment</CamelCase>
+  <WorkflowLoad>&lt;?xml version="1.0" ?&gt;&lt;Workflow e="true" isvalid="true" syntaxVersion="11" version="0"&gt;&lt;function e="false"&gt;&lt;var&gt;Tabs.formCommands.IsVisible&lt;/var&gt;&lt;func&gt;Assign&lt;/func&gt;&lt;arg&gt;Boolean:False&lt;/arg&gt;&lt;/function&gt;&lt;function e="false"&gt;&lt;var&gt;Form.latitude.IsVisible&lt;/var&gt;&lt;func&gt;Assign&lt;/func&gt;&lt;arg&gt;Boolean:False&lt;/arg&gt;&lt;/function&gt;&lt;function e="false"&gt;&lt;var&gt;Form.longitude.IsVisible&lt;/var&gt;&lt;func&gt;Assign&lt;/func&gt;&lt;arg&gt;Boolean:False&lt;/arg&gt;&lt;/function&gt;&lt;definition e="false"&gt;&lt;var&gt;UseChangeOrder&lt;/var&gt;&lt;func&gt;LoadFetch&lt;/func&gt;&lt;type&gt;Entity&lt;/type&gt;&lt;arg&gt;String:setupoption&lt;/arg&gt;&lt;arg&gt;Fetch:&amp;lt;fetch version=&amp;quot;1.0&amp;quot;&amp;gt;&amp;lt;entity name=&amp;quot;setupoption&amp;quot;&amp;gt;&amp;lt;filter type=&amp;quot;and&amp;quot;&amp;gt;&amp;lt;condition attribute=&amp;quot;name&amp;quot; operator=&amp;quot;eq&amp;quot; value=&amp;quot;UseChangeOrder&amp;quot;/&amp;gt;&amp;lt;/filter&amp;gt;&amp;lt;/entity&amp;gt;&amp;lt;/fetch&amp;gt;&lt;/arg&gt;&lt;/definition&gt;&lt;branch e="false" info="Change Order Tab Visibility" &gt;&lt;if e="true"&gt;&lt;conditions e="true" op="And"&gt;&lt;condition e="false"&gt;&lt;var&gt;UseChangeOrder.optionvalue&lt;/var&gt;&lt;op&gt;Equal&lt;/op&gt;&lt;arg&gt;String:False&lt;/arg&gt;&lt;/condition&gt;&lt;/conditions&gt;&lt;action&gt;&lt;function e="false"&gt;&lt;var&gt;Tabs.changeorder.IsVisible&lt;/var&gt;&lt;func&gt;Assign&lt;/func&gt;&lt;arg&gt;Boolean:False&lt;/arg&gt;&lt;/function&gt;&lt;/action&gt;&lt;/if&gt;&lt;/branch&gt;&lt;definition e="false"&gt;&lt;var&gt;HasJobApptNotes&lt;/var&gt;&lt;func&gt;LoadFetch&lt;/func&gt;&lt;type&gt;Entity&lt;/type&gt;&lt;arg&gt;String:annotation&lt;/arg&gt;&lt;arg&gt;Fetch:&amp;lt;fetch version=&amp;quot;1.0&amp;quot; count=&amp;quot;1&amp;quot;&amp;gt;&amp;lt;entity name=&amp;quot;annotation&amp;quot;&amp;gt;&amp;lt;filter type=&amp;quot;and&amp;quot;&amp;gt;&amp;lt;condition attribute=&amp;quot;gpjobnumber&amp;quot; operator=&amp;quot;eq&amp;quot; value=&amp;quot;{{Entity.gpjobnumber}}&amp;quot;/&amp;gt;&amp;lt;condition attribute=&amp;quot;gpreferenceid&amp;quot; operator=&amp;quot;eq&amp;quot; value=&amp;quot;{{Entity.gpappointmentid}}&amp;quot;/&amp;gt;&amp;lt;condition attribute=&amp;quot;isdocument&amp;quot; operator=&amp;quot;eq&amp;quot; value=&amp;quot;0&amp;quot;/&amp;gt;&amp;lt;/filter&amp;gt;&amp;lt;/entity&amp;gt;&amp;lt;/fetch&amp;gt;&lt;/arg&gt;&lt;/definition&gt;&lt;branch e="true" info="Notes Tab Visibility" &gt;&lt;if e="true"&gt;&lt;conditions e="true" op="And"&gt;&lt;condition e="false"&gt;&lt;var&gt;HasJobApptNotes.@this&lt;/var&gt;&lt;op&gt;DoesNotContainData&lt;/op&gt;&lt;/condition&gt;&lt;/conditions&gt;&lt;action&gt;&lt;function e="false"&gt;&lt;var&gt;Tabs.annotation.IsVisible&lt;/var&gt;&lt;func&gt;Assign&lt;/func&gt;&lt;arg&gt;Boolean:False&lt;/arg&gt;&lt;/function&gt;&lt;/action&gt;&lt;/if&gt;&lt;/branch&gt;&lt;/Workflow&gt;</WorkflowLoad>
+  <SharedVariables>&lt;SharedVariables&gt;&lt;Variables&gt;&lt;/Variables&gt;&lt;/SharedVariables&gt;</SharedVariables>
+  <PrimaryCommands>custom_getGPS|Update GPS||custom_navigateTo|Navigate To||Complete||</PrimaryCommands>
+  <SharedVariableNames/>
+  <EnabledWorkflows>OnLoadEnabled OnChangeEnabled OnSaveEnabled OnExecuteCommand OnCanExecuteCommand OnExecuteButton</EnabledWorkflows>
+  <SerializedChildrenV2>
+    <FormTab xsi:type="DetailTab">
+      <Name>jobdetail</Name>
+      <SerializedChildren>
+        <DetailItem SchemaName="gpjobnumber"/>
+        <DetailItem SchemaName="startdate"/>
+        <DetailItem SchemaName="gpappointmentid"/>
+        <DetailItem SchemaName="estimatehours"/>
+        <DetailItem SchemaName="gpcostcodealias"/>
+        <DetailItem SchemaName="description" Style="MultiLine"/>
+        <DetailItem SchemaName="latitude"/>
+        <DetailItem SchemaName="longitude"/>
+      </SerializedChildren>
+    </FormTab>
+    <FormTab xsi:type="IFrameTab">
+      <Name>changeorder</Name>
+      <Url>file://entity/changeorder/changeorder-list.html</Url>
+    </FormTab>
+    <FormTab xsi:type="MapTab">
+      <Name>Map</Name>
+      <CoordinatesBinding>latitude;longitude</CoordinatesBinding>
+    </FormTab>
+    <FormTab xsi:type="IFrameTab">
+      <Name>annotation</Name>
+      <Url>file://entity/notes/notes-list.html</Url>
+    </FormTab>
+    <FormTab xsi:type="IFrameTab">
+      <Name>formCommands</Name>
+      <Url>file://entity/appointment/appointment-form_default-job.html</Url>
+      <DelayLoad>false</DelayLoad>
+    </FormTab>
+  </SerializedChildrenV2>
+</EntityForm>

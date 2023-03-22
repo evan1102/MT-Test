@@ -1,0 +1,312 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <!-- Activate IE9 document mode, if available -->
+    <meta charset="utf-8" http-equiv="X-UA-Compatible" content="IE=edge" />
+    <!-- Defined iOS viewport -->
+    <meta name="viewport" content="initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=false">
+    <!-- Disable iOS Phone No Detection -->
+    <meta name="format-detection" content="telephone=no" />
+    <!-- DevExtreme dependencies -->
+    <script type="text/javascript" src="../../scripts/jquery-3.3.1.min.js"></script>
+    <!-- A DevExtreme library -->
+    <script type="text/javascript" src="../../scripts/dx.all.js"></script>
+    <!-- Offline HTML JavaScript Bridge-->
+    <script type="text/javascript" src="../../scripts/JSBridge.js"></script>
+    <script type="text/javascript" src="../../scripts/k2aMethods.js"></script>
+    <script type="text/javascript" src="../../enum/Schema.js"></script>
+    <script type="text/javascript" src="../../enum/setupoption.js"></script>
+    <title>Entity Form</title>
+</head>
+<body>
+    <script>
+        //============== INITIAL SETTINGS ================
+        var entityName = SCHEMA.servicecall.name, poRequired = false;
+        //============== SELECTED DATA ================
+        var selected = { 'calltype': null };
+        //============== FETCH DATA ================
+        var requiredSetupOptions = [
+            SETUPOPTION.UseServiceCallUserDefine2
+        ];
+
+        $(function () {
+            //============== ANDROID CHECK ================
+            MobileCRM.Platform.preventBackButton(btnBackClicked);
+
+            loadSetupOptions(loadFormOptions);
+
+            MobileCRM.UI.EntityForm.onChange(formValueChanged, true);
+            MobileCRM.UI.EntityForm.onSave(btnSaveClicked, true);
+            MobileCRM.bridge.onGlobalEvent("HideAppointmentList", hideAppointmentListTab, true);
+            MobileCRM.bridge.onGlobalEvent("ReloadEquipmentList", refreshGpequipmentid, true);
+            MobileCRM.bridge.onGlobalEvent("SelectTab", function (args) {
+                if (args.entity === entityName && args.entityID === selected[entityName].id)
+                    MobileCRM.UI.EntityForm.requestObject(function (entityForm) {
+                        entityForm.selectTab(args.tabName);
+                    }, MobileCRM.bridge.alert);
+            }, true);
+            MobileCRM.bridge.onGlobalEvent("CloseCallForm", function (args) {
+                // Appointment completed, close corresponding Service Call Form if no other appointments
+                if (args && args.servicecallID && args.servicecallID === selected[entityName].id) {
+                    anyOpenAppointmentsOnServiceCall().then(function (hasOpenAppointments) {
+                        if (!hasOpenAppointments) {
+                            MobileCRM.bridge.closeForm();
+                        }
+                    }, MobileCRM.bridge.alert);
+                }
+            }, true);
+        });
+
+        //============== LOAD OPTIONS ================
+        function loadFormOptions() {
+            MobileCRM.Localization.initialize(function (localization) {
+                MobileCRM.UI.EntityForm.requestObject(function (entityForm) {
+                    entityForm.form.caption = MobileCRM.Localization.get(entityForm.entity.entityName) + ": " + entityForm.entity.properties.gpservicecallid;
+                    if (entityForm.iFrameOptions) {
+                        if (entityForm.iFrameOptions.selectTab) {
+                            entityForm.selectTab(entityForm.iFrameOptions.selectTab);
+                        }
+                        if (entityForm.iFrameOptions.hideAppointmentList && JSON.parse(entityForm.iFrameOptions.hideAppointmentList)) {
+                            entityForm.setTabVisibility("appointment", true);
+                            hideAppointmentListTab();
+                        }
+                    }
+
+                    selected[entityName] = entityForm.entity.properties;
+                    selected.calltype = entityForm.entity.properties.calltypeid ?
+                        entityForm.entity.properties.calltypeid : null;
+
+                    loadFormItems(entityForm);
+                }, MobileCRM.bridge.alert, null);
+            }, function (error) {
+                MobileCRM.bridge.alert(error);
+                resolve(false);
+            })
+        }
+        function loadFormItems(entityForm) {
+            // Load Form Items
+            var detailView = entityForm.getDetailView(entityName);
+            var formItems = [];
+            $(detailView.items).each(function (index, item) {
+                item.errorMessage = null;
+                formItems[item.name] = item;
+            });
+
+            // Set Form Item Visibility
+            formItems.gpequipmentid.isVisible = typeof selected[entityName].gpequipmentid !== 'undefined' && selected[entityName].gpequipmentid !== '';
+            formItems.userdefine2id.isVisible = setupOptions.UseServiceCallUserDefine2;
+            formItems.gpuserdefine2.isVisible = !setupOptions.UseServiceCallUserDefine2;
+
+            // Set Form Item Required
+            if (selected[entityName].locationid)
+                checkLocationPurchaseOrderRequired(
+                    selected[entityName].locationid.id,
+                    selected.calltype ? selected.calltype.primaryName : ""
+                );
+
+            // Set Form Item Options
+            formItems.customerid.isEnabled = false;
+            formItems.locationid.isEnabled = false;
+            formItems.gpservicecallid.isEnabled = false;
+            formItems.dateofcall.isEnabled = false;
+            formItems.calltypeid.isEnabled = selected.calltype && selected.calltype.primaryName !== 'MC';
+            formItems.gpequipmentid.isEnabled = false;
+            formItems.purchaseorder.maxLength = 15;
+            formItems.description.maxLength = 30;
+            formItems.contractid.isEnabled = false;
+            formItems.primarytechemployeeid.isEnabled = false;
+            formItems.priority.isEnabled = false;
+            formItems.callstatusid.isEnabled = false;
+            formItems.gpcallerphone.maxLength = 19; // (xxx) xxx-xxxx,xxxx
+
+
+            fetchUserDefineLabel();
+            loadFormValues(entityForm);
+        }
+
+        function hideAppointmentListTab() {
+            MobileCRM.UI.EntityForm.requestObject(function (entityForm) {
+                entityForm.setTabVisibility("appointment", false);
+                entityForm.selectTab(entityName);
+            }, MobileCRM.bridge.alert);
+        }
+
+        function checkLocationPurchaseOrderRequired(locationid, calltypeName) {
+            MobileCRM.DynamicEntity.loadById("location", locationid, function (location) {
+                poRequired = JSON.parse(location.properties.purchaseorderrequired);
+                poRequired = poRequired && calltypeName !== 'MC';
+            }, MobileCRM.bridge.alert);
+        }
+
+        function fetchUserDefineLabel() {
+            var entity = new MobileCRM.FetchXml.Entity(SCHEMA.userdefinelabel.name);
+            entity.addAttributes();
+            var fetch = new MobileCRM.FetchXml.Fetch(entity);
+            fetch.execute("JSON", function (res) {
+                if (res.length > 0) {
+                    userdefinelabel = res[0];
+                    loadUserDefineLabel();
+                }
+            }, MobileCRM.bridge.alert);
+        }
+        function loadUserDefineLabel() {
+            MobileCRM.UI.EntityForm.requestObject(function (entityForm) {
+                var dv = entityForm.getDetailView(entityName);
+
+                if (userdefinelabel.userdefine21)
+                    dv.getItemByName('userdefine1id').label = userdefinelabel.userdefine21;
+
+                if (userdefinelabel.userdefine22)
+                    dv.getItemByName(setupOptions.UseServiceCallUserDefine2 ?
+                        'userdefine2id' : 'gpuserdefine2').label = userdefinelabel.userdefine22;
+
+                if (userdefinelabel.userdefine23)
+                    dv.getItemByName('gpuserdefine3').label = userdefinelabel.userdefine23;
+
+                if (userdefinelabel.userdefine24)
+                    dv.getItemByName('gpuserdefine4').label = userdefinelabel.userdefine24;
+            }, MobileCRM.bridge.alert);
+        }
+
+        //============== LOAD DATA ================
+        function loadFormValues(entityForm) {
+            if (selected[entityName].gpcallerphone)
+                formatCallerPhone(entityForm);
+
+            setClean();
+            fetchDropDowns();
+        }
+        function fetchDropDowns() {
+            if (selected.calltype && selected.calltype.primaryName !== 'MC')
+                fetchCallType();
+        }
+        function fetchCallType() {
+            var fetch = "<fetch version='1.0'><entity name='calltype'><filter type='and'>" +
+                "<condition attribute='name' operator='not-in'>" +
+                "<value>MCC</value>" +
+                "<value>MC</value>" +
+                "<value>CAS</value>" +
+                "<value>EQR</value>" +
+                "<value>KIT</value>" +
+                "<value>PRE</value>" +
+                "<value>QTE</value>" +
+                "<value>REL</value>" +
+                "<value>SAL</value>" +
+                "<value>WTY</value>" +
+                "</condition></filter></entity></fetch>";
+
+            addFetchFilter(SCHEMA.servicecall.Properties.calltypeid, SCHEMA.calltype.name, fetch, entityName);
+        }
+
+        function anyOpenAppointmentsOnServiceCall() {
+            var deferred = $.Deferred();
+            if (!selected[entityName])
+                return deferred.reject("Any Open Appointments Error: Missing Service Call details");
+
+            var entity = new MobileCRM.FetchXml.Entity(SCHEMA.appointment.name);
+            entity.addAttribute('id');
+            entity.addFilter().where('servicecallid', 'eq', selected[entityName].id);
+
+            var statusLink = entity.addLink('appointmentstatus', 'id', 'appointmentstatusid', 'inner');
+            statusLink.addFilter().notIn('name', ['COMPLETE', 'RE-ASSIGN']);
+
+            var fetch = new MobileCRM.FetchXml.Fetch(entity);
+            fetch.execute("JSON", function (res) {
+                return deferred.resolve(res.length > 0);
+            }, function (err) { return deferred.reject("Any Open Appointments Fetch Error:\n" + err); });
+            return deferred.promise();
+        }
+
+        //============== TOOLBAR FUNCTIONS ================
+        function btnSaveClicked(entityForm) {
+            saveHandler = entityForm.suspendSave();
+            var poValue = entityForm.entity.properties.purchaseorder ?
+                entityForm.entity.properties.purchaseorder.toString().trim() : null;
+
+            if (poRequired && !poValue) {
+                saveHandler.resumeSave("Location requires PO");
+            }
+            else {
+                updateEntity(entityForm);
+            }
+        }
+
+        //============== FORM ITEM FUNCTIONS ================
+        function formValueChanged(entityForm) {
+            switch (entityForm.context.changedItem) {
+                case "gpcallerphone": formatCallerPhone(entityForm); break;
+            }
+
+            entityForm.getDetailView(entityName)
+                .getItemByName(entityForm.context.changedItem).errorMessage = null;
+        }
+        function formatCallerPhone(entityForm) {
+            var gpcallerphone = entityForm.entity.properties.gpcallerphone.replace(/[^0-9\.]/g, '');
+            if (gpcallerphone.length < 1) {
+                entityForm.entity.properties.gpcallerphone = "";
+                return;
+            }
+
+            var areacode = "(" + gpcallerphone.substring(0, 3) + ") ";
+            var phone = gpcallerphone.substring(3, 6) + "-" + gpcallerphone.substring(6, 10);
+            var extension = gpcallerphone.substring(10, 14);
+
+            var zeroExt = "";
+            for (var i = 0; i < extension.length; i++) {
+                zeroExt = zeroExt + "0";
+            }
+
+            if (extension.length === 0 || extension === zeroExt)
+                entityForm.entity.properties.gpcallerphone = areacode + phone;
+            else
+                entityForm.entity.properties.gpcallerphone = areacode + phone + "," + extension;
+        }
+
+        function refreshGpequipmentid() {
+            MobileCRM.DynamicEntity.loadById(entityName, selected[entityName].id, function (call) {
+                MobileCRM.UI.EntityForm.requestObject(function (entityForm) {
+                    var isDirtyBefore = entityForm.isDirty;
+                    var detailView = entityForm.getDetailView(entityName);
+                    var gpequipmentidItem = detailView.getItemByName(SCHEMA.equipment.Properties.gpequipmentid);
+                    gpequipmentidItem.isVisible = typeof call.properties.gpequipmentid !== 'undefined' && call.properties.gpequipmentid !== '';
+                    gpequipmentidItem.value = call.properties.gpequipmentid ? call.properties.gpequipmentid : "";
+
+                    if (!isDirtyBefore) {
+                        setClean();
+                    }
+                }, MobileCRM.bridge.alert);
+            }, MobileCRM.bridge.alert);
+        }
+
+        //============== FORM EXECUTIONS ================
+        function updateEntity(entityForm) {
+            var entityProps = entityForm.entity.properties;
+
+            entityForm.entity.properties.gpcalltype =
+                entityProps.calltypeid ? entityProps.calltypeid.primaryName : "";
+
+            entityForm.entity.properties.gpproblemtype =
+                entityProps.problemtypeid ? entityProps.problemtypeid.primaryName : "";
+
+            entityForm.entity.properties.gpuserdefine1 =
+                entityProps.userdefine1id ? entityProps.userdefine1id.primaryName : "";
+
+            if (setupOptions.UseServiceCallUserDefine2) {
+                entityForm.entity.properties.gpuserdefine2 =
+                    entityProps.userdefine2id ? entityProps.userdefine2id.primaryName : "";
+            }
+
+            entityForm.entity.properties.gpcallerphone =
+                entityProps.gpcallerphone ? entityProps.gpcallerphone.replace(/[^0-9\.]/g, '') : "";
+
+            entityForm.entity.save(error_updateEntity);
+        }
+        function error_updateEntity(err) {
+            if (err)
+                saveHandler.resumeSave(err);
+            else
+                setCleanAndClose();
+        }
+    </script>
+</body>
+</html>
